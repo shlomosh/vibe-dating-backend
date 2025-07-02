@@ -1,0 +1,556 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Vibe Dating App - Authentication Service Infrastructure'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+  
+  TelegramBotToken:
+    Type: String
+    NoEcho: true
+    Description: Telegram Bot Token for WebApp validation
+  
+  JWTSecret:
+    Type: String
+    NoEcho: true
+    Description: Secret key for JWT token signing
+  
+  DomainName:
+    Type: String
+    Default: api.vibe-dating.io
+    Description: Domain name for the API Gateway
+  
+  AllowedOrigins:
+    Type: CommaDelimitedList
+    Default: ['https://web.telegram.org', 'https://t.me']
+    Description: Allowed CORS origins
+
+Resources:
+  # DynamoDB Table
+  VibeDatingTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'vibe-dating-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+        - AttributeName: GSI2PK
+          AttributeType: S
+        - AttributeName: GSI2SK
+          AttributeType: S
+        - AttributeName: GSI3PK
+          AttributeType: S
+        - AttributeName: GSI3SK
+          AttributeType: S
+        - AttributeName: GSI4PK
+          AttributeType: S
+        - AttributeName: GSI4SK
+          AttributeType: S
+        - AttributeName: GSI5PK
+          AttributeType: S
+        - AttributeName: GSI5SK
+          AttributeType: S
+        - AttributeName: GSI6PK
+          AttributeType: S
+        - AttributeName: GSI6SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: GSI2
+          KeySchema:
+            - AttributeName: GSI2PK
+              KeyType: HASH
+            - AttributeName: GSI2SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: GSI3
+          KeySchema:
+            - AttributeName: GSI3PK
+              KeyType: HASH
+            - AttributeName: GSI3SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: GSI4
+          KeySchema:
+            - AttributeName: GSI4PK
+              KeyType: HASH
+            - AttributeName: GSI4SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: GSI5
+          KeySchema:
+            - AttributeName: GSI5PK
+              KeyType: HASH
+            - AttributeName: GSI5SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: GSI6
+          KeySchema:
+            - AttributeName: GSI6PK
+              KeyType: HASH
+            - AttributeName: GSI6SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref DynamoDBKMSKey
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: auth
+
+  # KMS Key for DynamoDB encryption
+  DynamoDBKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: !Sub 'KMS key for Vibe Dating DynamoDB table encryption - ${Environment}'
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow DynamoDB to use the key
+            Effect: Allow
+            Principal:
+              Service: dynamodb.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey
+            Resource: '*'
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: auth
+
+  DynamoDBKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/vibe-dating-dynamodb-${Environment}'
+      TargetKeyId: !Ref DynamoDBKMSKey
+
+  # IAM Role for Lambda functions
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'vibe-auth-lambda-role-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt VibeDatingTable.Arn
+                  - !Sub '${VibeDatingTable.Arn}/index/*'
+        - PolicyName: KMSAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource: !GetAtt DynamoDBKMSKey.Arn
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub '${LambdaCodeBucket}/*'
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: auth
+
+  # S3 Bucket for Lambda function code
+  LambdaCodeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'vibe-auth-lambda-${Environment}-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: auth
+
+  # Lambda function for Telegram authentication
+  TelegramAuthFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'vibe-telegram-auth-${Environment}'
+      Runtime: python3.11
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: lambda/telegram_auth.zip
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: !Ref VibeDatingTable
+          TELEGRAM_BOT_TOKEN: !Ref TelegramBotToken
+          JWT_SECRET: !Ref JWTSecret
+          LAMBDA_FUNCTION_TYPE: telegram_auth
+      Timeout: 30
+      MemorySize: 256
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: auth
+
+  # Lambda function for JWT authorization
+  JWTAuthorizerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'vibe-jwt-authorizer-${Environment}'
+      Runtime: python3.11
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import os
+          import jwt
+          import datetime
+          
+          def verify_jwt_token(token: str) -> dict:
+              """Verify and decode JWT token"""
+              try:
+                  secret = os.environ['JWT_SECRET']
+                  payload = jwt.decode(token, secret, algorithms=['HS256'])
+                  return payload
+              except jwt.ExpiredSignatureError:
+                  raise Exception('Token has expired')
+              except jwt.InvalidTokenError:
+                  raise Exception('Invalid token')
+          
+          def lambda_handler(event, context):
+              """Lambda authorizer for API Gateway"""
+              try:
+                  # Extract token from Authorization header
+                  auth_header = event.get('authorizationToken', '')
+                  if not auth_header.startswith('Bearer '):
+                      raise Exception('Invalid authorization header')
+                  
+                  token = auth_header.replace('Bearer ', '')
+                  
+                  # Verify JWT token
+                  payload = verify_jwt_token(token)
+                  user_id = payload['user_id']
+                  
+                  # Generate policy allowing access
+                  policy = {
+                      'principalId': user_id,
+                      'policyDocument': {
+                          'Version': '2012-10-17',
+                          'Statement': [
+                              {
+                                  'Action': 'execute-api:Invoke',
+                                  'Effect': 'Allow',
+                                  'Resource': event['methodArn']
+                              }
+                          ]
+                      },
+                      'context': {
+                          'userId': user_id,
+                          'telegramId': payload.get('telegram_id'),
+                          'iss': payload.get('iss')
+                      }
+                  }
+                  
+                  return policy
+                  
+              except Exception as e:
+                  print(f"Authorization error: {str(e)}")
+                  raise Exception('Unauthorized')
+      Environment:
+        Variables:
+          JWT_SECRET: !Ref JWTSecret
+      Timeout: 10
+      MemorySize: 128
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: auth
+
+  # API Gateway
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub 'vibe-api-${Environment}'
+      Description: 'Vibe Dating App API Gateway'
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      BinaryMediaTypes:
+        - '*/*'
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: auth
+
+  # API Gateway Authorizer
+  ApiGatewayAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: !Sub 'vibe-jwt-authorizer-${Environment}'
+      Type: TOKEN
+      AuthorizerUri: !Sub 
+        - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+        - LambdaArn: !GetAtt JWTAuthorizerFunction.Arn
+      AuthorizerCredentials: !GetAtt ApiGatewayAuthorizerRole.Arn
+      AuthorizerResultTtlInSeconds: 300
+      IdentitySource: method.request.header.Authorization
+
+  # IAM Role for API Gateway Authorizer
+  ApiGatewayAuthorizerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'vibe-api-authorizer-role-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaInvoke
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt JWTAuthorizerFunction.Arn
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: auth
+
+  # Lambda permission for API Gateway to invoke authorizer
+  AuthorizerLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref JWTAuthorizerFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*'
+
+  # API Gateway Resources and Methods
+  AuthResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: auth
+
+  TelegramAuthResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !Ref AuthResource
+      PathPart: telegram
+
+  TelegramAuthMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref TelegramAuthResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - LambdaArn: !GetAtt TelegramAuthFunction.Arn
+      RequestParameters:
+        method.request.header.Content-Type: true
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+        - StatusCode: '400'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+        - StatusCode: '401'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+        - StatusCode: '500'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+
+  # Lambda permission for API Gateway to invoke Telegram auth function
+  TelegramAuthLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref TelegramAuthFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*'
+
+  # OPTIONS method for CORS
+  TelegramAuthOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref TelegramAuthResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: '200'
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+            ResponseTemplates:
+              application/json: ''
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+
+  # API Gateway Deployment
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - TelegramAuthMethod
+      - TelegramAuthOptionsMethod
+    Properties:
+      RestApiId: !Ref ApiGateway
+      StageName: !Ref Environment
+
+  # CloudWatch Log Group for Lambda functions
+  TelegramAuthLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/vibe-telegram-auth-${Environment}'
+      RetentionInDays: 14
+
+  JWTAuthorizerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/vibe-jwt-authorizer-${Environment}'
+      RetentionInDays: 14
+
+Outputs:
+  ApiGatewayUrl:
+    Description: 'API Gateway URL'
+    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayUrl'
+
+  DynamoDBTableName:
+    Description: 'DynamoDB Table Name'
+    Value: !Ref VibeDatingTable
+    Export:
+      Name: !Sub '${AWS::StackName}-DynamoDBTableName'
+
+  DynamoDBTableArn:
+    Description: 'DynamoDB Table ARN'
+    Value: !GetAtt VibeDatingTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DynamoDBTableArn'
+
+  TelegramAuthFunctionArn:
+    Description: 'Telegram Auth Lambda Function ARN'
+    Value: !GetAtt TelegramAuthFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-TelegramAuthFunctionArn'
+
+  JWTAuthorizerFunctionArn:
+    Description: 'JWT Authorizer Lambda Function ARN'
+    Value: !GetAtt JWTAuthorizerFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-JWTAuthorizerFunctionArn'
+
+  ApiGatewayAuthorizerId:
+    Description: 'API Gateway Authorizer ID'
+    Value: !Ref ApiGatewayAuthorizer
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayAuthorizerId'
+
+  LambdaCodeBucketName:
+    Description: 'S3 Bucket for Lambda Function Code'
+    Value: !Ref LambdaCodeBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaCodeBucketName'

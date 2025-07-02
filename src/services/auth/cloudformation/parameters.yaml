@@ -1,0 +1,8 @@
+  Parameters:
+    Environment: dev
+    TelegramBotToken: "7694854668:AAFPjcRjKpCoyZCxJCDF3l9_oCQGUYEY7H0"
+    JWTSecret: "b4fc625bb8cb7d83c6d8c1a362e6207b3055ac1b312bc42f3c4f5868bb6a8d85"
+    DomainName: "api.vibe-dating.io"
+    AllowedOrigins: 
+      - "https://web.telegram.org"
+      - "https://t.me"
