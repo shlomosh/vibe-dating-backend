@@ -79,7 +79,16 @@ Authorization: Bearer <jwt_token>
 ```json
 {
   "user_id": "user_id",
-  "telegram_username": "username",
+  "platform": "tg",
+  "platform_id": "123456789",
+  "platform_metadata": {
+    "username": "username",
+    "first_name": "John",
+    "last_name": "Doe",
+    "language_code": "en",
+    "is_premium": false,
+    "added_to_attachment_menu": false
+  },
   "is_banned": false,
   "ban_reason": null,
   "ban_expires_at": null,

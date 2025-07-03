@@ -1,0 +1,7 @@
+  Parameters:
+    Environment: dev
+    DomainName: "api.vibe-dating.io"
+    UUIDSuffix: "d6aa50da-5809-11f0-bcae-1fb18ef3af1c"
+    AllowedOrigins: 
+      - "https://web.telegram.org"
+      - "https://t.me"

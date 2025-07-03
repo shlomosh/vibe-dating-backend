@@ -7,25 +7,20 @@ Parameters:
     Default: dev
     AllowedValues: [dev, staging, prod]
     Description: Environment name
-  
-  TelegramBotToken:
-    Type: String
-    NoEcho: true
-    Description: Telegram Bot Token for WebApp validation
-  
-  JWTSecret:
-    Type: String
-    NoEcho: true
-    Description: Secret key for JWT token signing
-  
+
   DomainName:
     Type: String
     Default: api.vibe-dating.io
     Description: Domain name for the API Gateway
   
+  UUIDSuffix:
+    Type: String
+    Default: "d6aa50da-5809-11f0-bcae-1fb18ef3af1c"
+    Description: UUID suffix for the AWS services
+
   AllowedOrigins:
     Type: CommaDelimitedList
-    Default: ['https://web.telegram.org', 'https://t.me']
+    Default: 'https://web.telegram.org,https://t.me'
     Description: Allowed CORS origins
 
 Resources:
@@ -213,6 +208,17 @@ Resources:
                   - s3:PutObject
                   - s3:DeleteObject
                 Resource: !Sub '${LambdaCodeBucket}/*'
+        - PolicyName: SecretsManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/telegram-bot-token/${Environment}*'
+                  - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}*'
+                  - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/uuid-namespace/${Environment}*'
       Tags:
         - Key: Environment
           Value: !Ref Environment
@@ -223,7 +229,7 @@ Resources:
   LambdaCodeBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub 'vibe-auth-lambda-${Environment}-${AWS::AccountId}'
+      BucketName: !Sub 'vibe-dating-code-${Environment}-${UUIDSuffix}'
       VersioningConfiguration:
         Status: Enabled
       PublicAccessBlockConfiguration:
@@ -235,6 +241,23 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Lambda Layer for shared dependencies
+  VibeBaseLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: !Sub 'vibe_base_layer-${Environment}'
+      Description: 'Vibe Dating App base layer with shared dependencies'
+      Content:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: lambda/vibe_base_layer.zip
+      CompatibleRuntimes:
+        - python3.11
+      CompatibleArchitectures:
+        - x86_64
       Tags:
         - Key: Environment
           Value: !Ref Environment
@@ -252,12 +275,14 @@ Resources:
       Code:
         S3Bucket: !Ref LambdaCodeBucket
         S3Key: lambda/telegram_auth.zip
+      Layers:
+        - !Ref VibeBaseLayer
       Environment:
         Variables:
           DYNAMODB_TABLE: !Ref VibeDatingTable
-          TELEGRAM_BOT_TOKEN: !Ref TelegramBotToken
-          JWT_SECRET: !Ref JWTSecret
-          LAMBDA_FUNCTION_TYPE: telegram_auth
+          TELEGRAM_BOT_TOKEN_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/telegram-bot-token/${Environment}'
+          JWT_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}'
+          UUID_NAMESPACE_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/uuid-namespace/${Environment}'
       Timeout: 30
       MemorySize: 256
       Tags:
@@ -275,65 +300,13 @@ Resources:
       Handler: lambda_function.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        ZipFile: |
-          import json
-          import os
-          import jwt
-          import datetime
-          
-          def verify_jwt_token(token: str) -> dict:
-              """Verify and decode JWT token"""
-              try:
-                  secret = os.environ['JWT_SECRET']
-                  payload = jwt.decode(token, secret, algorithms=['HS256'])
-                  return payload
-              except jwt.ExpiredSignatureError:
-                  raise Exception('Token has expired')
-              except jwt.InvalidTokenError:
-                  raise Exception('Invalid token')
-          
-          def lambda_handler(event, context):
-              """Lambda authorizer for API Gateway"""
-              try:
-                  # Extract token from Authorization header
-                  auth_header = event.get('authorizationToken', '')
-                  if not auth_header.startswith('Bearer '):
-                      raise Exception('Invalid authorization header')
-                  
-                  token = auth_header.replace('Bearer ', '')
-                  
-                  # Verify JWT token
-                  payload = verify_jwt_token(token)
-                  user_id = payload['user_id']
-                  
-                  # Generate policy allowing access
-                  policy = {
-                      'principalId': user_id,
-                      'policyDocument': {
-                          'Version': '2012-10-17',
-                          'Statement': [
-                              {
-                                  'Action': 'execute-api:Invoke',
-                                  'Effect': 'Allow',
-                                  'Resource': event['methodArn']
-                              }
-                          ]
-                      },
-                      'context': {
-                          'userId': user_id,
-                          'telegramId': payload.get('telegram_id'),
-                          'iss': payload.get('iss')
-                      }
-                  }
-                  
-                  return policy
-                  
-              except Exception as e:
-                  print(f"Authorization error: {str(e)}")
-                  raise Exception('Unauthorized')
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: lambda/jwt_authorizer.zip
+      Layers:
+        - !Ref VibeBaseLayer
       Environment:
         Variables:
-          JWT_SECRET: !Ref JWTSecret
+          JWT_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}'
       Timeout: 10
       MemorySize: 128
       Tags:
@@ -554,3 +527,9 @@ Outputs:
     Value: !Ref LambdaCodeBucket
     Export:
       Name: !Sub '${AWS::StackName}-LambdaCodeBucketName'
+
+  VibeBaseLayerArn:
+    Description: 'Vibe Base Layer ARN'
+    Value: !Ref VibeBaseLayer
+    Export:
+      Name: !Sub '${AWS::StackName}-VibeBaseLayerArn'

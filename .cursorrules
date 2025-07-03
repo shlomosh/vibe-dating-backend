@@ -1,0 +1,10 @@
+# Project Context Rule
+
+description: Include project-wide context from docs/context.md  
+globs:  
+  - docs/context.md  
+alwaysApply: true
+
+---
+
+@docs/context.md

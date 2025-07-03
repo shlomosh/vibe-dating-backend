@@ -28,12 +28,12 @@ The platform identifier string is then hashed using the following process:
 
 ```typescript
 export const hashStringToId = (str: string, len: number = 8): string => {
-  return uuidToBase64(uuidv5(str, 'f205b16e-4eac-11f0-a692-00155dcd3c6a')).slice(0, len);
+  return uuidToBase64(uuidv5(str, '<uuid-namespace-secret>')).slice(0, len);
 };
 ```
 
 #### UUID v5 Generation
-- Uses UUID v5 algorithm with a fixed namespace UUID: `f205b16e-4eac-11f0-a692-00155dcd3c6a`
+- Uses UUID v5 algorithm with a fixed namespace UUID: `<uuid-namespace-secret>`
 - Input: The platform identifier string (e.g., `tg:123456789`)
 - Output: A deterministic UUID
 

@@ -30,6 +30,240 @@ Vibe is a location-based dating application designed as a Telegram Mini-App for 
 - **Maps/Location**: Browser geolocation + geohash encoding
 - **Media Processing**: Frontend handles initial processing, backend generates thumbnails and video previews
 
+## Deployment & Build System
+
+### Poetry-Based Development Environment
+The project uses Poetry for dependency management and provides a modern, consistent development experience across all environments.
+
+#### Prerequisites
+- **Python 3.11+**: Required for Lambda runtime compatibility
+- **Poetry**: Modern Python dependency management
+- **AWS CLI**: Configured with appropriate credentials
+- **Docker**: Optional, for local development and testing
+
+#### Installation & Setup
+```bash
+# Clone repository
+git clone <repository-url>
+cd vibe-dating-backend
+
+# Install all dependencies
+poetry install
+
+# Install Lambda-specific dependencies
+poetry install --with lambda
+```
+
+### Build System
+
+#### Lambda Package Building
+The build system creates optimized Lambda packages with proper dependency management:
+
+```bash
+# Build Lambda packages
+poetry run build-lambda
+```
+
+**Generated Artifacts**:
+- `build/lambda/vibe_base_layer.zip`: Shared Python dependencies layer
+- `build/lambda/telegram_auth.zip`: Telegram authentication function
+- **JWT Authorizer**: JWT authorization function
+
+**Build Process**:
+1. **Dependency Management**: Uses Poetry to export Lambda dependencies
+2. **Layer Creation**: Creates shared dependency layer for code reuse
+3. **Function Packaging**: Packages individual Lambda functions with minimal dependencies
+4. **Optimization**: Removes unnecessary files and optimizes package sizes
+
+#### Build Configuration
+- **Dependencies**: Managed via `pyproject.toml` with separate `lambda` group
+- **Python Version**: 3.11+ for Lambda compatibility
+- **Package Optimization**: Automatic removal of development dependencies
+- **Layer Strategy**: Shared dependencies in base layer, function-specific code in individual packages
+
+### Deployment System
+
+#### AWS Infrastructure Deployment
+The deployment system uses CloudFormation for infrastructure as code:
+
+```bash
+# Deploy authentication service
+poetry run deploy-auth
+```
+
+**Deployment Process**:
+1. **Prerequisites Check**: Validates AWS credentials, Poetry installation, and build artifacts
+2. **Lambda Building**: Automatically builds Lambda packages if not present
+3. **S3 Upload**: Uploads packages to environment-specific S3 bucket
+4. **CloudFormation Deployment**: Deploys/updates infrastructure stack
+5. **Output Display**: Shows API Gateway URLs and other outputs
+
+#### Environment Configuration
+```bash
+# Set deployment environment
+export ENVIRONMENT=dev|staging|prod
+export AWS_REGION=il-central-1
+export AWS_PROFILE=vibe-dating
+```
+
+#### CloudFormation Stacks
+- **Stack Name**: `vibe-dating-auth-service`
+- **Region**: `il-central-1` (default)
+- **Capabilities**: `CAPABILITY_NAMED_IAM` for IAM role creation
+- **Tags**: Environment and Service tags for resource management
+
+### Testing System
+
+#### Comprehensive Test Suite
+```bash
+# Run all tests
+poetry run test-lambda
+```
+
+**Test Categories**:
+1. **Lambda Layer Tests**: Validates dependency availability and compatibility
+2. **Structure Tests**: Ensures proper code organization and imports
+3. **Authentication Tests**: Tests Telegram auth and JWT validation logic
+4. **Unit Tests**: Pytest-based unit tests for individual components
+5. **Code Quality**: Black, isort, and mypy for code formatting and type checking
+
+#### Test Configuration
+- **Framework**: pytest with coverage reporting
+- **Linting**: Black (formatting), isort (imports), mypy (types)
+- **Coverage**: Configurable coverage thresholds and exclusions
+- **Markers**: Unit, integration, and slow test markers
+
+### Service-Specific Deployment
+
+#### Authentication Service
+The authentication service is the primary deployment target, providing:
+- **Telegram WebApp Authentication**: Validates Telegram user data
+- **JWT Token Management**: Issues and validates JWT tokens
+- **API Gateway Integration**: Lambda authorizer for protected endpoints
+
+**Deployment Commands**:
+```bash
+# Full deployment workflow
+poetry install --with lambda
+poetry run test-lambda
+poetry run deploy-auth
+
+# Individual steps
+poetry run build-lambda    # Build packages only
+poetry run test-lambda     # Run tests only
+poetry run deploy-auth     # Deploy only
+```
+
+#### Future Services
+The deployment system is designed to support additional services:
+- **User Service**: Profile and user management
+- **Media Service**: File upload and processing
+- **Agora Service**: Real-time communication integration
+
+### Development Workflow
+
+#### Local Development
+```bash
+# Install development dependencies
+poetry install --with dev
+
+# Run code quality checks
+poetry run black src/
+poetry run isort src/
+poetry run mypy src/
+
+# Run tests
+poetry run pytest tests/
+```
+
+#### CI/CD Integration
+The Poetry-based system integrates well with CI/CD pipelines:
+- **Dependency Caching**: Poetry lock file for reproducible builds
+- **Environment Isolation**: Virtual environments for each deployment
+- **Artifact Management**: S3-based package storage and versioning
+- **Rollback Support**: CloudFormation stack rollback capabilities
+
+### Monitoring & Maintenance
+
+#### Deployment Monitoring
+- **CloudFormation Events**: Real-time deployment status
+- **Lambda Metrics**: Function performance and error rates
+- **API Gateway Logs**: Request/response monitoring
+- **CloudWatch Alarms**: Automated alerting for issues
+
+#### Maintenance Tasks
+```bash
+# Update dependencies
+poetry update
+
+# Clean build artifacts
+rm -rf build/
+
+# Validate CloudFormation templates
+aws cloudformation validate-template --template-body file://template.yaml
+```
+
+### Secrets Management
+
+#### AWS Secrets Manager Integration
+The project includes a comprehensive secrets management system using AWS Secrets Manager:
+
+```bash
+# Install secrets management dependencies
+pip install -r scripts/requirements-secrets.txt
+
+# Setup core secrets interactively
+python scripts/manage_secrets.py setup
+
+# Setup core secrets
+python scripts/manage_secrets.py setup
+
+# List all secrets
+python scripts/manage_secrets.py list
+
+# Export secrets to environment file
+python scripts/manage_secrets.py export --output .env
+
+# Validate all secrets
+python scripts/manage_secrets.py validate
+
+# Rotate JWT secret
+python scripts/manage_secrets.py rotate --secret jwt_secret
+
+# Get a secret value
+python scripts/manage_secrets.py get --secret telegram_bot_token
+```
+
+#### Supported Secrets
+**Core Secrets** (Required):
+- `telegram_bot_token`: Telegram Bot Token for WebApp authentication
+- `jwt_secret`: Secret key for JWT token signing (auto-generated)
+- `uuid_namespace`: UUID namespace for generating consistent UUIDs (auto-generated)
+
+#### Secret Naming Convention
+Secrets are stored with environment-specific naming:
+- Format: `vibe-dating/{secret-name}/{environment}`
+- Examples:
+  - `vibe-dating/telegram-bot-token/dev`
+  - `vibe-dating/jwt-secret/prod`
+  - `vibe-dating/agora-app-id/staging`
+
+#### Environment Configuration
+```bash
+# Set environment for secrets management
+export ENVIRONMENT=dev|staging|prod
+export AWS_REGION=il-central-1
+export AWS_PROFILE=vibe-dating
+```
+
+#### Security Features
+- **Automatic Tagging**: All secrets are tagged with environment and service information
+- **Secure Generation**: JWT secrets are automatically generated using cryptographically secure methods
+- **Access Control**: Secrets are managed through AWS IAM roles and policies
+- **Audit Trail**: All secret operations are logged in CloudTrail
+- **Recovery Window**: Deleted secrets have a 7-day recovery window by default
+```
+
 ## Data Model & Identifiers
 
 ### ID System
@@ -69,11 +303,19 @@ SK: MetadataType#{Timestamp/ID}
 {
   "PK": "USER#{userId}",
   "SK": "METADATA",
-  "telegramId": "123456789",
-  "telegramUsername": "username",
+  "platform": "tg",
+  "platformId": "123456789",
+  "platformMetadata": {
+    "username": "username",
+    "first_name": "John",
+    "last_name": "Doe",
+    "language_code": "en",
+    "is_premium": false,
+    "added_to_attachment_menu": false
+  },
   "createdAt": "2024-01-01T00:00:00Z",
   "lastActiveAt": "2024-01-01T12:00:00Z",
-  "agoraChatId": "agora_chat_id",
+  "chatId": "agora_chat_id",
   "isBanned": false,
   "banReason": null,
   "banExpiresAt": null,
@@ -414,10 +656,10 @@ POST   /api/v1/users/{id}/ban              - Ban user (moderator only)
 DELETE /api/v1/users/{id}/ban              - Unban user (moderator only)
 GET    /api/v1/users/bans                  - Get banned users
 
-GET    /api/v1/agora/token                 - Get Agora token for chat/calls
-GET    /api/v1/agora/active-users          - Get active users
-POST   /api/v1/agora/typing                - Send typing indicator
-DELETE /api/v1/agora/typing                - Clear typing indicator
+GET    /api/v1/chat/token                 - Get Agora token for chat/calls
+GET    /api/v1/chat/active-users          - Get active users
+POST   /api/v1/chat/typing                - Send typing indicator
+DELETE /api/v1/chat/typing                - Clear typing indicator
 
 POST   /api/v1/reports                     - Report user/content
 GET    /api/v1/reports                     - Get reports (moderator only)
