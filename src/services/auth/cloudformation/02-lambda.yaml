@@ -1,0 +1,131 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Vibe Dating App - Lambda Functions Infrastructure'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+
+  LambdaCodeBucketName:
+    Type: String
+    Description: Lambda Code Bucket Name (imported from s3 stack)
+
+  LambdaExecutionRoleArn:
+    Type: String
+    Description: Lambda Execution Role ARN (imported from iam stack)
+
+Resources:
+  # Lambda Layer for shared dependencies
+  VibeBaseLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: !Sub 'vibe_base_layer-${Environment}'
+      Description: 'Vibe Dating App base layer with shared dependencies'
+      Content:
+        S3Bucket: !Ref LambdaCodeBucketName
+        S3Key: lambda/vibe_base_layer.zip
+      CompatibleRuntimes:
+        - python3.11
+      CompatibleArchitectures:
+        - x86_64
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: auth
+
+  # Lambda function for Telegram authentication
+  TelegramAuthFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'vibe-telegram-auth-${Environment}'
+      Runtime: python3.11
+      Handler: lambda_function.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Code:
+        S3Bucket: !Ref LambdaCodeBucketName
+        S3Key: lambda/telegram_auth.zip
+      Layers:
+        - !Ref VibeBaseLayer
+      Environment:
+        Variables:
+          TELEGRAM_BOT_TOKEN_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/telegram-bot-token/${Environment}'
+          JWT_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}'
+          UUID_NAMESPACE_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/uuid-namespace/${Environment}'
+      Timeout: 30
+      MemorySize: 256
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: auth
+
+  # Lambda function for JWT authorization
+  JWTAuthorizerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'vibe-jwt-authorizer-${Environment}'
+      Runtime: python3.11
+      Handler: lambda_function.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Code:
+        S3Bucket: !Ref LambdaCodeBucketName
+        S3Key: lambda/jwt_authorizer.zip
+      Layers:
+        - !Ref VibeBaseLayer
+      Environment:
+        Variables:
+          JWT_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}'
+      Timeout: 10
+      MemorySize: 128
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: auth
+
+  # CloudWatch Log Group for Lambda functions
+  TelegramAuthLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/vibe-telegram-auth-${Environment}'
+      RetentionInDays: 14
+
+  JWTAuthorizerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/vibe-jwt-authorizer-${Environment}'
+      RetentionInDays: 14
+
+Outputs:
+  TelegramAuthFunctionArn:
+    Description: 'Telegram Auth Lambda Function ARN'
+    Value: !GetAtt TelegramAuthFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-TelegramAuthFunctionArn'
+
+  JWTAuthorizerFunctionArn:
+    Description: 'JWT Authorizer Lambda Function ARN'
+    Value: !GetAtt JWTAuthorizerFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-JWTAuthorizerFunctionArn'
+
+  VibeBaseLayerArn:
+    Description: 'Vibe Base Layer ARN'
+    Value: !Ref VibeBaseLayer
+    Export:
+      Name: !Sub '${AWS::StackName}-VibeBaseLayerArn'
+
+  TelegramAuthFunctionName:
+    Description: 'Telegram Auth Lambda Function Name'
+    Value: !Ref TelegramAuthFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-TelegramAuthFunctionName'
+
+  JWTAuthorizerFunctionName:
+    Description: 'JWT Authorizer Lambda Function Name'
+    Value: !Ref JWTAuthorizerFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-JWTAuthorizerFunctionName' 

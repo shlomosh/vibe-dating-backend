@@ -46,7 +46,9 @@ python-dateutil = "2.8.2"
 
 [tool.poetry.scripts]
 build-lambda = "scripts.build:build_lambda"
+build-auth = "scripts.build:build_auth_service"
 deploy-auth = "scripts.deploy:deploy_auth_service"
+deploy-core = "scripts.deploy:deploy_core_service"
 test-lambda = "scripts.test:test_lambda_functions"
 
 [tool.black]

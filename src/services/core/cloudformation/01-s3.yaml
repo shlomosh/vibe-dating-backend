@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Vibe Dating - Core-Service S3 Bucket Infrastructure'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+
+  DeploymentUUID:
+    Type: String
+    Default: 8e64f92e-580e-11f0-80ef-00155d453b17
+    Description: UUID suffix for the AWS services
+
+Resources:
+  LambdaCodeBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub 'vibe-dating-code-${Environment}-${DeploymentUUID}'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: auth
+
+Outputs:
+  LambdaCodeBucketName:
+    Description: 'S3 Bucket for Lambda Function Code'
+    Value: !Ref LambdaCodeBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaCodeBucketName'
+
+  LambdaCodeBucketArn:
+    Description: 'S3 Bucket ARN for Lambda Function Code'
+    Value: !GetAtt LambdaCodeBucket.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaCodeBucketArn' 

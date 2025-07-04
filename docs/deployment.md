@@ -239,7 +239,7 @@ If you need to deploy manually:
 poetry run build-lambda
 
 # 2. Upload to S3 (if needed)
-aws s3 cp build/lambda/ s3://vibe-dating-code-dev-d6aa50da-5809-11f0-bcae-1fb18ef3af1c/lambda/ --recursive
+aws s3 cp build/lambda/ s3://vibe-dating-code-dev-<uuid-suffix>/lambda/ --recursive
 
 # 3. Deploy CloudFormation stack
 aws cloudformation deploy \
