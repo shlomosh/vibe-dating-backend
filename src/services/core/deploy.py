@@ -40,9 +40,9 @@ class CoreServiceDeployer(ServiceDeployer):
                 'template': '03-iam.yaml',
                 'parameters': {
                     'Environment': self.environment,
-                    'DynamoDBTableArn': f'${{{stacks["dynamodb"]["name"]}.DynamoDBTableArn}}',
-                    'DynamoDBKMSKeyArn': f'${{{stacks["dynamodb"]["name"]}.DynamoDBKMSKeyArn}}',
-                    'LambdaCodeBucketArn': f'${{{stacks["s3"]["name"]}.LambdaCodeBucketArn}}'
+                    'DynamoDBTableArn': f'${{vibe-dating-core-dynamodb-{self.environment}.DynamoDBTableArn}}',
+                    'DynamoDBKMSKeyArn': f'${{vibe-dating-core-dynamodb-{self.environment}.DynamoDBKMSKeyArn}}',
+                    'LambdaCodeBucketArn': f'${{vibe-dating-core-s3-{self.environment}.LambdaCodeBucketArn}}'
                 },
                 'capabilities': ['CAPABILITY_NAMED_IAM'],
                 'depends_on': ['s3', 'dynamodb']
