@@ -10,7 +10,7 @@ import sys
 import subprocess
 from pathlib import Path
 
-os.environ["AWS_PROFILE"] = "vibe-dating"
+os.environ["AWS_PROFILE"] = "vibe-dev"
 os.environ["AWS_REGION"] = "il-central-1"
 
 class LambdaTester:

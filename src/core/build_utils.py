@@ -13,7 +13,7 @@ import zipfile
 from pathlib import Path
 from typing import List, Optional
 
-os.environ["AWS_PROFILE"] = "vibe-dating"
+os.environ["AWS_PROFILE"] = "vibe-dev"
 
 
 class ServiceBuilder:

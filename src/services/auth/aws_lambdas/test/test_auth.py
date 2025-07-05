@@ -19,7 +19,7 @@ sys.path.insert(0, jwt_authorizer_path)
 # Import the functions to test
 from lambda_function import lambda_handler as telegram_lambda_handler
 
-os.environ["AWS_PROFILE"] = "vibe-dating"
+os.environ["AWS_PROFILE"] = "vibe-dev"
 os.environ["AWS_REGION"] = "il-central-1"
 
 

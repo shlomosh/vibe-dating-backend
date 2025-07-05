@@ -17,7 +17,6 @@ def deploy_core_service():
     from services.core.deploy import main as deploy_core_main
     deploy_core_main()
 
-
 def deploy_auth_service():
     """Entry point for Poetry script to deploy auth infrastructure"""
     import sys

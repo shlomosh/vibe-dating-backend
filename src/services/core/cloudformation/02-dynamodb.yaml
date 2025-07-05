@@ -151,17 +151,21 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-DynamoDBTableName'
 
-  DynamoDBTableArn:
-    Description: 'DynamoDB Table ARN'
-    Value: !GetAtt VibeDatingTable.Arn
-    Export:
-      Name: !Sub '${AWS::StackName}-DynamoDBTableArn'
+  # DynamoDBTableArn:
+  #   Description: 'DynamoDB Table ARN'
+  #   Value: !GetAtt VibeDatingTable.Arn
+  #   Export:
+  #     Name: !Sub '${AWS::StackName}-DynamoDBTableArn'
 
+  # DynamoDBKMSKeyArn:
+  #   Description: 'DynamoDB KMS Key ARN'
+  #   Value: !GetAtt DynamoDBKMSKey.Arn
+  #   Export:
+  #     Name: !Sub '${AWS::StackName}-DynamoDBKMSKeyArn'
   DynamoDBKMSKeyArn:
-    Description: 'DynamoDB KMS Key ARN'
     Value: !GetAtt DynamoDBKMSKey.Arn
-    Export:
-      Name: !Sub '${AWS::StackName}-DynamoDBKMSKeyArn'
+  DynamoDBTableArn:
+    Value: !GetAtt VibeDatingTable.Arn
 
   DynamoDBKMSKeyAliasName:
     Description: 'DynamoDB KMS Key Alias Name'

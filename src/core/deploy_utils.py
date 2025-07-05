@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 from abc import ABC, abstractmethod
 
-os.environ["AWS_PROFILE"] = "vibe-dating"
+os.environ["AWS_PROFILE"] = "vibe-dev"
 
 
 class ServiceDeployer(ABC):
@@ -136,7 +136,7 @@ class ServiceDeployer(ABC):
             print(f"  Waiting for stack {stack_name} to complete...")
             self._wait_for_stack(stack_name, stack_exists)
             
-            # Get stack outputs
+            # Always get stack outputs after update/create
             outputs = self._get_stack_outputs(stack_name)
             self.stack_outputs[stack_name] = outputs
             
@@ -144,8 +144,15 @@ class ServiceDeployer(ABC):
             return True
             
         except Exception as e:
-            print(f"  Failed to deploy stack {stack_name}: {str(e)}")
-            return False
+            if "No updates are to be performed" in str(e):
+                print(f"  No updates needed for stack {stack_name}, continuing...")
+                # Always get stack outputs even if no update was performed
+                outputs = self._get_stack_outputs(stack_name)
+                self.stack_outputs[stack_name] = outputs
+                return True
+            else:
+                print(f"  Failed to deploy stack {stack_name}: {str(e)}")
+                return False
 
     def _wait_for_stack(self, stack_name: str, stack_exists: bool):
         """Wait for stack to complete."""
@@ -188,12 +195,16 @@ class ServiceDeployer(ABC):
         required_templates = [stack_config['template'] for stack_config in stacks.values()]
         self.check_prerequisites(required_templates)
         
+
         # Deploy stacks in order
         deployed_stacks = []
-        
         for stack_key in stack_order:
             stack_config = stacks[stack_key]
+            print(f"DEBUG: Outputs after deploying {stack_key}:", self.stack_outputs)
             
+            if stack_key == 'iam':
+                print("DEBUG: Parameters for IAM stack:", stack_config['parameters'])
+
             # Check dependencies
             if 'depends_on' in stack_config:
                 for dep in stack_config['depends_on']:
@@ -207,19 +218,20 @@ class ServiceDeployer(ABC):
                 if param_value.startswith('${') and param_value.endswith('}'):
                     # Extract stack and output from placeholder
                     placeholder = param_value[2:-1]  # Remove ${ and }
-                    if 'PLACEHOLDER' not in placeholder:
-                        # This is a real dependency, get the actual value
+                    if '.' in placeholder:
+                        stack_name_part, output_key = placeholder.rsplit('.', 1)
+                        # Try to find the deployed stack whose name matches stack_name_part
                         for deployed_stack in deployed_stacks:
-                            if deployed_stack in placeholder:
-                                output_key = placeholder.split('.')[-1]
+                            deployed_stack_name = stacks[deployed_stack]['name']
+                            if deployed_stack_name == stack_name_part:
                                 actual_value = self.get_output_value(
-                                    stacks[deployed_stack]['name'], 
+                                    deployed_stack_name, 
                                     output_key
                                 )
                                 if actual_value:
                                     parameters[param_key] = actual_value
-                                    break
-            
+                                break
+            print(f"DEBUG: Final parameters for {stack_key} stack:", parameters)        
             # Deploy the stack
             success = self.deploy_stack(
                 stack_name=stack_config['name'],

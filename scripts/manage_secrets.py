@@ -18,7 +18,7 @@ from typing import Dict, Any, Optional, List
 from botocore.exceptions import ClientError, NoCredentialsError
 
 # Set AWS profile
-os.environ["AWS_PROFILE"] = "vibe-dating"
+os.environ["AWS_PROFILE"] = "vibe-dev"
 os.environ["AWS_REGION"] = "il-central-1"
 
 class SecretsManager:

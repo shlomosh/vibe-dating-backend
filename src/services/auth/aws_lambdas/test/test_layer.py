@@ -5,7 +5,7 @@ Test script to verify Lambda layer dependencies are working correctly
 import os
 import sys
 
-os.environ["AWS_PROFILE"] = "vibe-dating"
+os.environ["AWS_PROFILE"] = "vibe-dev"
 os.environ["AWS_REGION"] = "il-central-1"
 
 
