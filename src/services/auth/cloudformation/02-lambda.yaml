@@ -30,11 +30,11 @@ Resources:
         - python3.11
       CompatibleArchitectures:
         - x86_64
-      Tags:
-        - Key: Environment
-          Value: !Ref Environment
-        - Key: Service
-          Value: auth
+      # Tags:
+      #   - Key: Environment
+      #     Value: !Ref Environment
+      #   - Key: Service
+      #     Value: auth
 
   # Lambda function for Telegram authentication
   TelegramAuthFunction:

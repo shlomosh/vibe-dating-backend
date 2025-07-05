@@ -23,32 +23,40 @@ class AuthServiceDeployer(ServiceDeployer):
 
     def deploy_infrastructure(self):
         """Deploy all authentication infrastructure stacks in the correct order."""
-        # Define stack configurations
-        stacks = {
-            'apigateway': {
-                'name': f'vibe-dating-auth-apigateway-{self.environment}',
-                'template': '01-apigateway.yaml',
-                'parameters': {
-                    'Environment': self.environment,
-                    'JWTAuthorizerFunctionArn': self.parameters_from_core['JWTAuthorizerFunctionArn'],
-                    'ApiGatewayAuthorizerRoleArn': self.parameters_from_core['ApiGatewayAuthorizerRoleArn'],
-                    'TelegramAuthFunctionArn': self.parameters_from_core['TelegramAuthFunctionArn']
-                }
-            },
-            'lambda': {
-                'name': f'vibe-dating-auth-lambda-{self.environment}',
-                'template': '02-lambda.yaml',
-                'parameters': {
-                    'Environment': self.environment,
-                    'LambdaCodeBucketName': self.parameters_from_core['LambdaCodeBucketName'],
-                    'LambdaExecutionRoleArn': self.parameters_from_core['LambdaExecutionRoleArn']
-                }
-            },
+        # Deploy Lambda stack first
+        lambda_stack_name = f'vibe-dating-auth-lambda-{self.environment}'
+        lambda_stack = {
+            'name': lambda_stack_name,
+            'template': '02-lambda.yaml',
+            'parameters': {
+                'Environment': self.environment,
+                'LambdaCodeBucketName': self.parameters_from_core['LambdaCodeBucketName'],
+                'LambdaExecutionRoleArn': self.parameters_from_core['LambdaExecutionRoleArn']
+            }
         }
-        
-        # Deploy stacks in order
-        stack_order = ['apigateway', 'lambda']
-        self.deploy_stacks(stacks, stack_order)
+        self.deploy_stack(
+            stack_name=lambda_stack['name'],
+            template_file=lambda_stack['template'],
+            parameters=lambda_stack['parameters']
+        )
+        # Fetch outputs from Lambda stack
+        lambda_outputs = self._get_stack_outputs(lambda_stack_name)
+        # Now deploy API Gateway stack, using outputs from Lambda stack
+        apigateway_stack = {
+            'name': f'vibe-dating-auth-apigateway-{self.environment}',
+            'template': '01-apigateway.yaml',
+            'parameters': {
+                'Environment': self.environment,
+                'JWTAuthorizerFunctionArn': lambda_outputs['JWTAuthorizerFunctionArn'],
+                'ApiGatewayAuthorizerRoleArn': self.parameters_from_core['ApiGatewayAuthorizerRoleArn'],
+                'TelegramAuthFunctionArn': lambda_outputs['TelegramAuthFunctionArn']
+            }
+        }
+        self.deploy_stack(
+            stack_name=apigateway_stack['name'],
+            template_file=apigateway_stack['template'],
+            parameters=apigateway_stack['parameters']
+        )
 
 def main():
     ap = argparse.ArgumentParser(description='Deploy Vibe Dating App Auth Service Infrastructure')

@@ -12,5 +12,10 @@
   "vibe-dating-core-iam-dev": {
     "LambdaExecutionRoleArn": "arn:aws:iam::555171060142:role/vibe-auth-lambda-role-dev",
     "ApiGatewayAuthorizerRoleArn": "arn:aws:iam::555171060142:role/vibe-api-authorizer-role-dev"
-  }
+  },
+  "JWTAuthorizerFunctionArn": "arn:aws:lambda:il-central-1:555171060142:function:vibe-jwt-authorizer-dev",
+  "TelegramAuthFunctionArn": "arn:aws:lambda:il-central-1:555171060142:function:vibe-telegram-auth-dev",
+  "ApiGatewayAuthorizerRoleArn": "arn:aws:iam::555171060142:role/vibe-api-authorizer-role-dev",
+  "LambdaCodeBucketName": "vibe-dating-code-dev-8e64f92e-580e-11f0-80ef-00155d453b17",
+  "LambdaExecutionRoleArn": "arn:aws:iam::555171060142:role/vibe-auth-lambda-role-dev"
 }

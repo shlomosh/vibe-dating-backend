@@ -54,6 +54,7 @@ Resources:
     Properties:
       Name: !Sub 'vibe-jwt-authorizer-${Environment}'
       Type: TOKEN
+      RestApiId: !Ref ApiGateway
       AuthorizerUri: !Sub 
         - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
         - LambdaArn: !Ref JWTAuthorizerFunctionArn
