@@ -30,8 +30,8 @@ class AuthServiceDeployer(ServiceDeployer):
             'template': '02-lambda.yaml',
             'parameters': {
                 'Environment': self.environment,
-                'LambdaCodeBucketName': self.parameters_from_core['LambdaCodeBucketName'],
-                'LambdaExecutionRoleArn': self.parameters_from_core['LambdaExecutionRoleArn']
+                'LambdaCodeBucketName': self.parameters_from_core['vibe-dating-core-s3-dev']['LambdaCodeBucketName'],
+                'LambdaExecutionRoleArn': self.parameters_from_core['vibe-dating-core-iam-dev']['LambdaExecutionRoleArn']
             }
         }
         self.deploy_stack(
@@ -48,7 +48,7 @@ class AuthServiceDeployer(ServiceDeployer):
             'parameters': {
                 'Environment': self.environment,
                 'JWTAuthorizerFunctionArn': lambda_outputs['JWTAuthorizerFunctionArn'],
-                'ApiGatewayAuthorizerRoleArn': self.parameters_from_core['ApiGatewayAuthorizerRoleArn'],
+                'ApiGatewayAuthorizerRoleArn': self.parameters_from_core['vibe-dating-core-iam-dev']['ApiGatewayAuthorizerRoleArn'],
                 'TelegramAuthFunctionArn': lambda_outputs['TelegramAuthFunctionArn']
             }
         }
