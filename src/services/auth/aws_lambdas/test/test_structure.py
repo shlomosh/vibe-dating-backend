@@ -42,16 +42,16 @@ def test_jwt_authorizer_import():
         return False
 
 
-def test_telegram_auth_import():
+def test_platform_auth_import():
     """Test that Telegram auth can be imported"""
     print("\nTesting Telegram auth import...")
 
     try:
-        # Add telegram_auth directory to path
-        telegram_auth_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "telegram_auth"
+        # Add platform_auth directory to path
+        platform_auth_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "platform_auth"
         )
-        sys.path.insert(0, telegram_auth_path)
+        sys.path.insert(0, platform_auth_path)
 
         from lambda_function import lambda_handler
 
@@ -100,7 +100,7 @@ def main():
     # Test imports
     auth_ok = test_auth_utils_import()
     jwt_ok = test_jwt_authorizer_import()
-    telegram_ok = test_telegram_auth_import()
+    telegram_ok = test_platform_auth_import()
 
     # Test functionality
     functions_ok = test_auth_functions()

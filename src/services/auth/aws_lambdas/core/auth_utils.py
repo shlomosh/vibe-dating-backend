@@ -1,13 +1,16 @@
 """
 Shared utilities for Vibe Authentication Lambda Functions
 
-This module contains common functions used by both the Telegram authentication
+This module contains common functions used by both the platform authentication
 and JWT authorization Lambda functions.
 """
 
 import os
 import jwt
+import uuid
+import base64
 import boto3
+import datetime
 from typing import Dict, Any, Optional
 from botocore.exceptions import ClientError
 
@@ -35,9 +38,36 @@ def verify_jwt_token(token: str) -> Dict[str, Any]:
         raise Exception("Invalid token")
 
 
-def generate_policy(
-    principal_id: str, effect: str, resource: str, context: Dict[str, Any]
-) -> Dict[str, Any]:
+def generate_jwt_token(signed_data: Dict[str, Any], expires_in: int = 7) -> str:
+    """
+    Generate JWT token for authenticated user
+
+    Args:
+        user_id: The Vibe user ID
+
+    Returns:
+        str: JWT token string
+    """
+    payload = {
+        **signed_data,
+        "iat": datetime.datetime.utcnow(),
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(days=expires_in),
+        "iss": "vibe-app",
+    }
+
+    # Get JWT secret from AWS Secrets Manager
+    jwt_secret_arn = os.environ.get("JWT_SECRET_ARN")
+    if not jwt_secret_arn:
+        raise Exception("JWT_SECRET_ARN environment variable not set")
+
+    secret = get_secret_from_aws_secrets_manager(jwt_secret_arn)
+    if not secret:
+        raise Exception("Failed to retrieve JWT secret from Secrets Manager")
+
+    return jwt.encode(payload, secret, algorithm="HS256")
+
+
+def generate_policy(principal_id: str, effect: str, resource: str, context: Dict[str, Any]) -> Dict[str, Any]:
     """
     Generate IAM policy for API Gateway
 
@@ -50,6 +80,7 @@ def generate_policy(
     Returns:
         Dict[str, Any]: IAM policy document
     """
+
     return {
         "principalId": principal_id,
         "policyDocument": {
@@ -123,7 +154,41 @@ def verify_jwt_token_with_secret_manager(token: str) -> Dict[str, Any]:
 
         payload = jwt.decode(token, secret, algorithms=["HS256"])
         return payload
+
     except jwt.ExpiredSignatureError:
         raise Exception("Token has expired")
+
     except jwt.InvalidTokenError:
         raise Exception("Invalid token")
+
+
+def hash_string_to_id(platform_id_string: str, length: int = 8) -> str:
+    """
+    Convert platform ID string to Vibe user ID using UUID v5
+
+    Args:
+        platform_id_string: String in format "tg:123456789"
+        length: Length of the final user ID (default: 8)
+
+    Returns:
+        str: Base64 encoded user ID
+    """
+    # Get UUID namespace from AWS Secrets Manager
+    uuid_namespace_arn = os.environ.get("UUID_NAMESPACE_SECRET_ARN")
+    if not uuid_namespace_arn:
+        raise Exception("UUID_NAMESPACE_SECRET_ARN environment variable not set")
+
+    uuid_namespace = get_secret_from_aws_secrets_manager(uuid_namespace_arn)
+    if not uuid_namespace:
+        raise Exception("Failed to retrieve UUID namespace from Secrets Manager")
+
+    # Create UUID v5 with namespace from Secrets Manager
+    namespace_uuid = uuid.UUID(uuid_namespace)
+    user_uuid = uuid.uuid5(namespace_uuid, platform_id_string)
+
+    # Convert UUID to base64
+    uuid_bytes = user_uuid.bytes
+    base64_string = base64.b64encode(uuid_bytes).decode("utf-8")
+
+    # Remove padding and return first N characters
+    return base64_string.rstrip("=")[:length]

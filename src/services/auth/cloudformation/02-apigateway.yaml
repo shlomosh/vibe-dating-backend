@@ -26,9 +26,9 @@ Parameters:
     Type: String
     Description: API Gateway Authorizer Role ARN (imported from iam stack)
 
-  TelegramAuthFunctionArn:
+  PlatformAuthFunctionArn:
     Type: String
-    Description: Telegram Auth Lambda Function ARN (imported from lambda stack)
+    Description: Platform Auth Lambda Function ARN (imported from lambda stack)
 
 Resources:
   # API Gateway
@@ -79,18 +79,18 @@ Resources:
       ParentId: !GetAtt ApiGateway.RootResourceId
       PathPart: auth
 
-  TelegramAuthResource:
+  PlatformAuthResource:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref ApiGateway
       ParentId: !Ref AuthResource
-      PathPart: telegram
+      PathPart: platform
 
-  TelegramAuthMethod:
+  PlatformAuthMethod:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref ApiGateway
-      ResourceId: !Ref TelegramAuthResource
+      ResourceId: !Ref PlatformAuthResource
       HttpMethod: POST
       AuthorizationType: NONE
       Integration:
@@ -98,7 +98,7 @@ Resources:
         IntegrationHttpMethod: POST
         Uri: !Sub 
           - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - LambdaArn: !Ref TelegramAuthFunctionArn
+          - LambdaArn: !Ref PlatformAuthFunctionArn
       RequestParameters:
         method.request.header.Content-Type: true
       MethodResponses:
@@ -117,21 +117,21 @@ Resources:
           ResponseParameters:
             method.response.header.Access-Control-Allow-Origin: true
 
-  # Lambda permission for API Gateway to invoke Telegram auth function
-  TelegramAuthLambdaPermission:
+  # Lambda permission for API Gateway to invoke platform auth function
+  PlatformAuthLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref TelegramAuthFunctionArn
+      FunctionName: !Ref PlatformAuthFunctionArn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*'
 
   # OPTIONS method for CORS
-  TelegramAuthOptionsMethod:
+  PlatformAuthOptionsMethod:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref ApiGateway
-      ResourceId: !Ref TelegramAuthResource
+      ResourceId: !Ref PlatformAuthResource
       HttpMethod: OPTIONS
       AuthorizationType: NONE
       Integration:
@@ -157,8 +157,8 @@ Resources:
   ApiGatewayDeployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
-      - TelegramAuthMethod
-      - TelegramAuthOptionsMethod
+      - PlatformAuthMethod
+      - PlatformAuthOptionsMethod
     Properties:
       RestApiId: !Ref ApiGateway
       StageName: !Ref Environment

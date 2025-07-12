@@ -57,7 +57,7 @@ class MyServiceBuilder:
 The auth service build creates:
 
 - **`auth_layer.zip`**: Shared Python dependencies layer (~14.8 MB)
-- **`telegram_auth.zip`**: Telegram authentication function (~4.2 KB)
+- **`platform_auth.zip`**: Telegram authentication function (~4.2 KB)
 - **`jwt_authorizer.zip`**: JWT authorization function (~2.2 KB)
 
 ### Build Directory Structure
@@ -65,12 +65,12 @@ The auth service build creates:
 ```
 build/lambda/
 ├── auth_layer.zip           # Shared dependencies layer
-├── telegram_auth.zip        # Telegram auth function
+├── platform_auth.zip        # Telegram auth function
 ├── jwt_authorizer.zip       # JWT authorizer function
 ├── layer/                   # Layer source directory
 │   └── python/              # Python dependencies
 ├── core/                    # Shared utilities
-├── telegram_auth/           # Function source
+├── platform_auth/           # Function source
 └── jwt_authorizer/          # Function source
 ```
 

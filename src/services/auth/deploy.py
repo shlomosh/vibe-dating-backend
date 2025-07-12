@@ -125,24 +125,24 @@ class AuthServiceDeployer(ServiceDeployer):
                 else:
                     print(f"  Skipping Lambda layer update for: {aws_layer_name}")
 
-            # Update Telegram auth function
-            if 'TelegramAuthFunctionArn' in stack_outputs:
-                aws_lambda_arn = stack_outputs['TelegramAuthFunctionArn']
+            # Update platform auth function
+            if 'PlatformAuthFunctionArn' in stack_outputs:
+                aws_lambda_arn = stack_outputs['PlatformAuthFunctionArn']
                 aws_lambda_name = aws_lambda_arn.split(':')[-1]
                 
                 # Ask user if they want to update the function
-                update_question = input(f"  Do you want to update Telegram auth function {aws_lambda_name}? (y/n): ").lower()
+                update_question = input(f"  Do you want to update platform auth function {aws_lambda_name}? (y/n): ").lower()
                 
                 if update_question == 'y':
-                    print(f"  Updating Telegram auth function: {aws_lambda_name}")
+                    print(f"  Updating platform auth function: {aws_lambda_name}")
                     self._update_aws_lambda(
                         aws_lambda_name,
                         s3_bucket,
-                        "lambda/telegram_auth.zip"
+                        "lambda/platform_auth.zip"
                     )
                     updated_functions.append(aws_lambda_name)
                 else:
-                    print(f"  Skipping Telegram auth function update for: {aws_lambda_name}")
+                    print(f"  Skipping platform auth function update for: {aws_lambda_name}")
             
             # Update JWT authorizer function
             if 'JWTAuthorizerFunctionArn' in stack_outputs:
@@ -201,7 +201,7 @@ class AuthServiceDeployer(ServiceDeployer):
                 'Environment': self.environment,
                 'JWTAuthorizerFunctionArn': lambda_outputs['JWTAuthorizerFunctionArn'],
                 'ApiGatewayAuthorizerRoleArn': self.parameters_from_core['vibe-dating-core-iam-dev']['ApiGatewayAuthorizerRoleArn'],
-                'TelegramAuthFunctionArn': lambda_outputs['TelegramAuthFunctionArn']
+                'PlatformAuthFunctionArn': lambda_outputs['PlatformAuthFunctionArn']
             }
         }
         

@@ -11,9 +11,9 @@ import sys
 from unittest.mock import patch, MagicMock
 
 # Add the lambda directories to the path
-telegram_auth_path = os.path.join(os.path.dirname(__file__), "..", "telegram_auth")
+platform_auth_path = os.path.join(os.path.dirname(__file__), "..", "platform_auth")
 jwt_authorizer_path = os.path.join(os.path.dirname(__file__), "..", "jwt_authorizer")
-sys.path.insert(0, telegram_auth_path)
+sys.path.insert(0, platform_auth_path)
 sys.path.insert(0, jwt_authorizer_path)
 
 # Import the functions to test
@@ -31,7 +31,7 @@ def get_jwt_handler():
     import sys
     jwt_authorizer_abs_path = os.path.abspath(jwt_authorizer_path)
     # Remove both lambda directories from sys.path, then add only jwt_authorizer (absolute)
-    sys.path = [p for p in sys.path if jwt_authorizer_abs_path not in p and os.path.abspath(telegram_auth_path) not in p]
+    sys.path = [p for p in sys.path if jwt_authorizer_abs_path not in p and os.path.abspath(platform_auth_path) not in p]
     sys.path.insert(0, jwt_authorizer_abs_path)
     if "lambda_function" in sys.modules:
         del sys.modules["lambda_function"]
@@ -39,8 +39,8 @@ def get_jwt_handler():
     return lambda_mod.lambda_handler
 
 
-def test_telegram_auth():
-    """Test the Telegram authentication function"""
+def test_platform_auth():
+    """Test the platform authentication function"""
 
     # Mock environment variables
     os.environ["TELEGRAM_BOT_TOKEN"] = "test_bot_token"
@@ -130,12 +130,12 @@ def test_user_id_generation():
     import os
     import sys
     from unittest.mock import patch
-    telegram_auth_abs_path = os.path.abspath(telegram_auth_path)
+    platform_auth_abs_path = os.path.abspath(platform_auth_path)
     os.environ["DYNAMODB_TABLE"] = "vibe-dating-dev"
     os.environ["UUID_NAMESPACE_SECRET_ARN"] = "dummy-arn"
-    # Remove both lambda directories from sys.path, then add only telegram_auth (absolute)
-    sys.path = [p for p in sys.path if telegram_auth_abs_path not in p and os.path.abspath(jwt_authorizer_path) not in p]
-    sys.path.insert(0, telegram_auth_abs_path)
+    # Remove both lambda directories from sys.path, then add only platform_auth (absolute)
+    sys.path = [p for p in sys.path if platform_auth_abs_path not in p and os.path.abspath(jwt_authorizer_path) not in p]
+    sys.path.insert(0, platform_auth_abs_path)
     if "lambda_function" in sys.modules:
         del sys.modules["lambda_function"]
     lambda_mod = importlib.import_module("lambda_function")
@@ -211,7 +211,7 @@ def main():
         test_user_id_generation()
         print()
 
-        test_telegram_auth()
+        test_platform_auth()
         print()
 
         test_jwt_authorizer()

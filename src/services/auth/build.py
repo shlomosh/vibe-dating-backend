@@ -17,14 +17,18 @@ class AuthServiceBuilder(ServiceBuilder):
             }],
 
             'aws_lambdas': [{
-                "name": "telegram_auth",
+                "name": "platform_auth",
                 "extra_files": [
-                    Path("core") / "auth_utils.py"
+                    Path("core") / "auth_utils.py",
+                    Path("core") / "rest_utils.py",
+                    Path("core") / "dynamo_utils.py"
                 ]
             }, {
                 "name": "jwt_authorizer", 
                 "extra_files": [
-                    Path("core") / "auth_utils.py"
+                    Path("core") / "auth_utils.py",
+                    Path("core") / "rest_utils.py",
+                    Path("core") / "dynamo_utils.py"
                 ]
             }]
         }

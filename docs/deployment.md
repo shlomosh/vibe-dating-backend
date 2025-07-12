@@ -22,7 +22,7 @@ vibe-dating-backend/
 │   └── auth/                    # Authentication Service
 │       ├── aws_lambdas/         # Lambda Functions
 │       │   ├── core/            # Shared utilities
-│       │   ├── telegram_auth/   # Telegram authentication
+│       │   ├── platform_auth/   # Telegram authentication
 │       │   ├── jwt_authorizer/  # JWT token validation
 │       │   └── test/            # Lambda tests
 │       └── cloudformation/      # Infrastructure templates
@@ -112,7 +112,7 @@ poetry run build-lambda
 #### Generated Artifacts
 
 - **`build/lambda/auth_layer.zip`**: Shared Python dependencies layer
-- **`build/lambda/telegram_auth.zip`**: Telegram authentication function
+- **`build/lambda/platform_auth.zip`**: Telegram authentication function
 - **`build/lambda/jwt_authorizer.zip`**: JWT authorization function
 
 #### Build Process Details
@@ -267,7 +267,7 @@ aws cloudformation describe-stack-events \
 aws cloudwatch get-metric-statistics \
   --namespace AWS/Lambda \
   --metric-name Duration \
-  --dimensions Name=FunctionName,Value=telegram-auth-function \
+  --dimensions Name=FunctionName,Value=platform-auth-function \
   --start-time 2024-01-01T00:00:00Z \
   --end-time 2024-01-01T23:59:59Z \
   --period 3600 \

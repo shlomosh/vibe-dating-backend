@@ -36,17 +36,17 @@ Resources:
       #   - Key: Service
       #     Value: auth
 
-  # Lambda function for Telegram authentication
-  TelegramAuthFunction:
+  # Lambda function for platform authentication
+  PlatformAuthFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub 'vibe-telegram-auth-${Environment}'
+      FunctionName: !Sub 'vibe-platform-auth-${Environment}'
       Runtime: python3.11
       Handler: lambda_function.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
       Code:
         S3Bucket: !Ref LambdaCodeBucketName
-        S3Key: lambda/telegram_auth.zip
+        S3Key: lambda/platform_auth.zip
       Layers:
         - !Ref AuthLayer
       Environment:
@@ -87,10 +87,10 @@ Resources:
           Value: auth
 
   # CloudWatch Log Group for Lambda functions
-  TelegramAuthLogGroup:
+  PlatformAuthLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/vibe-telegram-auth-${Environment}'
+      LogGroupName: !Sub '/aws/lambda/vibe-platform-auth-${Environment}'
       RetentionInDays: 14
 
   JWTAuthorizerLogGroup:
@@ -100,11 +100,11 @@ Resources:
       RetentionInDays: 14
 
 Outputs:
-  TelegramAuthFunctionArn:
-    Description: 'Telegram Auth Lambda Function ARN'
-    Value: !GetAtt TelegramAuthFunction.Arn
+  PlatformAuthFunctionArn:
+    Description: 'Platform Auth Lambda Function ARN'
+    Value: !GetAtt PlatformAuthFunction.Arn
     Export:
-      Name: !Sub '${AWS::StackName}-TelegramAuthFunctionArn'
+      Name: !Sub '${AWS::StackName}-PlatformAuthFunctionArn'
 
   JWTAuthorizerFunctionArn:
     Description: 'JWT Authorizer Lambda Function ARN'
@@ -118,11 +118,11 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-AuthLayerArn'
 
-  TelegramAuthFunctionName:
-    Description: 'Telegram Auth Lambda Function Name'
-    Value: !Ref TelegramAuthFunction
+  PlatformAuthFunctionName:
+    Description: 'Platform Auth Lambda Function Name'
+    Value: !Ref PlatformAuthFunction
     Export:
-      Name: !Sub '${AWS::StackName}-TelegramAuthFunctionName'
+      Name: !Sub '${AWS::StackName}-PlatformAuthFunctionName'
 
   JWTAuthorizerFunctionName:
     Description: 'JWT Authorizer Lambda Function Name'

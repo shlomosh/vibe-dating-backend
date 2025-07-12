@@ -59,7 +59,7 @@ src/services/auth/
 ├── aws_lambdas/
 │   ├── core/
 │   │   └── auth_utils.py      # Shared auth utilities
-│   ├── telegram_auth/
+│   ├── platform_auth/
 │   │   └── lambda_function.py # Telegram authentication Lambda
 │   ├── jwt_authorizer/
 │   │   └── lambda_function.py # JWT authorization Lambda
@@ -409,7 +409,7 @@ See `docs/examples/frontend/auth.js` for a complete frontend integration example
 ## Monitoring
 
 ### CloudWatch Logs
-- **Telegram Auth**: `/aws/lambda/vibe-telegram-auth-{env}`
+- **Telegram Auth**: `/aws/lambda/vibe-platform-auth-{env}`
 - **JWT Authorizer**: `/aws/lambda/vibe-jwt-authorizer-{env}`
 
 ### Key Metrics
@@ -513,7 +513,7 @@ aws cloudformation describe-stack-events \
   --stack-name vibe-dating-auth-service
 
 # Check Lambda logs
-aws logs tail /aws/lambda/vibe-telegram-auth-dev --follow
+aws logs tail /aws/lambda/vibe-platform-auth-dev --follow
 
 # Test DynamoDB access
 aws dynamodb scan --table-name vibe-dating-dev --limit 1
