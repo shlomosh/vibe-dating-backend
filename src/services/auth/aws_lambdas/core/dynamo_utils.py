@@ -1,12 +1,24 @@
-import os
-import boto3
 import datetime
-from typing import Dict, Any
+import os
+from typing import Any, Dict
 
-dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
-table = dynamodb.Table(os.environ["DYNAMODB_TABLE"])
+import boto3
 
-def db_create_or_update_user_record(user_id: str, platform_user_id: str, platform_user_data: Dict[str, Any]) -> None:
+dynamodb = boto3.resource("dynamodb")
+
+
+def get_table():
+    """Get DynamoDB table with lazy initialization"""
+    dynamodb_table = os.environ.get("DYNAMODB_TABLE")
+    if not dynamodb_table:
+        raise ValueError("DYNAMODB_TABLE environment variable not set")
+
+    return dynamodb.Table(dynamodb_table)
+
+
+def db_create_or_update_user_record(
+    user_id: str, platform_user_id: str, platform_user_data: Dict[str, Any]
+) -> None:
     """
     Create or update user in DynamoDB
 
@@ -15,6 +27,7 @@ def db_create_or_update_user_record(user_id: str, platform_user_id: str, platfor
         platform_user_id: The platform user ID
         platform_user_data: The platform user data dictionary
     """
+    table = get_table()
     now = datetime.datetime.utcnow().isoformat() + "Z"
 
     # Use UpdateItem to handle both create and update

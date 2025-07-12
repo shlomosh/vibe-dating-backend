@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Vibe Dating App - Lambda Functions Infrastructure'
+Description: 'Vibe Dating - Auth-Service Lambda Resources Infrastructure'
 
 Parameters:
   Environment:
@@ -63,16 +63,16 @@ Resources:
           Value: auth
 
   # Lambda function for JWT authorization
-  JWTAuthorizerFunction:
+  UserJWTAuthorizerFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub 'vibe-jwt-authorizer-${Environment}'
+      FunctionName: !Sub 'vibe-user-jwt-authorizer-${Environment}'
       Runtime: python3.11
       Handler: lambda_function.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
       Code:
         S3Bucket: !Ref LambdaCodeBucketName
-        S3Key: lambda/jwt_authorizer.zip
+        S3Key: lambda/user_jwt_authorizer.zip
       Layers:
         - !Ref AuthLayer
       Environment:
@@ -93,10 +93,10 @@ Resources:
       LogGroupName: !Sub '/aws/lambda/vibe-platform-auth-${Environment}'
       RetentionInDays: 14
 
-  JWTAuthorizerLogGroup:
+  UserJWTAuthorizerLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/vibe-jwt-authorizer-${Environment}'
+      LogGroupName: !Sub '/aws/lambda/vibe-user-jwt-authorizer-${Environment}'
       RetentionInDays: 14
 
 Outputs:
@@ -106,11 +106,11 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-PlatformAuthFunctionArn'
 
-  JWTAuthorizerFunctionArn:
+  UserJWTAuthorizerFunctionArn:
     Description: 'JWT Authorizer Lambda Function ARN'
-    Value: !GetAtt JWTAuthorizerFunction.Arn
+    Value: !GetAtt UserJWTAuthorizerFunction.Arn
     Export:
-      Name: !Sub '${AWS::StackName}-JWTAuthorizerFunctionArn'
+      Name: !Sub '${AWS::StackName}-UserJWTAuthorizerFunctionArn'
 
   AuthLayerArn:
     Description: 'Vibe Base Layer ARN'
@@ -124,8 +124,8 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-PlatformAuthFunctionName'
 
-  JWTAuthorizerFunctionName:
+  UserJWTAuthorizerFunctionName:
     Description: 'JWT Authorizer Lambda Function Name'
-    Value: !Ref JWTAuthorizerFunction
+    Value: !Ref UserJWTAuthorizerFunction
     Export:
-      Name: !Sub '${AWS::StackName}-JWTAuthorizerFunctionName' 
+      Name: !Sub '${AWS::StackName}-UserJWTAuthorizerFunctionName' 

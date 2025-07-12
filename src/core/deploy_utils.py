@@ -20,17 +20,15 @@ os.environ["AWS_PROFILE"] = "vibe-dev"
 class ServiceDeployer(ABC, ServiceConstructor):
     """Base class for deploying Vibe Dating App service infrastructure"""
     
-    def __init__(self, service: str, region: Optional[str] = None, 
-                 environment: Optional[str] = None, deployment_uuid: Optional[str] = None):
+    def __init__(self, service: str, cfg: Dict[str, Any], region: Optional[str] = None, environment: Optional[str] = None, deployment_uuid: Optional[str] = None):
         """Initialize the service deployer."""
-        super().__init__(service)
+        super().__init__(service, cfg)
         
         # Get project root and template directory
-        self.project_root = Path(__file__).parent.parent.parent
-        self.template_dir = Path(__file__).parent.parent / "services" / service / "cloudformation"
+        self.template_dir = self.service_dir / "cloudformation"
 
         # Load parameters from parameters.json
-        with open(self.project_root / "src" / "config" / "parameters.json") as f:
+        with open(self.config_dir / "parameters.json") as f:
             self.parameters = json.load(f)
 
         # Override parameters if provided
@@ -253,7 +251,7 @@ class ServiceDeployer(ABC, ServiceConstructor):
         # Save final outputs
         self.save_deployment_outputs()
         
-    def save_deployment_outputs(self, output_filename: str = None):
+    def save_deployment_outputs(self, output_filename: Optional[str] = None):
         """Save deployment outputs to a JSON file."""
         if output_filename is None:
             output_filename = f"{self.service}.json"
@@ -264,7 +262,7 @@ class ServiceDeployer(ABC, ServiceConstructor):
             if stack_outputs:
                 outputs[stack_name] = stack_outputs
                 
-        output_file = self.project_root / "src" / "config" / output_filename
+        output_file = self.config_dir / output_filename
         with open(output_file, "w") as f:
             json.dump(outputs, f, indent=2)
 
@@ -273,4 +271,4 @@ class ServiceDeployer(ABC, ServiceConstructor):
     @abstractmethod
     def deploy(self):
         """Deploy the service infrastructure. Must be implemented by subclasses."""
-        pass 
+        pass

@@ -43,9 +43,13 @@ def build():
     _execute(task="build")
 
 
+def test():
+    _execute(task="test")
+
+
 def main():
     ap = argparse.ArgumentParser(description="Run tasks for services")
-    ap.add_argument("task", choices=["deploy", "build"], help="task to run")
+    ap.add_argument("task", choices=["deploy", "build", "test"], help="task to run")
     ap.add_argument("service", nargs="?", help="Service to run task for")
     args = ap.parse_args()
 

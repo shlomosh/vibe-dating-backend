@@ -79,7 +79,7 @@ poetry run build-lambda
 This creates:
 - `build/lambda/auth_layer.zip` - Shared Python dependencies
 - `build/lambda/platform_auth.zip` - Telegram authentication function
-- `build/lambda/jwt_authorizer.zip` - JWT authorization function
+- `build/lambda/user_jwt_authorizer.zip` - JWT authorization function
 
 #### Testing Lambda Functions
 ```bash
@@ -142,7 +142,7 @@ vibe-dating-backend/
 │       │   │   ├── core/            # Shared utilities
 │       │   │   │   └── auth_utils.py # Common authentication functions
 │       │   │   ├── platform_auth/   # Telegram auth function
-│       │   │   ├── jwt_authorizer/  # JWT authorizer function
+│       │   │   ├── user_jwt_authorizer/  # JWT authorizer function
 │       │   │   ├── test/            # Lambda tests
 │       │   │   └── requirements.txt # Lambda dependencies
 │       │   ├── cloudformation/      # Infrastructure as Code

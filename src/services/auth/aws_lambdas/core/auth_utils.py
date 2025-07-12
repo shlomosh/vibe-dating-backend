@@ -5,37 +5,15 @@ This module contains common functions used by both the platform authentication
 and JWT authorization Lambda functions.
 """
 
-import os
-import jwt
-import uuid
 import base64
-import boto3
 import datetime
-from typing import Dict, Any, Optional
+import os
+import uuid
+from typing import Any, Dict, Optional
+
+import boto3
+import jwt
 from botocore.exceptions import ClientError
-
-
-def verify_jwt_token(token: str) -> Dict[str, Any]:
-    """
-    Verify and decode JWT token
-
-    Args:
-        token: JWT token string
-
-    Returns:
-        Dict[str, Any]: Decoded token payload
-
-    Raises:
-        Exception: If token is invalid or expired
-    """
-    try:
-        secret = os.environ["JWT_SECRET"]
-        payload = jwt.decode(token, secret, algorithms=["HS256"])
-        return payload
-    except jwt.ExpiredSignatureError:
-        raise Exception("Token has expired")
-    except jwt.InvalidTokenError:
-        raise Exception("Invalid token")
 
 
 def generate_jwt_token(signed_data: Dict[str, Any], expires_in: int = 7) -> str:
@@ -43,7 +21,8 @@ def generate_jwt_token(signed_data: Dict[str, Any], expires_in: int = 7) -> str:
     Generate JWT token for authenticated user
 
     Args:
-        user_id: The Vibe user ID
+        signed_data: Data to include in the JWT token
+        expires_in: Number of days until token expires (default: 7)
 
     Returns:
         str: JWT token string
@@ -67,7 +46,9 @@ def generate_jwt_token(signed_data: Dict[str, Any], expires_in: int = 7) -> str:
     return jwt.encode(payload, secret, algorithm="HS256")
 
 
-def generate_policy(principal_id: str, effect: str, resource: str, context: Dict[str, Any]) -> Dict[str, Any]:
+def generate_policy(
+    principal_id: str, effect: str, resource: str, context: Dict[str, Any]
+) -> Dict[str, Any]:
     """
     Generate IAM policy for API Gateway
 
@@ -108,6 +89,7 @@ def get_secret_from_aws_secrets_manager(secret_arn: str) -> Optional[str]:
     """
     try:
         secrets_client = boto3.client("secretsmanager")
+        print("secret_arn", secret_arn)
         response = secrets_client.get_secret_value(SecretId=secret_arn)
 
         if "SecretString" in response:

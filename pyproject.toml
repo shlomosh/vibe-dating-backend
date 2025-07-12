@@ -3,7 +3,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "vibe-dating-backend"
+name = "vibe_dating_backend"
 version = "0.1.0"
 description = "Vibe Dating App Backend - AWS Serverless API"
 authors = ["Vibe Dating Team <dev@vibe-dating.io>"]
@@ -45,9 +45,9 @@ urllib3 = "2.0.7"
 python-dateutil = "2.8.2"
 
 [tool.poetry.scripts]
-service-deploy = "scripts.service:deploy" # usage: 'poetry run srv_deploy <service>'
-service-build = "scripts.service:build" # usage: 'poetry run srv_build <service>'
-test-lambda = "scripts.test:test_lambda_functions"
+service-deploy = "scripts.service:deploy" # usage: 'poetry run service-deploy <service>'
+service-build = "scripts.service:build"   # usage: 'poetry run service-build <service>'
+service-test = "scripts.service:test"    # usage: 'poetry run service-test <service>'
 
 [tool.black]
 line-length = 88

@@ -20,15 +20,9 @@ os.environ["AWS_PROFILE"] = "vibe-dev"
 class ServiceBuilder(ServiceConstructor):
     """Common utilities for building Lambda packages"""
     
-    def __init__(self, service: str, cfg: Dict[str, Any], root_dir: Optional[Path] = None):
+    def __init__(self, service: str, cfg: Dict[str, Any]):
         """Initialize build utilities with project root path"""
-        super().__init__(service)
-        self.cfg = cfg
-        if root_dir is None:
-            root_dir = Path(__file__).parent.parent.parent
-
-        self.build_dir = root_dir / "build" / service
-        self.service_dir = root_dir / "src" / "services" / self.service
+        super().__init__(service, cfg)
 
     def clean_previous_builds(self):
         print("• Cleaning previous builds...")

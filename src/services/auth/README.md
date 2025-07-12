@@ -6,7 +6,7 @@ A complete, production-ready authentication service for the Vibe dating applicat
 
 The authentication service provides secure authentication for the Vibe dating application with the following components:
 
-1. **Telegram Authentication Lambda** - Validates Telegram WebApp data and issues JWT tokens
+1. **Platform Authentication Lambda** - Validates Telegram WebApp data and issues JWT tokens
 2. **JWT Authorizer Lambda** - Validates JWT tokens for API Gateway requests
 3. **DynamoDB Table** - Stores user data with single-table design
 4. **API Gateway** - Provides REST API endpoints with JWT authorization
@@ -60,8 +60,8 @@ src/services/auth/
 │   ├── core/
 │   │   └── auth_utils.py      # Shared auth utilities
 │   ├── platform_auth/
-│   │   └── lambda_function.py # Telegram authentication Lambda
-│   ├── jwt_authorizer/
+│   │   └── lambda_function.py # Platform authentication Lambda
+│   ├── user_jwt_authorizer/
 │   │   └── lambda_function.py # JWT authorization Lambda
 │   ├── test/                  # Test files
 │   │   ├── test_layer.py      # Lambda layer test
@@ -74,7 +74,7 @@ src/services/auth/
 
 ### Modular Design Benefits
 
-- **Auth Utilities** (`core/auth_utils.py`): Common functions used by multiple Lambda functions
+- **Auth Utilities**: Common functions used by multiple Lambda functions
 - **Function Separation**: Each Lambda function has its own directory with clear separation
 - **Shared Dependencies**: Both functions use the Vibe Base Layer for Python packages
 - **Consistent Structure**: All functions follow the same pattern for easy navigation
@@ -94,10 +94,10 @@ sequenceDiagram
     User->>Frontend: Opens Mini-App
     Frontend->>Telegram: Requests signed payload
     Telegram->>Frontend: Returns init data
-    Frontend->>API Gateway: POST /auth/telegram
-    API Gateway->>Lambda: Invokes Telegram Auth
-    Lambda->>Lambda: Validates Telegram data
-    Lambda->>Lambda: Generates user ID
+    Frontend->>API Gateway: POST /auth/platform
+    API Gateway->>Lambda: Invokes Platform Auth
+    Lambda->>Lambda: Validates Platform data
+    Lambda->>Lambda: Generates Vibe user-id
     Lambda->>DynamoDB: Creates/updates user
     Lambda->>Lambda: Generates JWT token
     Lambda->>API Gateway: Returns token
@@ -131,7 +131,7 @@ def hash_string_to_id(platform_id_string: str, length: int = 8) -> str:
 
 **Example:**
 - Telegram ID: `123456789`
-- Platform String: `tg:123456789`
+- Platform String: `telegram:123456789`
 - Final User ID: `aB3cD4eF`
 
 ## Security Features
@@ -254,11 +254,11 @@ aws cloudformation wait stack-create-complete \
 
 ### Deployment Commands
 
-- `poetry run auth-build` - Build and upload Lambda packages to S3
-- `poetry run auth-deploy` - Deploy infrastructure or update Lambda functions
+- `poetry run service-build auth` - Build and upload Lambda packages to S3
+- `poetry run service-deploy auth` - Deploy infrastructure or update Lambda functions
   - If infrastructure doesn't exist: Deploys full CloudFormation stacks
   - If infrastructure exists: Downloads packages from S3 and updates Lambda function code
-- `poetry run test-lambda` - Run tests and validation
+- `poetry run service-test auth` - Run tests and validation
 - `aws cloudformation delete-stack --stack-name vibe-dating-auth-service` - Delete stack
 
 **Note**: For updates, run `poetry run auth-build` first to ensure the latest code is uploaded to S3.
@@ -307,7 +307,7 @@ aws cloudformation wait stack-create-complete \
 ### Comprehensive Test Suite
 ```bash
 # Run all tests from project root
-poetry run test-lambda
+poetry run service-test auth
 ```
 
 ### Local Testing
@@ -348,54 +348,18 @@ aws cloudformation describe-stacks \
   --output text
 
 # Test authentication
-curl -X POST https://your-api-url/dev/auth/telegram \
+curl -X POST https://your-api-url/dev/auth/platform \
   -H "Content-Type: application/json" \
   -d '{
-    "initData": "your_telegram_init_data",
-    "telegramUser": {
-      "id": 123456789,
-      "username": "testuser",
-      "first_name": "Test",
-      "last_name": "User"
-    }
+    "platform": "telegram",
+    "platformToken": <telegram-init-data-string>,
+    "platformMetaData": {}
   }'
 ```
 
 ## Frontend Integration
 
 The service includes a complete frontend integration example with comprehensive API client:
-
-```javascript
-// Initialize authentication
-const authService = new VibeAuthService();
-await authService.initialize();
-
-// Create API client
-const apiClient = new VibeApiClient(authService);
-
-// Use authenticated API
-const profiles = await apiClient.getProfiles();
-
-// Create new profile
-const newProfile = await apiClient.createProfile({
-    name: 'My Dating Profile',
-    age: 25,
-    bio: 'Looking for meaningful connections',
-    interests: ['music', 'travel', 'sports'],
-    lookingFor: ['friendship', 'relationship']
-});
-
-// Update location
-const location = {
-    latitude: 40.7128,
-    longitude: -74.0060,
-    precision: 5
-};
-await apiClient.updateLocation(newProfile.id, location);
-
-// Discover nearby profiles
-const nearbyProfiles = await apiClient.discoverProfiles(location, 5);
-```
 
 ### Complete Integration Example
 
@@ -410,7 +374,7 @@ See `docs/examples/frontend/auth.js` for a complete frontend integration example
 
 ### CloudWatch Logs
 - **Telegram Auth**: `/aws/lambda/vibe-platform-auth-{env}`
-- **JWT Authorizer**: `/aws/lambda/vibe-jwt-authorizer-{env}`
+- **JWT Authorizer**: `/aws/lambda/vibe-user-jwt-authorizer-{env}`
 
 ### Key Metrics
 - API Gateway request count and latency
@@ -579,7 +543,7 @@ This implementation serves as a solid foundation for the Vibe dating application
 ### Next Steps
 
 After deploying the authentication service:
-1. **Deploy Core Infrastructure** - Use `poetry run deploy-core` to set up foundational AWS resources
+1. **Deploy Core Infrastructure** - Use `poetry run service-deploy core` to set up foundational AWS resources
 2. **Configure Frontend Integration** - Use the provided examples to integrate with your frontend
 3. **Set Up Monitoring** - Configure CloudWatch alarms and dashboards
 4. **Plan Additional Services** - Consider implementing user, media, and Agora services

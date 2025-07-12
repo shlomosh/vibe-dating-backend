@@ -443,7 +443,7 @@ sequenceDiagram
 ## 8. References
 
 - [Telegram Mini-Apps Auth](https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app)
-- [AWS API Gateway JWT Authorizer](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-jwt-authorizer.html)
+- [AWS API Gateway JWT Authorizer](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-user-jwt-authorizer.html)
 - [OWASP REST Security](https://owasp.org/www-project-api-security/)
 - [JWT.io](https://jwt.io/) - JWT token debugging and validation
 - [AWS Lambda Authorizers](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-use-lambda-authorizer.html) 

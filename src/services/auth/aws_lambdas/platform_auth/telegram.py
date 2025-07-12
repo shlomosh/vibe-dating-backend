@@ -1,9 +1,9 @@
-import os
-import json
-import hmac
 import hashlib
+import hmac
+import json
+import os
 import urllib.parse
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from core.auth_utils import get_secret_from_aws_secrets_manager
 from core.rest_utils import ResponseError
@@ -48,15 +48,15 @@ def telegram_verify_data(init_data: str, bot_token: str) -> Optional[Dict[str, A
         if hash_value == expected_hash:
             decoded_data = urllib.parse.unquote(init_data)
             params = urllib.parse.parse_qs(decoded_data)
-            
-            user_data_string = params.get('user')
+
+            user_data_string = params.get("user")
             if not user_data_string:
                 raise ValueError("User data not found")
-                
+
             return json.loads(user_data_string[0])
         else:
             return None
-    
+
     except Exception as e:
         raise ResponseError(500, {"error": f"Failed to verify Telegram data: {str(e)}"})
 
@@ -70,7 +70,7 @@ def authenticate_user(platform_token: str) -> Dict[str, Any]:
     if not bot_token:
         raise ResponseError(500, {"error": "Failed to retrieve Telegram bot token"})
 
-    user_data = telegram_verify_data(platform_token, bot_token)    
+    user_data = telegram_verify_data(platform_token, bot_token)
     if not user_data:
         raise ResponseError(401, {"error": "Invalid Telegram data"})
 

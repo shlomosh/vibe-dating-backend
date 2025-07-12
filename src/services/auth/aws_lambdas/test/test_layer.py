@@ -6,7 +6,6 @@ import os
 import sys
 
 os.environ["AWS_PROFILE"] = "vibe-dev"
-os.environ["AWS_REGION"] = "il-central-1"
 
 
 def test_imports():
@@ -46,7 +45,7 @@ def test_imports():
         return False
 
     try:
-        import dateutil
+        from dateutil import parser
 
         print("+ python-dateutil imported successfully")
     except ImportError as e:
@@ -80,8 +79,9 @@ def test_jwt_functionality():
     print("\nTesting JWT functionality...")
 
     try:
-        import jwt
         import datetime
+
+        import jwt
 
         # Test JWT encoding/decoding
         secret = "test_secret"
@@ -114,13 +114,36 @@ def test_boto3_functionality():
         import boto3
 
         # Test boto3 client creation (without actual AWS calls)
-        dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
+        dynamodb = boto3.resource("dynamodb")
         print("+ boto3 DynamoDB resource created successfully")
 
         return True
 
     except Exception as e:
         print(f"❌ boto3 functionality test failed: {e}")
+        return False
+
+
+def test_dateutil_functionality():
+    """Test python-dateutil functionality"""
+    print("\nTesting python-dateutil functionality...")
+
+    try:
+        from dateutil import parser
+
+        # Test date parsing
+        test_date = "2023-12-01T10:30:00Z"
+        parsed_date = parser.parse(test_date)
+
+        if parsed_date:
+            print("+ python-dateutil date parsing works correctly")
+            return True
+        else:
+            print("❌ python-dateutil date parsing failed")
+            return False
+
+    except Exception as e:
+        print(f"❌ python-dateutil functionality test failed: {e}")
         return False
 
 
@@ -138,6 +161,7 @@ def main():
     # Test functionality
     jwt_ok = test_jwt_functionality()
     boto3_ok = test_boto3_functionality()
+    dateutil_ok = test_dateutil_functionality()
 
     # Summary
     print("\n" + "=" * 30)
@@ -146,8 +170,9 @@ def main():
     print(f"  Python Path: {'+ PASS' if path_ok else 'X FAIL'}")
     print(f"  JWT Functionality: {'+ PASS' if jwt_ok else 'X FAIL'}")
     print(f"  Boto3 Functionality: {'+ PASS' if boto3_ok else 'X FAIL'}")
+    print(f"  DateUtil Functionality: {'+ PASS' if dateutil_ok else 'X FAIL'}")
 
-    all_passed = imports_ok and path_ok and jwt_ok and boto3_ok
+    all_passed = imports_ok and path_ok and jwt_ok and boto3_ok and dateutil_ok
 
     if all_passed:
         print("\n+ All tests passed! Lambda layer is working correctly.")

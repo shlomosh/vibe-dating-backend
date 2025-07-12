@@ -19,7 +19,6 @@ from botocore.exceptions import ClientError, NoCredentialsError
 
 # Set AWS profile
 os.environ["AWS_PROFILE"] = "vibe-dev"
-os.environ["AWS_REGION"] = "il-central-1"
 
 class SecretsManager:
     """Manages AWS Secrets Manager for Vibe Dating App"""

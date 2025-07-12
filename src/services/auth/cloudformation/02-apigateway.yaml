@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Vibe Dating App - API Gateway Infrastructure'
+Description: 'Vibe Dating - Auth-Service API Gateway Resources Infrastructure'
 
 Parameters:
   Environment:
@@ -18,7 +18,7 @@ Parameters:
     Default: https://web.telegram.org,https://t.me
     Description: Allowed CORS origins
 
-  JWTAuthorizerFunctionArn:
+  UserJWTAuthorizerFunctionArn:
     Type: String
     Description: JWT Authorizer Lambda Function ARN (imported from lambda stack)
 
@@ -52,12 +52,12 @@ Resources:
   ApiGatewayAuthorizer:
     Type: AWS::ApiGateway::Authorizer
     Properties:
-      Name: !Sub 'vibe-jwt-authorizer-${Environment}'
+      Name: !Sub 'vibe-user-jwt-authorizer-${Environment}'
       Type: TOKEN
       RestApiId: !Ref ApiGateway
       AuthorizerUri: !Sub 
         - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-        - LambdaArn: !Ref JWTAuthorizerFunctionArn
+        - LambdaArn: !Ref UserJWTAuthorizerFunctionArn
       AuthorizerCredentials: !Ref ApiGatewayAuthorizerRoleArn
       AuthorizerResultTtlInSeconds: 300
       IdentitySource: method.request.header.Authorization
@@ -66,7 +66,7 @@ Resources:
   AuthorizerLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref JWTAuthorizerFunctionArn
+      FunctionName: !Ref UserJWTAuthorizerFunctionArn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*'
