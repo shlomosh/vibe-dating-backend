@@ -159,7 +159,7 @@ def hash_string_to_id(platform_id_string: str, length: int = 8) -> str:
 
 The authentication service uses AWS Lambda Layers to optimize deployment and performance:
 
-#### Vibe Base Layer (`vibe_base_layer-{env}`)
+#### Vibe Base Layer (`vibe-auth-layer-{env}`)
 - **Purpose**: Shared Python dependencies for all Lambda functions
 - **Contents**: PyJWT, boto3, requests, urllib3, python-dateutil
 - **Benefits**:
@@ -170,7 +170,7 @@ The authentication service uses AWS Lambda Layers to optimize deployment and per
 
 #### Layer Structure
 ```
-vibe_base_layer.zip
+auth_layer.zip
 └── python/
     ├── PyJWT/
     ├── boto3/
@@ -254,10 +254,14 @@ aws cloudformation wait stack-create-complete \
 
 ### Deployment Commands
 
-- `poetry run deploy-auth` - Deploy or update stack
-- `poetry run build-lambda` - Build Lambda packages
+- `poetry run auth-build` - Build and upload Lambda packages to S3
+- `poetry run auth-deploy` - Deploy infrastructure or update Lambda functions
+  - If infrastructure doesn't exist: Deploys full CloudFormation stacks
+  - If infrastructure exists: Downloads packages from S3 and updates Lambda function code
 - `poetry run test-lambda` - Run tests and validation
 - `aws cloudformation delete-stack --stack-name vibe-dating-auth-service` - Delete stack
+
+**Note**: For updates, run `poetry run auth-build` first to ensure the latest code is uploaded to S3.
 
 ## DynamoDB Schema
 

@@ -70,7 +70,7 @@ vibe-dating-backend/
 
 2. **Environment Variables**
    ```bash
-   export AWS_PROFILE=vibe-dating
+   export AWS_PROFILE=vibe-dev
    export AWS_REGION=il-central-1
    export ENVIRONMENT=dev
    ```
@@ -111,7 +111,7 @@ poetry run build-lambda
 
 #### Generated Artifacts
 
-- **`build/lambda/vibe_base_layer.zip`**: Shared Python dependencies layer
+- **`build/lambda/auth_layer.zip`**: Shared Python dependencies layer
 - **`build/lambda/telegram_auth.zip`**: Telegram authentication function
 - **`build/lambda/jwt_authorizer.zip`**: JWT authorization function
 

@@ -77,7 +77,7 @@ poetry run build-lambda
 ```
 
 This creates:
-- `build/lambda/vibe_base_layer.zip` - Shared Python dependencies
+- `build/lambda/auth_layer.zip` - Shared Python dependencies
 - `build/lambda/telegram_auth.zip` - Telegram authentication function
 - `build/lambda/jwt_authorizer.zip` - JWT authorization function
 
@@ -105,14 +105,19 @@ This deploys the foundational AWS infrastructure:
 
 #### Deploying Authentication Service
 ```bash
-poetry run deploy-auth
+# Build and upload Lambda packages
+poetry run auth-build
+
+# Deploy infrastructure or update functions
+poetry run auth-deploy
 ```
 
 This:
-1. Builds Lambda packages automatically
-2. Uploads packages to S3
-3. Deploys CloudFormation stack
-4. Shows deployment outputs including API Gateway URLs
+1. **First time deployment**: Builds packages, uploads to S3, and deploys CloudFormation stack
+2. **Updates**: Downloads existing packages from S3 and updates Lambda function code
+3. Shows deployment outputs including API Gateway URLs
+
+**Note**: For updates, run `poetry run auth-build` first to ensure the latest code is uploaded to S3.
 
 ## Project Structure
 
@@ -176,7 +181,7 @@ Set these environment variables for deployment:
 ```bash
 export AWS_REGION=il-central-1
 export ENVIRONMENT=dev
-export AWS_PROFILE=vibe-dating
+export AWS_PROFILE=vibe-dev
 ```
 
 ### CloudFormation Parameters
@@ -226,7 +231,7 @@ python scripts/manage_secrets.py get --secret telegram_bot_token
 ```bash
 export ENVIRONMENT=dev|staging|prod
 export AWS_REGION=il-central-1
-export AWS_PROFILE=vibe-dating
+export AWS_PROFILE=vibe-dev
 ```
 
 ## Deployment

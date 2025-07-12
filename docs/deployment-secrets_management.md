@@ -85,7 +85,7 @@ python scripts/manage_secrets.py delete --secret old_api_key --force
 ```bash
 export ENVIRONMENT=dev|staging|prod
 export AWS_REGION=il-central-1
-export AWS_PROFILE=vibe-dating
+export AWS_PROFILE=vibe-dev
 ```
 
 ### Secret Naming Convention

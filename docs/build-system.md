@@ -56,7 +56,7 @@ class MyServiceBuilder:
 
 The auth service build creates:
 
-- **`vibe_base_layer.zip`**: Shared Python dependencies layer (~14.8 MB)
+- **`auth_layer.zip`**: Shared Python dependencies layer (~14.8 MB)
 - **`telegram_auth.zip`**: Telegram authentication function (~4.2 KB)
 - **`jwt_authorizer.zip`**: JWT authorization function (~2.2 KB)
 
@@ -64,11 +64,11 @@ The auth service build creates:
 
 ```
 build/lambda/
-├── vibe_base_layer.zip      # Shared dependencies layer
+├── auth_layer.zip           # Shared dependencies layer
 ├── telegram_auth.zip        # Telegram auth function
 ├── jwt_authorizer.zip       # JWT authorizer function
 ├── layer/                   # Layer source directory
-│   └── python/             # Python dependencies
+│   └── python/              # Python dependencies
 ├── core/                    # Shared utilities
 ├── telegram_auth/           # Function source
 └── jwt_authorizer/          # Function source

@@ -65,7 +65,7 @@ poetry run build-lambda
 ```
 
 **Generated Artifacts**:
-- `build/lambda/vibe_base_layer.zip`: Shared Python dependencies layer
+- `build/lambda/auth_layer.zip`: Shared Python dependencies layer
 - `build/lambda/telegram_auth.zip`: Telegram authentication function
 - **JWT Authorizer**: JWT authorization function
 
@@ -103,7 +103,7 @@ poetry run deploy-auth
 # Set deployment environment
 export ENVIRONMENT=dev|staging|prod
 export AWS_REGION=il-central-1
-export AWS_PROFILE=vibe-dating
+export AWS_PROFILE=vibe-dev
 ```
 
 #### CloudFormation Stacks
@@ -146,12 +146,13 @@ The authentication service is the primary deployment target, providing:
 # Full deployment workflow
 poetry install --with lambda
 poetry run test-lambda
-poetry run deploy-auth
+poetry run auth-build      # Build and upload packages
+poetry run auth-deploy     # Deploy infrastructure or update functions
 
 # Individual steps
-poetry run build-lambda    # Build packages only
+poetry run auth-build      # Build and upload packages only
 poetry run test-lambda     # Run tests only
-poetry run deploy-auth     # Deploy only
+poetry run auth-deploy     # Deploy/update only
 ```
 
 #### Future Services
@@ -253,7 +254,7 @@ Secrets are stored with environment-specific naming:
 # Set environment for secrets management
 export ENVIRONMENT=dev|staging|prod
 export AWS_REGION=il-central-1
-export AWS_PROFILE=vibe-dating
+export AWS_PROFILE=vibe-dev
 ```
 
 #### Security Features

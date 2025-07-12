@@ -18,14 +18,14 @@ Parameters:
 
 Resources:
   # Lambda Layer for shared dependencies
-  VibeBaseLayer:
+  AuthLayer:
     Type: AWS::Lambda::LayerVersion
     Properties:
-      LayerName: !Sub 'vibe_base_layer-${Environment}'
+      LayerName: !Sub 'vibe-auth-layer-${Environment}'
       Description: 'Vibe Dating App base layer with shared dependencies'
       Content:
         S3Bucket: !Ref LambdaCodeBucketName
-        S3Key: lambda/vibe_base_layer.zip
+        S3Key: lambda/auth_layer.zip
       CompatibleRuntimes:
         - python3.11
       CompatibleArchitectures:
@@ -48,7 +48,7 @@ Resources:
         S3Bucket: !Ref LambdaCodeBucketName
         S3Key: lambda/telegram_auth.zip
       Layers:
-        - !Ref VibeBaseLayer
+        - !Ref AuthLayer
       Environment:
         Variables:
           TELEGRAM_BOT_TOKEN_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/telegram-bot-token/${Environment}'
@@ -74,7 +74,7 @@ Resources:
         S3Bucket: !Ref LambdaCodeBucketName
         S3Key: lambda/jwt_authorizer.zip
       Layers:
-        - !Ref VibeBaseLayer
+        - !Ref AuthLayer
       Environment:
         Variables:
           JWT_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}'
@@ -112,11 +112,11 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-JWTAuthorizerFunctionArn'
 
-  VibeBaseLayerArn:
+  AuthLayerArn:
     Description: 'Vibe Base Layer ARN'
-    Value: !Ref VibeBaseLayer
+    Value: !Ref AuthLayer
     Export:
-      Name: !Sub '${AWS::StackName}-VibeBaseLayerArn'
+      Name: !Sub '${AWS::StackName}-AuthLayerArn'
 
   TelegramAuthFunctionName:
     Description: 'Telegram Auth Lambda Function Name'

@@ -16,7 +16,7 @@ class CoreServiceDeployer(ServiceDeployer):
         """Initialize the core service deployer."""
         super().__init__("core", region, environment, deployment_uuid)
 
-    def deploy_infrastructure(self):
+    def deploy(self):
         """Deploy all core infrastructure stacks in the correct order."""
         # Define stack configurations
         stacks = {
@@ -68,7 +68,7 @@ def main():
     )
     
     # Deploy core infrastructure
-    deployer.deploy_infrastructure()
+    deployer.deploy()
 
 if __name__ == '__main__':
     main() 

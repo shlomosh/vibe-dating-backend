@@ -11,44 +11,37 @@ import shutil
 import subprocess
 import zipfile
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
+from src.core.core_utils import ServiceConstructor
 
 os.environ["AWS_PROFILE"] = "vibe-dev"
 
 
-class ServiceBuilder:
+class ServiceBuilder(ServiceConstructor):
     """Common utilities for building Lambda packages"""
     
-    def __init__(self, project_root: Optional[Path] = None):
+    def __init__(self, service: str, cfg: Dict[str, Any], root_dir: Optional[Path] = None):
         """Initialize build utilities with project root path"""
-        if project_root is None:
-            project_root = Path(__file__).parent.parent.parent
-        self.project_root = project_root
-        self.build_dir = self.project_root / "build" / "lambda"
-        
-    def clean_build_directory(self, build_dir: Optional[Path] = None) -> Path:
-        """Clean and create build directory"""
-        if build_dir is None:
-            build_dir = self.build_dir
-            
-        print("• Cleaning previous build...")
-        if build_dir.exists():
-            shutil.rmtree(build_dir)
-        build_dir.mkdir(parents=True, exist_ok=True)
-        return build_dir
-        
-    def install_dependencies_to_layer(
-        self, 
-        requirements_file: Path, 
-        layer_dir: Path
-    ) -> Path:
+        super().__init__(service)
+        self.cfg = cfg
+        if root_dir is None:
+            root_dir = Path(__file__).parent.parent.parent
+
+        self.build_dir = root_dir / "build" / service
+        self.service_dir = root_dir / "src" / "services" / self.service
+
+    def clean_previous_builds(self):
+        print("• Cleaning previous builds...")
+        if self.build_dir.exists():
+            shutil.rmtree(self.build_dir)
+        self.build_dir.mkdir(parents=True, exist_ok=True)
+
+    def install_python_packages(self, aws_layer_name: str, requirements_file: Path) -> Path:
         """Install dependencies to a Lambda layer directory"""
         print("• Installing Lambda dependencies...")
-        
-        # Create layer directory structure
-        layer_dir.mkdir(parents=True, exist_ok=True)
-        python_dir = layer_dir / "python"
-        python_dir.mkdir(exist_ok=True)
+
+        pkg_dir = self.build_dir / f"{aws_layer_name}" / "python"
+        pkg_dir.mkdir(parents=True, exist_ok=True)
         
         if not requirements_file.exists():
             raise FileNotFoundError(f"Requirements file not found: {requirements_file}")
@@ -57,31 +50,29 @@ class ServiceBuilder:
         cmd = [
             "pip", "install",
             "-r", str(requirements_file),
-            "-t", str(python_dir)
+            "-t", str(pkg_dir)
         ]
         
         subprocess.run(cmd, check=True)
-        return python_dir
+        return pkg_dir
         
-    def copy_service_code(
-        self, 
-        source_dir: Path, 
-        build_dir: Path,
+    def copy_lambda_files(
+        self,
+        src_path: Path,
+        dst_path: Path,
         include_patterns: Optional[List[str]] = None,
         exclude_patterns: Optional[List[str]] = None
     ) -> None:
         """Copy service code to build directory with optional filtering"""
-        print("• Copying service code...")
+        print(f"• Copying code from {src_path} to {dst_path}...")
         
         if include_patterns is None:
             include_patterns = ["*"]
         if exclude_patterns is None:
-            exclude_patterns = ["__pycache__", "*.pyc", ".pytest_cache"]
-            
+            exclude_patterns = ["__pycache__", "*.pyc", ".pytest_cache", "test"]
+
         def should_copy(path: Path) -> bool:
-            """Check if a path should be copied based on patterns"""
-            path_str = str(path)
-            
+            """Check if a path should be copied based on patterns"""         
             # Check include patterns
             if not any(path.match(pattern) for pattern in include_patterns):
                 return False
@@ -102,11 +93,12 @@ class ServiceBuilder:
                 elif item.is_dir() and should_copy(item):
                     copy_directory(item, dst / item.name)
         
-        if source_dir.is_file():
-            if should_copy(source_dir):
-                shutil.copy2(source_dir, build_dir / source_dir.name)
+        if src_path.is_file():
+            if should_copy(src_path):
+                dst_path.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src_path, dst_path)
         else:
-            copy_directory(source_dir, build_dir)
+            copy_directory(src_path, dst_path)
             
     def create_zip_package(
         self, 
@@ -133,56 +125,86 @@ class ServiceBuilder:
         print(f"• Package created: {output_path.name} ({size_kb:.1f} KB)")
         return output_path
         
-    def create_lambda_layer(
-        self, 
-        layer_dir: Path, 
-        output_path: Path
-    ) -> Path:
+    def create_aws_layer_package(self, aws_layer: Dict[str, Any]) -> Path:
         """Create a Lambda layer package"""
-        return self.create_zip_package(layer_dir, output_path)
+        pkg_file = self.build_dir / f"{aws_layer['name']}.zip"
+        pkg_dir = self.build_dir / aws_layer['name']
+        pkg_dir.mkdir(parents=True, exist_ok=True)
+
+        # Install python packages
+        self.install_python_packages(
+            aws_layer_name=aws_layer['name'],
+            requirements_file=self.service_dir / "aws_lambdas" / aws_layer['requirements']
+        )
+
+        # Create zip package
+        return self.create_zip_package(pkg_dir, pkg_file)
         
-    def create_function_package(
-        self, 
-        function_dir: Path, 
-        output_path: Path,
-        additional_files: Optional[List[Path]] = None
-    ) -> Path:
-        """Create a Lambda function package with optional additional files"""
-        # Create temporary package directory
-        pkg_dir = output_path.parent / f"{output_path.stem}_temp"
-        if pkg_dir.exists():
-            shutil.rmtree(pkg_dir)
-        pkg_dir.mkdir()
-        
-        try:
-            # Copy function code
-            if function_dir.is_dir():
-                shutil.copytree(function_dir, pkg_dir / function_dir.name, dirs_exist_ok=True)
-            else:
-                shutil.copy2(function_dir, pkg_dir / function_dir.name)
-            
-            # Copy additional files
-            if additional_files:
-                for file_path in additional_files:
-                    if file_path.exists():
-                        shutil.copy2(file_path, pkg_dir / file_path.name)
-            
-            # Create ZIP package
-            return self.create_zip_package(pkg_dir, output_path)
-            
-        finally:
-            # Clean up temporary directory
-            if pkg_dir.exists():
-                shutil.rmtree(pkg_dir)
-                
-    def get_package_size(self, package_path: Path) -> float:
-        """Get package size in KB"""
-        return package_path.stat().st_size / 1024
-        
+    def create_aws_lambda_package(self, aws_lambda: Dict[str, Any]) -> Path:
+        """Create a Lambda function package"""
+        pkg_file = self.build_dir / f"{aws_lambda['name']}.zip"
+        pkg_dir = self.build_dir / aws_lambda['name']
+        pkg_dir.mkdir(parents=True, exist_ok=True)
+
+        # Copy function code
+        self.copy_lambda_files(
+            src_path=self.service_dir / "aws_lambdas" / aws_lambda['name'],
+            dst_path=pkg_dir,
+            include_patterns=aws_lambda.get('include_patterns', None),
+            exclude_patterns=aws_lambda.get('exclude_patterns', None),
+        )
+
+        # Copy extra files
+        for extra_file in aws_lambda.get('extra_files', []):    
+            self.copy_lambda_files(
+                src_path=self.service_dir / "aws_lambdas" / extra_file,
+                dst_path=pkg_dir / extra_file.parent,
+            )
+
+        # Create zip package
+        return self.create_zip_package(pkg_dir, pkg_file)
+
     def print_build_summary(self, packages: List[Path]) -> None:
         """Print a summary of created packages"""
         print("\n• Build Summary:")
         for package in packages:
-            size_kb = self.get_package_size(package)
+            size_kb = package.stat().st_size / 1024
             print(f"  {package.name}: {size_kb:.1f} KB")
-        print("\n✅ Build completed successfully!") 
+        print("\n✅ Build completed successfully!")
+
+    def upload(self, src_file: Path):
+        """Upload Lambda ZIP file to S3 bucket"""
+        dst_file = f"s3://{self.get_lambda_code_bucket_name()}/lambda/{src_file.name}"
+        print(f"Uploading {src_file} to {dst_file}")
+        subprocess.run(["aws", "s3", "cp", str(src_file), str(dst_file)], check=True)
+
+    def build(self, upload_to_s3: bool = True):
+        """Main build process for service
+        
+        Args:
+            upload_to_s3: Whether to upload packages to S3
+        """
+        print("• Starting Service Lambda build...")
+
+        # Clean and prepare build directory
+        self.clean_previous_builds()
+
+        packages = []
+
+        # Build layers
+        for aws_layer in self.cfg["aws_layers"]:
+            package_file = self.create_aws_layer_package(aws_layer)
+            packages.append(package_file)
+            if upload_to_s3:
+                self.upload(package_file)
+
+        # Build functions
+        for aws_lambda in self.cfg["aws_lambdas"]:
+            # Create function package
+            package_file = self.create_aws_lambda_package(aws_lambda)
+            packages.append(package_file)
+            if upload_to_s3:
+                self.upload(package_file)
+
+        # Print build summary
+        self.print_build_summary(packages)

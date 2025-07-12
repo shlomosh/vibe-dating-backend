@@ -45,12 +45,9 @@ urllib3 = "2.0.7"
 python-dateutil = "2.8.2"
 
 [tool.poetry.scripts]
-build-lambda = "scripts.build:build_lambda"
-build-auth = "scripts.build:build_auth_service"
-deploy-auth = "scripts.deploy:deploy_auth_service"
-deploy-core = "scripts.deploy:deploy_core_service"
+service-deploy = "scripts.service:deploy" # usage: 'poetry run srv_deploy <service>'
+service-build = "scripts.service:build" # usage: 'poetry run srv_build <service>'
 test-lambda = "scripts.test:test_lambda_functions"
-upload-auth-zips = "scripts.upload_lambda_zips:main"
 
 [tool.black]
 line-length = 88

@@ -12,21 +12,22 @@ import subprocess
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from abc import ABC, abstractmethod
+from src.core.core_utils import ServiceConstructor
 
 os.environ["AWS_PROFILE"] = "vibe-dev"
 
 
-class ServiceDeployer(ABC):
+class ServiceDeployer(ABC, ServiceConstructor):
     """Base class for deploying Vibe Dating App service infrastructure"""
     
-    def __init__(self, service_name: str, region: Optional[str] = None, 
+    def __init__(self, service: str, region: Optional[str] = None, 
                  environment: Optional[str] = None, deployment_uuid: Optional[str] = None):
         """Initialize the service deployer."""
-        self.service_name = service_name
+        super().__init__(service)
         
         # Get project root and template directory
         self.project_root = Path(__file__).parent.parent.parent
-        self.template_dir = Path(__file__).parent.parent / "services" / service_name / "cloudformation"
+        self.template_dir = Path(__file__).parent.parent / "services" / service / "cloudformation"
 
         # Load parameters from parameters.json
         with open(self.project_root / "src" / "config" / "parameters.json") as f:
@@ -117,7 +118,7 @@ class ServiceDeployer(ABC):
                     Capabilities=capabilities,
                     Tags=[
                         {'Key': 'Environment', 'Value': self.environment},
-                        {'Key': 'Service', 'Value': self.service_name}
+                        {'Key': 'Service', 'Value': self.service}
                     ]
                 )
             else:
@@ -129,7 +130,7 @@ class ServiceDeployer(ABC):
                     Capabilities=capabilities,
                     Tags=[
                         {'Key': 'Environment', 'Value': self.environment},
-                        {'Key': 'Service', 'Value': self.service_name}
+                        {'Key': 'Service', 'Value': self.service}
                     ]
                 )
             
@@ -186,7 +187,7 @@ class ServiceDeployer(ABC):
 
     def deploy_stacks(self, stacks: Dict[str, Dict], stack_order: List[str]):
         """Deploy multiple stacks in the specified order with dependency resolution."""
-        print(f"Starting {self.service_name.title()} Service Infrastructure Deployment")
+        print(f"Starting {self.service.title()} Service Infrastructure Deployment")
         print(f"   Environment: {self.environment}")
         print(f"   Region: {self.region}")
         print(f"   Deployment UUID: {self.deployment_uuid}")
@@ -246,7 +247,7 @@ class ServiceDeployer(ABC):
                 print(f"  Failed to deploy {stack_key}, stopping deployment")
                 sys.exit(1)
         
-        print(f"\nAll {self.service_name} infrastructure stacks deployed successfully!")
+        print(f"\nAll {self.service} infrastructure stacks deployed successfully!")
         print(f"   Deployed stacks: {', '.join(deployed_stacks)}")
         
         # Save final outputs
@@ -255,7 +256,7 @@ class ServiceDeployer(ABC):
     def save_deployment_outputs(self, output_filename: str = None):
         """Save deployment outputs to a JSON file."""
         if output_filename is None:
-            output_filename = f"{self.service_name}.json"
+            output_filename = f"{self.service}.json"
             
         # Save outputs to JSON file
         outputs = {}
@@ -270,6 +271,6 @@ class ServiceDeployer(ABC):
         print(f"\nDeployment Outputs: {outputs}")
         
     @abstractmethod
-    def deploy_infrastructure(self):
+    def deploy(self):
         """Deploy the service infrastructure. Must be implemented by subclasses."""
         pass 
