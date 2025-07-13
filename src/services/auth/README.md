@@ -209,7 +209,7 @@ auth_layer.zip
 3. **Build and Deploy**:
    ```bash
    # From project root
-   poetry run deploy-auth
+   poetry run service-deploy auth
    ```
    This will automatically:
    - Build Lambda function packages
@@ -226,10 +226,10 @@ auth_layer.zip
 
 ```bash
 # Build Lambda packages only
-poetry run build-lambda
+poetry run service-build auth
 
 # Deploy stack only (if packages already built)
-poetry run deploy-auth
+poetry run service-deploy auth
 ```
 
 ### Manual Deployment
@@ -261,7 +261,7 @@ aws cloudformation wait stack-create-complete \
 - `poetry run service-test auth` - Run tests and validation
 - `aws cloudformation delete-stack --stack-name vibe-dating-auth-service` - Delete stack
 
-**Note**: For updates, run `poetry run auth-build` first to ensure the latest code is uploaded to S3.
+**Note**: For updates, run `poetry run service-build auth` first to ensure the latest code is uploaded to S3.
 
 ## DynamoDB Schema
 

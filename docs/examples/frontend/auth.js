@@ -6,15 +6,15 @@
  */
 
 // Configuration
-const API_BASE_URL = 'https://your-api-gateway-url.execute-api.us-east-1.amazonaws.com/dev';
+const API_BASE_URL = 'https://your-api-gateway-url.execute-api.il-central-1.amazonaws.com/dev';
 
 /**
  * Authentication Service Class
  */
 class VibeAuthService {
     constructor() {
-        this.token = localStorage.getItem('vibe_auth_token');
-        this.userId = localStorage.getItem('vibe_user_id');
+        this.token = localStorage.getItem('user_auth_token');
+        this.userId = localStorage.getItem('user_id');
         this.isAuthenticated = !!this.token;
     }
 
@@ -58,14 +58,15 @@ class VibeAuthService {
      */
     async authenticateWithTelegram(initData, telegramUser) {
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/telegram`, {
+            const response = await fetch(`${API_BASE_URL}/auth/platform`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    initData: initData,
-                    telegramUser: telegramUser
+                    platform: 'telegram',
+                    platformToken: initData,
+                    platformMetadata: telegramUser
                 })
             });
 
@@ -82,7 +83,7 @@ class VibeAuthService {
             this.isAuthenticated = true;
             
             localStorage.setItem('vibe_auth_token', this.token);
-            localStorage.setItem('vibe_user_id', this.userId);
+            localStorage.setItem('user_id', this.userId);
 
             return authData;
 
@@ -128,8 +129,8 @@ class VibeAuthService {
         this.userId = null;
         this.isAuthenticated = false;
         
-        localStorage.removeItem('vibe_auth_token');
-        localStorage.removeItem('vibe_user_id');
+        localStorage.removeItem('user_auth_token');
+        localStorage.removeItem('user_id');
     }
 
     /**
@@ -146,6 +147,9 @@ class VibeAuthService {
 
 /**
  * API Client for Vibe Dating App
+ * 
+ * Note: These endpoints are examples and may not be implemented yet.
+ * The actual endpoints will depend on the user, media, and other services.
  */
 class VibeApiClient {
     constructor(authService) {

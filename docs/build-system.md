@@ -27,7 +27,7 @@ The Vibe Dating Backend uses a modular, service-oriented build system that creat
 poetry run build-auth
 
 # Legacy command (still works)
-poetry run build-lambda
+poetry run service-build auth
 
 # Direct script execution
 python -m scripts.build auth
@@ -182,7 +182,7 @@ if __name__ == "__main__":
 
 The build system maintains backward compatibility:
 
-- **`poetry run build-lambda`**: Still works, now builds auth service
+- **`poetry run service-build auth`**: Builds auth service Lambda packages
 - **`poetry run build-auth`**: New explicit auth service build command
 - **Build artifacts**: Same output structure and naming
 - **Dependencies**: Same requirements.txt usage 

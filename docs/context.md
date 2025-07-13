@@ -61,7 +61,7 @@ The build system creates optimized Lambda packages with proper dependency manage
 
 ```bash
 # Build Lambda packages
-poetry run build-lambda
+poetry run service-build auth
 ```
 
 **Generated Artifacts**:
@@ -88,7 +88,7 @@ The deployment system uses CloudFormation for infrastructure as code:
 
 ```bash
 # Deploy authentication service
-poetry run deploy-auth
+poetry run service-deploy auth
 ```
 
 **Deployment Process**:
@@ -117,7 +117,7 @@ export AWS_PROFILE=vibe-dev
 #### Comprehensive Test Suite
 ```bash
 # Run all tests
-poetry run test-lambda
+poetry run service-test auth
 ```
 
 **Test Categories**:
@@ -145,14 +145,14 @@ The authentication service is the primary deployment target, providing:
 ```bash
 # Full deployment workflow
 poetry install --with lambda
-poetry run test-lambda
-poetry run auth-build      # Build and upload packages
-poetry run auth-deploy     # Deploy infrastructure or update functions
+poetry run service-test auth
+poetry run service-build auth      # Build and upload packages
+poetry run service-deploy auth     # Deploy infrastructure or update functions
 
 # Individual steps
-poetry run auth-build      # Build and upload packages only
-poetry run test-lambda     # Run tests only
-poetry run auth-deploy     # Deploy/update only
+poetry run service-build auth      # Build and upload packages only
+poetry run service-test auth       # Run tests only
+poetry run service-deploy auth     # Deploy/update only
 ```
 
 #### Future Services

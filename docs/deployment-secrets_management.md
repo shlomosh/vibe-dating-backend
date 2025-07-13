@@ -112,7 +112,7 @@ python scripts/manage_secrets.py setup
 python scripts/manage_secrets.py validate
 
 # 3. Deploy infrastructure
-poetry run deploy-auth
+poetry run service-deploy auth
 ```
 
 ## Benefits

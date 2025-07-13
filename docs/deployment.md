@@ -144,7 +144,7 @@ build-lambda = "scripts.build:build_lambda"
 ### Comprehensive Test Suite
 
 ```bash
-poetry run test-lambda
+poetry run service-test auth
 ```
 
 #### Test Categories
@@ -173,7 +173,6 @@ poetry run pytest tests/
 # Code quality checks
 poetry run black --check src/
 poetry run isort --check-only src/
-poetry run mypy src/
 ```
 
 ## Deployment
@@ -181,7 +180,7 @@ poetry run mypy src/
 ### Authentication Service Deployment
 
 ```bash
-poetry run deploy-auth
+poetry run service-deploy auth
 ```
 
 #### Deployment Process
@@ -197,15 +196,15 @@ poetry run deploy-auth
 ```bash
 # Development
 export ENVIRONMENT=dev
-poetry run deploy-auth
+poetry run service-deploy auth
 
 # Staging
 export ENVIRONMENT=staging
-poetry run deploy-auth
+poetry run service-deploy auth
 
 # Production
 export ENVIRONMENT=prod
-poetry run deploy-auth
+poetry run service-deploy auth
 ```
 
 ### CloudFormation Configuration
@@ -236,7 +235,7 @@ If you need to deploy manually:
 
 ```bash
 # 1. Build Lambda packages
-poetry run build-lambda
+poetry run service-build auth
 
 # 2. Upload to S3 (if needed)
 aws s3 cp build/lambda/ s3://vibe-dating-code-dev-<uuid-suffix>/lambda/ --recursive
@@ -321,7 +320,6 @@ poetry run python -m pytest tests/ -v
 # Check code quality
 poetry run black --check src/
 poetry run isort --check-only src/
-poetry run mypy src/
 ```
 
 ## Troubleshooting
@@ -333,7 +331,7 @@ poetry run mypy src/
 # Clean and rebuild
 rm -rf build/
 poetry install --with lambda
-poetry run build-lambda
+poetry run service-build auth
 ```
 
 #### Deployment Failures
@@ -426,7 +424,7 @@ jobs:
       
       - name: Run tests
         run: |
-          poetry run test-lambda
+          poetry run service-test auth
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -438,7 +436,7 @@ jobs:
       - name: Deploy to AWS
         run: |
           export ENVIRONMENT=prod
-          poetry run deploy-auth
+          poetry run service-deploy auth
 ```
 
 ### Environment Promotion
@@ -446,11 +444,11 @@ jobs:
 ```bash
 # Promote from dev to staging
 export ENVIRONMENT=staging
-poetry run deploy-auth
+poetry run service-deploy auth
 
 # Promote from staging to production
 export ENVIRONMENT=prod
-poetry run deploy-auth
+poetry run service-deploy auth
 ```
 
 ## Best Practices

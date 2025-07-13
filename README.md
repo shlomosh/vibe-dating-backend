@@ -62,7 +62,7 @@ The project uses several tools to maintain code quality:
 
 Run all quality checks:
 ```bash
-poetry run test-lambda
+poetry run service-test auth
 ```
 
 ### Lambda Development
@@ -83,7 +83,7 @@ This creates:
 
 #### Testing Lambda Functions
 ```bash
-poetry run test-lambda
+poetry run service-test auth
 ```
 
 This runs:
@@ -95,7 +95,7 @@ This runs:
 
 #### Deploying Core Infrastructure
 ```bash
-poetry run deploy-core
+poetry run service-deploy core
 ```
 
 This deploys the foundational AWS infrastructure:
@@ -106,10 +106,10 @@ This deploys the foundational AWS infrastructure:
 #### Deploying Authentication Service
 ```bash
 # Build and upload Lambda packages
-poetry run auth-build
+poetry run service-build auth
 
 # Deploy infrastructure or update functions
-poetry run auth-deploy
+poetry run service-deploy auth
 ```
 
 This:
@@ -117,7 +117,7 @@ This:
 2. **Updates**: Downloads existing packages from S3 and updates Lambda function code
 3. Shows deployment outputs including API Gateway URLs
 
-**Note**: For updates, run `poetry run auth-build` first to ensure the latest code is uploaded to S3.
+**Note**: For updates, run `poetry run service-build auth` first to ensure the latest code is uploaded to S3.
 
 ## Project Structure
 
@@ -242,46 +242,46 @@ export AWS_PROFILE=vibe-dev
 poetry install --with lambda
 
 # Run tests
-poetry run test-lambda
+poetry run service-test auth
 
 # Deploy core infrastructure
-poetry run deploy-core
+poetry run service-deploy core
 
 # Deploy authentication service
-poetry run deploy-auth
+poetry run service-deploy auth
 ```
 
 ### Step-by-Step Deployment
 ```bash
 # 1. Build Lambda packages
-poetry run build-lambda
+poetry run service-build auth
 
 # 2. Test functions
-poetry run test-lambda
+poetry run service-test auth
 
 # 3. Deploy core infrastructure (S3, DynamoDB, IAM)
-poetry run deploy-core
+poetry run service-deploy core
 
 # 4. Deploy authentication service
-poetry run deploy-auth
+poetry run service-deploy auth
 ```
 
 ### Environment-Specific Deployment
 ```bash
 # Development
 export ENVIRONMENT=dev
-poetry run deploy-core
-poetry run deploy-auth
+poetry run service-deploy core
+poetry run service-deploy auth
 
 # Staging
 export ENVIRONMENT=staging
-poetry run deploy-core
-poetry run deploy-auth
+poetry run service-deploy core
+poetry run service-deploy auth
 
 # Production
 export ENVIRONMENT=prod
-poetry run deploy-core
-poetry run deploy-auth
+poetry run service-deploy core
+poetry run service-deploy auth
 ```
 
 ## Testing
@@ -289,7 +289,7 @@ poetry run deploy-auth
 ### Comprehensive Test Suite
 ```bash
 # Run all tests
-poetry run test-lambda
+poetry run service-test auth
 ```
 
 ### Individual Test Categories
@@ -378,7 +378,7 @@ poetry run python -c "from src.services.auth.aws_lambdas.core.auth_utils import 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run tests: `poetry run test-lambda`
+4. Run tests: `poetry run service-test auth`
 5. Submit a pull request
 
 ## License
