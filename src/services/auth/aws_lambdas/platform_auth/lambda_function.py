@@ -4,6 +4,7 @@ Vibe Platform Authentication Lambda Function
 This function handles platform authentication and user creation.
 """
 
+import base64
 import json
 from typing import Any, Dict
 
@@ -25,7 +26,22 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     try:
         # Parse request body
-        body = json.loads(event["body"])
+        request_body = event.get("body")
+        if not request_body:
+            raise ResponseError(400, {"error": "Missing request body"})
+        
+        # Handle base64 encoded body
+        if event.get("isBase64Encoded", False):
+            try:
+                request_body = base64.b64decode(request_body).decode('utf-8')
+            except Exception as e:
+                raise ResponseError(400, {"error": f"Failed to decode base64 body: {str(e)}"})
+        
+        try:
+            body = json.loads(request_body)
+        except json.JSONDecodeError as e:
+            raise ResponseError(400, {"error": f"Invalid JSON in request body: {str(e)}"})
+        
         platform = body.get("platform")
         platform_token = body.get("platformToken")
         platform_metadata = body.get("platformMetadata", {})
@@ -34,7 +50,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             raise ResponseError(400, {"error": "Missing required fields"})
 
         if platform == "telegram":
-            from .telegram import authenticate_user
+            from telegram import authenticate_user
 
             platform_user_data = authenticate_user(platform_token)
             if not platform_user_data:

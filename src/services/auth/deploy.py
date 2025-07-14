@@ -6,11 +6,11 @@ If infrastructure already exists, updates Lambda function code only.
 """
 
 import argparse
-import json
 import sys
 
 import boto3
 
+from core.config_utils import ServiceConfigUtils
 from core.deploy_utils import ServiceDeployer
 
 
@@ -29,9 +29,9 @@ class AuthServiceDeployer(ServiceDeployer):
             deployment_uuid=deployment_uuid,
         )
 
-        # Load core-stack parameters from core.json
-        with open(self.config_dir / "core.json") as f:
-            self.parameters_from_core = json.load(f)
+        # Get core-stack parameters from AWS CloudFormation outputs
+        self.core_cfg = ServiceConfigUtils("core", region=self.region, environment=self.environment).get_stacks_outputs()
+        print(f"    Parameters from core: {self.core_cfg}")
 
         # Initialize Lambda client for updates
         self.lambda_client = boto3.client("lambda", region_name=self.region)
@@ -196,12 +196,9 @@ class AuthServiceDeployer(ServiceDeployer):
             "template": "01-lambda.yaml",
             "parameters": {
                 "Environment": self.environment,
-                "LambdaCodeBucketName": self.parameters_from_core[
-                    "vibe-dating-core-s3-dev"
-                ]["LambdaCodeBucketName"],
-                "LambdaExecutionRoleArn": self.parameters_from_core[
-                    "vibe-dating-core-iam-dev"
-                ]["LambdaExecutionRoleArn"],
+                "LambdaCodeBucketName": self.core_cfg["s3"]["LambdaCodeBucketName"],
+                "LambdaExecutionRoleArn": self.core_cfg["iam"]["LambdaExecutionRoleArn"],
+                "DynamoDBTableName": self.core_cfg["dynamodb"]["DynamoDBTableName"],
             },
         }
         self.deploy_stack(
@@ -211,7 +208,7 @@ class AuthServiceDeployer(ServiceDeployer):
         )
 
         # Fetch outputs from Lambda stack
-        lambda_outputs = self._get_stack_outputs(lambda_stack_name)
+        lambda_cfg = self._get_stack_outputs(lambda_stack_name)
 
         # Now deploy API Gateway stack, using outputs from Lambda stack
         apigateway_stack = {
@@ -219,13 +216,9 @@ class AuthServiceDeployer(ServiceDeployer):
             "template": "02-apigateway.yaml",
             "parameters": {
                 "Environment": self.environment,
-                "UserJWTAuthorizerFunctionArn": lambda_outputs[
-                    "UserJWTAuthorizerFunctionArn"
-                ],
-                "ApiGatewayAuthorizerRoleArn": self.parameters_from_core[
-                    "vibe-dating-core-iam-dev"
-                ]["ApiGatewayAuthorizerRoleArn"],
-                "PlatformAuthFunctionArn": lambda_outputs["PlatformAuthFunctionArn"],
+                "UserJWTAuthorizerFunctionArn": lambda_cfg["UserJWTAuthorizerFunctionArn"],
+                "ApiGatewayAuthorizerRoleArn": self.core_cfg["iam"]["ApiGatewayAuthorizerRoleArn"],
+                "PlatformAuthFunctionArn": lambda_cfg["PlatformAuthFunctionArn"],
             },
         }
 
@@ -236,7 +229,7 @@ class AuthServiceDeployer(ServiceDeployer):
         )
 
 
-def main():
+def main(action=None):
     ap = argparse.ArgumentParser(
         description="Deploy or Update Vibe Dating App Auth Service Infrastructure"
     )
@@ -248,13 +241,13 @@ def main():
         "--environment",
         default=None,
         choices=["dev", "staging", "prod"],
-        help="Environment to deploy (override parameters.json)",
+        help="Environment to deploy (override parameters.yaml)",
     )
     ap.add_argument(
-        "--region", default=None, help="AWS region (override parameters.json)"
+        "--region", default=None, help="AWS region (override parameters.yaml)"
     )
     ap.add_argument(
-        "--deployment-uuid", help="Custom deployment UUID (override parameters.json)"
+        "--deployment-uuid", help="Custom deployment UUID (override parameters.yaml)"
     )
     args = ap.parse_args()
 
@@ -265,10 +258,12 @@ def main():
         deployment_uuid=args.deployment_uuid,
     )
 
-    if deployer.is_deployed():
+    if action == "deploy" or (action is None and not deployer.is_deployed()):
+        deployer.deploy()
+    elif action == "update" or (action is None and deployer.is_deployed()):
         deployer.update()
     else:
-        deployer.deploy()
+        raise ValueError(f"Invalid action: {action}")
 
 
 if __name__ == "__main__":

@@ -14,8 +14,8 @@ Parameters:
     Description: Domain name for the API Gateway
 
   AllowedOrigins:
-    Type: CommaDelimitedList
-    Default: https://web.telegram.org,https://t.me
+    Type: String
+    Default: "https://web.telegram.org,https://t.me"
     Description: Allowed CORS origins
 
   UserJWTAuthorizerFunctionArn:
@@ -141,9 +141,10 @@ Resources:
         IntegrationResponses:
           - StatusCode: '200'
             ResponseParameters:
-              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Origin: !Sub "'${AllowedOrigins}'"
               method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
               method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Credentials: "'false'"
             ResponseTemplates:
               application/json: ''
       MethodResponses:
@@ -152,6 +153,7 @@ Resources:
             method.response.header.Access-Control-Allow-Origin: true
             method.response.header.Access-Control-Allow-Headers: true
             method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Credentials: false
 
   # API Gateway Deployment
   ApiGatewayDeployment:

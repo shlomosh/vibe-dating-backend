@@ -13,7 +13,7 @@ class AuthServiceTester(ServiceTester):
         super().__init__("auth", cfg={})
 
 
-def main():
+def main(action=None):
     tester = AuthServiceTester()
     tester.test()
 

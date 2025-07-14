@@ -1,5 +1,6 @@
+import yaml
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 class ServiceConstructor:
@@ -11,11 +12,18 @@ class ServiceConstructor:
         self.service_dir = self.project_dir / "src" / "services" / service
         self.build_dir = self.project_dir / "build" / service
 
+        # Load parameters from parameters.yaml
+        with open(self.config_dir / "parameters.yaml") as f:
+            self.parameters = yaml.safe_load(f)
+
+        # Override parameters if provided
+        self.region = self.parameters["Region"]
+        self.environment = self.parameters["Environment"]
+
     def get_lambda_code_bucket_name(self):
-        import json
-        """Get the Lambda code bucket name from core.json configuration"""
-        config_path = self.config_dir / "core.json"
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-        
-        return config["vibe-dating-core-s3-dev"]["LambdaCodeBucketName"]
+        from core.config_utils import ServiceConfigUtils
+
+        # Get core-stack parameters from AWS CloudFormation outputs
+        config = ServiceConfigUtils("core", region=self.region, environment=self.environment).get_stacks_outputs()
+
+        return config[f"s3"]["LambdaCodeBucketName"]

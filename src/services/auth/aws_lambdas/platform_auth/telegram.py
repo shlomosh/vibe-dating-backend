@@ -21,39 +21,34 @@ def telegram_verify_data(init_data: str, bot_token: str) -> Optional[Dict[str, A
         Optional[Dict[str, Any]]: User data if data is valid, None otherwise
     """
     try:
-        # Parse the init data
-        data_pairs = []
-        hash_value = None
+        # Parse and decode query string
+        params = {
+            k: urllib.parse.unquote(v)
+            for k, v in [s.split("=", 1) for s in init_data.split("&")]
+        }
+        telegram_hash = params.pop("hash", None)
+        if not telegram_hash:
+            raise ValueError("Hash not found in telegram authentication data")
 
-        for item in init_data.split("&"):
-            if item.startswith("hash="):
-                hash_value = item[5:]
-            else:
-                data_pairs.append(item)
+        # Create data check string
+        data_params_string = "\n".join(f"{k}={v}" for k, v in sorted(params.items()))
 
-        # Sort and join data
-        data_pairs.sort()
-        data_check_string = "\n".join(data_pairs)
-
-        # Create secret key
+        # Generate secret key
         secret_key = hmac.new(
-            b"WebAppData", bot_token.encode(), hashlib.sha256
+            "WebAppData".encode(), bot_token.encode(), hashlib.sha256
         ).digest()
 
-        # Calculate expected hash
-        expected_hash = hmac.new(
-            secret_key, data_check_string.encode(), hashlib.sha256
+        # Calculate hash
+        calculated_hash = hmac.new(
+            secret_key, data_params_string.encode(), hashlib.sha256
         ).hexdigest()
 
-        if hash_value == expected_hash:
-            decoded_data = urllib.parse.unquote(init_data)
-            params = urllib.parse.parse_qs(decoded_data)
-
+        if calculated_hash == telegram_hash:
             user_data_string = params.get("user")
             if not user_data_string:
-                raise ValueError("User data not found")
+                raise ValueError("User data not found in telegram authentication data")
 
-            return json.loads(user_data_string[0])
+            return json.loads(user_data_string)
         else:
             return None
 

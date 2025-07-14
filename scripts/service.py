@@ -10,7 +10,7 @@ from importlib import import_module
 from typing import Optional
 
 
-def _execute(task: str, service: Optional[str] = None):
+def _execute(task: str, action: Optional[str] = None, service: Optional[str] = None):
     services_list = [
         p.parent.name
         for p in Path(__file__).parent.parent.glob(f"src/services/*/{task}.py")
@@ -32,15 +32,19 @@ def _execute(task: str, service: Optional[str] = None):
     sys.path.insert(0, str(src_path))
     
     task_main = import_module(f"services.{service}.{task}").main
-    task_main()
-
-
-def deploy():
-    _execute(task="deploy")
+    task_main(action=action)
 
 
 def build():
     _execute(task="build")
+
+
+def deploy():
+    _execute(task="deploy", action="deploy")
+
+
+def update():
+    _execute(task="deploy", action="update")
 
 
 def test():
@@ -49,7 +53,7 @@ def test():
 
 def main():
     ap = argparse.ArgumentParser(description="Run tasks for services")
-    ap.add_argument("task", choices=["deploy", "build", "test"], help="task to run")
+    ap.add_argument("task", choices=["build", "deploy", "update", "test"], help="task to run")
     ap.add_argument("service", nargs="?", help="Service to run task for")
     args = ap.parse_args()
 

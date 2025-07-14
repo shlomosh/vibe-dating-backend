@@ -16,6 +16,10 @@ Parameters:
     Type: String
     Description: Lambda Execution Role ARN (imported from iam stack)
 
+  DynamoDBTableName:
+    Type: String
+    Description: DynamoDB Table Name (imported from dynamodb stack)
+
 Resources:
   # Lambda Layer for shared dependencies
   AuthLayer:
@@ -54,6 +58,7 @@ Resources:
           TELEGRAM_BOT_TOKEN_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/telegram-bot-token/${Environment}'
           JWT_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}'
           UUID_NAMESPACE_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/uuid-namespace/${Environment}'
+          DYNAMODB_TABLE: !Ref DynamoDBTableName
       Timeout: 30
       MemorySize: 256
       Tags:
@@ -78,6 +83,7 @@ Resources:
       Environment:
         Variables:
           JWT_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}'
+          DYNAMODB_TABLE: !Ref DynamoDBTableName
       Timeout: 10
       MemorySize: 128
       Tags:

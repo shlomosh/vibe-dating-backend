@@ -46,6 +46,7 @@ python-dateutil = "2.8.2"
 
 [tool.poetry.scripts]
 service-deploy = "scripts.service:deploy" # usage: 'poetry run service-deploy <service>'
+service-update = "scripts.service:update" # usage: 'poetry run service-update <service>'
 service-build = "scripts.service:build"   # usage: 'poetry run service-build <service>'
 service-test = "scripts.service:test"    # usage: 'poetry run service-test <service>'
 

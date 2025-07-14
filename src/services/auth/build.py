@@ -34,7 +34,7 @@ class AuthServiceBuilder(ServiceBuilder):
         super().__init__("auth", cfg=cfg)
 
 
-def main():
+def main(action=None):
     builder = AuthServiceBuilder()
     builder.build()
 
