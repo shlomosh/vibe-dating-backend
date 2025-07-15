@@ -8,14 +8,14 @@ Parameters:
     AllowedValues: [dev, staging, prod]
     Description: Environment name
 
-  DomainName:
+  ApiDomainName:
     Type: String
     Default: api.vibe-dating.io
     Description: Domain name for the API Gateway
 
   AllowedOrigins:
     Type: String
-    Default: "https://web.telegram.org,https://t.me"
+    Default: "https://web.telegram.org,https://t.me,https://shlomosh.github.io,https://tma.vibe-dating.io"
     Description: Allowed CORS origins
 
   UserJWTAuthorizerFunctionArn:
@@ -29,6 +29,16 @@ Parameters:
   PlatformAuthFunctionArn:
     Type: String
     Description: Platform Auth Lambda Function ARN (imported from lambda stack)
+
+  CertificateArn:
+    Type: String
+    Description: ACM Certificate ARN for the custom domain
+    Default: "arn:aws:acm:il-central-1:555171060142:certificate/1cbb4fee-9528-45c5-949d-e0b658013ce4"
+
+  HostedZoneId:
+    Type: String
+    Description: Route 53 Hosted Zone ID for the domain
+    Default: "Z02615543R07F6C5EKHGP"
 
 Resources:
   # API Gateway
@@ -47,6 +57,47 @@ Resources:
           Value: !Ref Environment
         - Key: Service
           Value: auth
+
+  # Custom Domain Name
+  ApiGatewayDomainName:
+    Type: AWS::ApiGateway::DomainName
+    Condition: HasCertificate
+    Properties:
+      DomainName: !Ref ApiDomainName
+      RegionalCertificateArn: !Ref CertificateArn
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      SecurityPolicy: TLS_1_2
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: auth
+        - Key: Domain
+          Value: !Ref ApiDomainName
+
+  # Base Path Mapping
+  ApiGatewayBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Condition: HasCertificate
+    Properties:
+      DomainName: !Ref ApiGatewayDomainName
+      RestApiId: !Ref ApiGateway
+      Stage: !Ref Environment
+      BasePath: ""
+
+  # Route 53 A Record (Alias)
+  ApiGatewayAliasRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: HasCertificate
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref ApiDomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt ApiGatewayDomainName.RegionalDomainName
+        HostedZoneId: !GetAtt ApiGatewayDomainName.RegionalHostedZoneId
 
   # API Gateway Authorizer
   ApiGatewayAuthorizer:
@@ -144,7 +195,7 @@ Resources:
               method.response.header.Access-Control-Allow-Origin: !Sub "'${AllowedOrigins}'"
               method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
               method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
-              method.response.header.Access-Control-Allow-Credentials: "'false'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'"
             ResponseTemplates:
               application/json: ''
       MethodResponses:
@@ -153,7 +204,7 @@ Resources:
             method.response.header.Access-Control-Allow-Origin: true
             method.response.header.Access-Control-Allow-Headers: true
             method.response.header.Access-Control-Allow-Methods: true
-            method.response.header.Access-Control-Allow-Credentials: false
+            method.response.header.Access-Control-Allow-Credentials: true
 
   # API Gateway Deployment
   ApiGatewayDeployment:
@@ -164,6 +215,9 @@ Resources:
     Properties:
       RestApiId: !Ref ApiGateway
       StageName: !Ref Environment
+
+Conditions:
+  HasCertificate: !Not [!Equals [!Ref CertificateArn, ""]]
 
 Outputs:
   ApiGatewayUrl:
@@ -188,4 +242,25 @@ Outputs:
     Description: 'API Gateway Root Resource ID'
     Value: !GetAtt ApiGateway.RootResourceId
     Export:
-      Name: !Sub '${AWS::StackName}-ApiGatewayRootResourceId' 
+      Name: !Sub '${AWS::StackName}-ApiGatewayRootResourceId'
+
+  CustomDomainUrl:
+    Description: 'Custom Domain URL'
+    Condition: HasCertificate
+    Value: !Sub 'https://${ApiDomainName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-CustomDomainUrl'
+
+  ApiGatewayDomainNameId:
+    Description: 'API Gateway Domain Name ID'
+    Condition: HasCertificate
+    Value: !Ref ApiGatewayDomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayDomainNameId'
+
+  ApiGatewayDomainNameRegionalDomainName:
+    Description: 'API Gateway Domain Name Regional Domain Name'
+    Condition: HasCertificate
+    Value: !GetAtt ApiGatewayDomainName.RegionalDomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayDomainNameRegionalDomainName' 

@@ -25,6 +25,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         Dict[str, Any]: API Gateway response
     """
     try:
+        print(f"Event: {event}")
+
         # Parse request body
         request_body = event.get("body")
         if not request_body:
