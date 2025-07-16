@@ -50,8 +50,7 @@ Resources:
       EndpointConfiguration:
         Types:
           - REGIONAL
-      BinaryMediaTypes:
-        - '*/*'
+      BinaryMediaTypes: []
       Tags:
         - Key: Environment
           Value: !Ref Environment
@@ -81,6 +80,7 @@ Resources:
   ApiGatewayBasePathMapping:
     Type: AWS::ApiGateway::BasePathMapping
     Condition: HasCertificate
+    DependsOn: ApiGatewayDeployment
     Properties:
       DomainName: !Ref ApiGatewayDomainName
       RestApiId: !Ref ApiGateway
@@ -152,21 +152,6 @@ Resources:
           - LambdaArn: !Ref PlatformAuthFunctionArn
       RequestParameters:
         method.request.header.Content-Type: true
-      MethodResponses:
-        - StatusCode: '200'
-          ResponseParameters:
-            method.response.header.Access-Control-Allow-Origin: true
-            method.response.header.Access-Control-Allow-Headers: true
-            method.response.header.Access-Control-Allow-Methods: true
-        - StatusCode: '400'
-          ResponseParameters:
-            method.response.header.Access-Control-Allow-Origin: true
-        - StatusCode: '401'
-          ResponseParameters:
-            method.response.header.Access-Control-Allow-Origin: true
-        - StatusCode: '500'
-          ResponseParameters:
-            method.response.header.Access-Control-Allow-Origin: true
 
   # Lambda permission for API Gateway to invoke platform auth function
   PlatformAuthLambdaPermission:
@@ -187,12 +172,15 @@ Resources:
       AuthorizationType: NONE
       Integration:
         Type: MOCK
+        IntegrationHttpMethod: OPTIONS
+        PassthroughBehavior: WHEN_NO_MATCH
+        ContentHandling: CONVERT_TO_TEXT
         RequestTemplates:
           application/json: '{"statusCode": 200}'
         IntegrationResponses:
           - StatusCode: '200'
             ResponseParameters:
-              method.response.header.Access-Control-Allow-Origin: !Sub "'${AllowedOrigins}'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
               method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
               method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
               method.response.header.Access-Control-Allow-Credentials: "'true'"
@@ -215,6 +203,29 @@ Resources:
     Properties:
       RestApiId: !Ref ApiGateway
       StageName: !Ref Environment
+
+  # Gateway Response for CORS
+  GatewayResponseDefault4XX:
+    Type: AWS::ApiGateway::GatewayResponse
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResponseType: DEFAULT_4XX
+      ResponseParameters:
+        gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+        gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+        gatewayresponse.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+        gatewayresponse.header.Access-Control-Allow-Credentials: "'true'"
+
+  GatewayResponseDefault5XX:
+    Type: AWS::ApiGateway::GatewayResponse
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResponseType: DEFAULT_5XX
+      ResponseParameters:
+        gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+        gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+        gatewayresponse.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+        gatewayresponse.header.Access-Control-Allow-Credentials: "'true'"
 
 Conditions:
   HasCertificate: !Not [!Equals [!Ref CertificateArn, ""]]
