@@ -214,25 +214,25 @@ The project includes a comprehensive secrets management system using AWS Secrets
 pip install -r scripts/requirements-secrets.txt
 
 # Setup core secrets interactively
-python scripts/manage_secrets.py setup
+python scripts/secretsmanager_mgmt.py setup
 
 # Setup core secrets
-python scripts/manage_secrets.py setup
+python scripts/secretsmanager_mgmt.py setup
 
 # List all secrets
-python scripts/manage_secrets.py list
+python scripts/secretsmanager_mgmt.py list
 
 # Export secrets to environment file
-python scripts/manage_secrets.py export --output .env
+python scripts/secretsmanager_mgmt.py export --output .env
 
 # Validate all secrets
-python scripts/manage_secrets.py validate
+python scripts/secretsmanager_mgmt.py validate
 
 # Rotate JWT secret
-python scripts/manage_secrets.py rotate --secret jwt_secret
+python scripts/secretsmanager_mgmt.py rotate --secret jwt_secret
 
 # Get a secret value
-python scripts/manage_secrets.py get --secret telegram_bot_token
+python scripts/secretsmanager_mgmt.py get --secret telegram_bot_token
 ```
 
 #### Supported Secrets

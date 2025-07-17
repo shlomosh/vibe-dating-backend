@@ -20,6 +20,7 @@ from botocore.exceptions import ClientError, NoCredentialsError
 # Set AWS profile
 os.environ["AWS_PROFILE"] = "vibe-dev"
 
+
 class SecretsManager:
     """Manages AWS Secrets Manager for Vibe Dating App"""
     
@@ -303,30 +304,30 @@ class SecretsManager:
 def main():
     """Main function for command-line interface"""
     parser = argparse.ArgumentParser(
-        description="Manage AWS Secrets Manager for Vibe Dating App",
+        description="Secrets-Manager Management Script for Vibe Dating App",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Setup core secrets interactively
-  python scripts/manage_secrets.py setup
+  python scripts/secretsmanager_mgmt.py setup
 
   # Setup core secrets
-  python scripts/manage_secrets.py setup
+  python scripts/secretsmanager_mgmt.py setup
 
   # List all secrets
-  python scripts/manage_secrets.py list
+  python scripts/secretsmanager_mgmt.py list
 
   # Export secrets to environment file
-  python scripts/manage_secrets.py export --output .env
+  python scripts/secretsmanager_mgmt.py export --output .env
 
   # Validate all secrets
-  python scripts/manage_secrets.py validate
+  python scripts/secretsmanager_mgmt.py validate
 
   # Rotate JWT secret
-  python scripts/manage_secrets.py rotate --secret jwt_secret
+  python scripts/secretsmanager_mgmt.py rotate --secret jwt_secret
 
   # Delete a secret
-  python scripts/manage_secrets.py delete --secret telegram_bot_token
+  python scripts/secretsmanager_mgmt.py delete --secret telegram_bot_token
         """
     )
     

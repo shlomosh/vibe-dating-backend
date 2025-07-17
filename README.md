@@ -153,11 +153,9 @@ vibe-dating-backend/
 │       ├── media/                   # Media service (planned)
 │       └── agora/                   # Agora.io integration (planned)
 ├── scripts/                         # Poetry-based deployment scripts
-│   ├── build.py                     # Lambda package building
-│   ├── deploy.py                    # AWS deployment
-│   ├── test.py                      # Testing framework
-│   ├── manage_secrets.py            # AWS Secrets Manager integration
-│   └── requirements-secrets.txt     # Secrets management dependencies
+│   ├── service.py                   # Service control script
+│   ├── dynamodb_mgmt.py             # AWS Dynamo-DB control script
+│   └── secretsmanager_mgmt.py       # AWS Secrets-Manager control script
 ├── docs/                            # Comprehensive documentation
 │   ├── context.md                   # Technical context and architecture
 │   ├── deployment.md                # Deployment and build documentation
@@ -206,22 +204,22 @@ The project includes a comprehensive AWS Secrets Manager integration for secure 
 pip install -r scripts/requirements-secrets.txt
 
 # Setup core secrets interactively
-python scripts/manage_secrets.py setup
+python scripts/secretsmanager_mgmt.py setup
 
 # List all secrets
-python scripts/manage_secrets.py list
+python scripts/secretsmanager_mgmt.py list
 
 # Export secrets to environment file
-python scripts/manage_secrets.py export --output .env
+python scripts/secretsmanager_mgmt.py export --output .env
 
 # Validate all secrets
-python scripts/manage_secrets.py validate
+python scripts/secretsmanager_mgmt.py validate
 
 # Rotate JWT secret
-python scripts/manage_secrets.py rotate --secret jwt_secret
+python scripts/secretsmanager_mgmt.py rotate --secret jwt_secret
 
 # Get a secret value
-python scripts/manage_secrets.py get --secret telegram_bot_token
+python scripts/secretsmanager_mgmt.py get --secret telegram_bot_token
 ```
 
 **Supported Secrets**:

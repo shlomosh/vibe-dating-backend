@@ -197,7 +197,7 @@ auth_layer.zip
    pip install -r scripts/requirements-secrets.txt
    
    # Setup core secrets interactively
-   python scripts/manage_secrets.py setup
+   python scripts/secretsmanager_mgmt.py setup
    ```
 
 2. **Update Parameters**:
