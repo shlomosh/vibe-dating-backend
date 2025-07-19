@@ -11,7 +11,7 @@ from typing import Any, Dict
 from core.auth_utils import generate_jwt_token, hash_string_to_id
 from core.dynamo_utils import db_create_or_update_user_record
 from core.rest_utils import ResponseError, generate_response
-
+from core.settings import CoreSettings
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
@@ -76,12 +76,18 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Generate JWT token
         token = generate_jwt_token(signed_data={"uid": vibe_user_id})
 
+        # Core settings
+        core_settings = CoreSettings()
+
+        # Generate profile IDs
+        vibe_user_profile_ids = [hash_string_to_id(f"{vibe_user_id}:{profile_idx}") for profile_idx in range(0, core_settings.max_profile_count)]
+
         return generate_response(
             200,
             {
                 "token": token,
                 "userId": vibe_user_id,
-                "userData": platform_user_data,
+                "profileIds": vibe_user_profile_ids,
             },
         )
 

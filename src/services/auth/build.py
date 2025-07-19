@@ -16,6 +16,7 @@ class AuthServiceBuilder(ServiceBuilder):
                 {
                     "name": "platform_auth",
                     "extra_files": [
+                        Path("core") / "settings.py",
                         Path("core") / "auth_utils.py",
                         Path("core") / "rest_utils.py",
                         Path("core") / "dynamo_utils.py",
@@ -24,6 +25,7 @@ class AuthServiceBuilder(ServiceBuilder):
                 {
                     "name": "user_jwt_authorizer",
                     "extra_files": [
+                        Path("core") / "settings.py",
                         Path("core") / "auth_utils.py",
                         Path("core") / "rest_utils.py",
                         Path("core") / "dynamo_utils.py",
