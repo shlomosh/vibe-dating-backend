@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Route53 DNS configuration for Vibe Dating App frontend'
+
+Parameters:
+  Environment:
+    Type: String
+    Description: Deployment environment (dev/staging/prod)
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+  
+  AppDomainName:
+    Type: String
+    Description: Domain name for the application (e.g., tma.vibe-dating.io)
+    Default: tma.vibe-dating.io
+  
+  CloudFrontDistributionDomainName:
+    Type: String
+    Description: Domain name of the CloudFront distribution
+    Default: ""
+
+Resources:
+  # Hosted Zone for the domain (assuming it exists)
+  # Note: This template assumes the hosted zone already exists
+  # If you need to create it, uncomment the HostedZone resource below
+  
+  # HostedZone:
+  #   Type: AWS::Route53::HostedZone
+  #   Properties:
+  #     Name: vibe-dating.io
+  #     HostedZoneConfig:
+  #       Comment: !Sub 'Hosted zone for ${AppDomainName}'
+  #     Tags:
+  #       - Key: Environment
+  #         Value: !Ref Environment
+  #       - Key: Service
+  #         Value: hosting
+
+  # A record for the frontend domain
+  FrontendARecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: vibe-dating.io.
+      Name: !Ref AppDomainName
+      Type: A
+      AliasTarget:
+        DNSName: !Ref CloudFrontDistributionDomainName
+        HostedZoneId: Z2FDTNDATAQYW2  # CloudFront hosted zone ID (always the same)
+
+  # AAAA record for IPv6 support
+  FrontendAAAARecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: vibe-dating.io.
+      Name: !Ref AppDomainName
+      Type: AAAA
+      AliasTarget:
+        DNSName: !Ref CloudFrontDistributionDomainName
+        HostedZoneId: Z2FDTNDATAQYW2  # CloudFront hosted zone ID (always the same)
+
+  # CNAME record for www subdomain (optional)
+  WWWCNameRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: vibe-dating.io.
+      Name: !Sub 'www.${AppDomainName}'
+      Type: CNAME
+      TTL: '300'
+      ResourceRecords:
+        - !Ref AppDomainName
+
+  # TXT record for domain verification (if needed)
+  DomainVerificationRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: vibe-dating.io.
+      Name: !Ref AppDomainName
+      Type: TXT
+      TTL: '300'
+      ResourceRecords:
+        - !Sub '"vibe-dating-app-verification=${Environment}"'
+
+Outputs:
+  FrontendDomainName:
+    Description: Domain name for the frontend application
+    Value: !Ref AppDomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-FrontendDomainName'
+
+  FrontendARecordName:
+    Description: Name of the A record for the frontend
+    Value: !Ref FrontendARecord
+    Export:
+      Name: !Sub '${AWS::StackName}-FrontendARecordName'
+
+  WWWCNameRecordName:
+    Description: Name of the CNAME record for www subdomain
+    Value: !Ref WWWCNameRecord
+    Export:
+      Name: !Sub '${AWS::StackName}-WWWCNameRecordName' 

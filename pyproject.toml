@@ -50,6 +50,11 @@ service-update = "scripts.service:update" # usage: 'poetry run service-update <s
 service-build = "scripts.service:build"   # usage: 'poetry run service-build <service>'
 service-test = "scripts.service:test"    # usage: 'poetry run service-test <service>'
 
+# Hosting service specific commands
+deploy-hosting = "scripts.service:deploy" # usage: 'poetry run deploy-hosting'
+build-hosting = "scripts.service:build"   # usage: 'poetry run build-hosting'
+test-hosting = "scripts.service:test"    # usage: 'poetry run test-hosting'
+
 [tool.black]
 line-length = 88
 target-version = ['py311']
