@@ -214,25 +214,25 @@ The project includes a comprehensive secrets management system using AWS Secrets
 pip install -r scripts/requirements-secrets.txt
 
 # Setup core secrets interactively
-python scripts/secretsmanager_mgmt.py setup
+python scripts/manage_secrets.py setup
 
 # Setup core secrets
-python scripts/secretsmanager_mgmt.py setup
+python scripts/manage_secrets.py setup
 
 # List all secrets
-python scripts/secretsmanager_mgmt.py list
+python scripts/manage_secrets.py list
 
 # Export secrets to environment file
-python scripts/secretsmanager_mgmt.py export --output .env
+python scripts/manage_secrets.py export --output .env
 
 # Validate all secrets
-python scripts/secretsmanager_mgmt.py validate
+python scripts/manage_secrets.py validate
 
 # Rotate JWT secret
-python scripts/secretsmanager_mgmt.py rotate --secret jwt_secret
+python scripts/manage_secrets.py rotate --secret jwt_secret
 
 # Get a secret value
-python scripts/secretsmanager_mgmt.py get --secret telegram_bot_token
+python scripts/manage_secrets.py get --secret telegram_bot_token
 ```
 
 #### Supported Secrets
@@ -536,12 +536,115 @@ SK: MetadataType#{Timestamp/ID}
 ## Core Features
 
 ### 1. Profile Management
-- Users can create up to 3 profiles
-- Each profile has independent identity, preferences, media gallery
-- Profile switching within the app
-- Media upload with frontend processing (crop, zoom, EXIF removal for images; compression for videos)
-- Ordered media gallery (user-defined sequence)
-- Support for both images and short videos (max 30 seconds)
+
+#### Profile System Architecture
+The profile system implements a comprehensive multi-profile architecture with local storage management and API synchronization:
+
+**Core Components:**
+- **ProfileContext** (`src/contexts/ProfileContext.tsx`): React context managing profile state throughout the app
+- **Profile Types** (`src/types/profile.ts`): TypeScript definitions for all profile-related data structures
+- **Profile API** (`src/api/profiles.ts`): RESTful API client for backend profile operations
+- **Profile UI** (`src/pages/ProfileSetupPage.tsx`): Complete profile creation and editing interface
+
+#### Profile Data Structure
+Each profile contains extensive dating-specific attributes:
+
+**Core Profile Fields:**
+- `profileId`: 16-character base64 identifier
+- `profileName`: Internal name for profile management (SelfProfileRecord only)
+- `nickName`: Public display name (auto-generated or custom)
+- `aboutMe`: Profile bio/description
+- `age`: User's age
+
+**Physical & Preference Attributes:**
+- `position`: Sexual position preference (bottom, versBottom, vers, versTop, top, side, blower, blowie)
+- `body`: Body type (petite, slim, average, fit, muscular, stocky, chubby, large)
+- `eggplantSize`: Physical attribute (small, average, large, extraLarge, gigantic)
+- `peachShape`: Physical attribute (small, average, bubble, solid, large)
+- `sexuality`: Sexual orientation (gay, bisexual, curious, trans, fluid)
+
+**Health & Safety:**
+- `healthPractices`: Safe sex practices (condoms, bb, condomsOrBb, noPenetrations)
+- `hivStatus`: HIV status (negative, positive, positiveUndetectable)
+- `preventionPractices`: Prevention methods (none, prep, doxypep, prepAndDoxypep)
+
+**Meeting Preferences:**
+- `hosting`: Hosting availability (hostAndTravel, hostOnly, travelOnly)
+- `travelDistance`: Travel willingness (none, block, neighbourhood, city, metropolitan, state)
+- `meetingTime`: When to meet (now, today, whenever)
+
+**Media Management:**
+- `profileImages`: Array of ProfileImage objects with metadata
+- Each image includes: `imageId`, `imageUrl`, `imageThumbnailUrl`, `imageAttributes`
+- Support for ordered media gallery (user-defined sequence)
+- Frontend processing: crop, zoom, EXIF removal for images; compression for videos
+- Maximum 5 media items per profile (images and short videos)
+
+#### Multi-Profile Support
+**Profile Database Structure:**
+```typescript
+interface ProfileDB {
+  activeProfileId: ProfileId;
+  profileRecords: Record<ProfileId, SelfProfileRecord>;
+  freeProfileIds: ProfileId[];
+}
+```
+
+**Profile Management Features:**
+- Users can create up to 3 profiles maximum
+- Each profile has independent identity, preferences, and media gallery
+- Seamless profile switching within the app
+- Profile creation with random nickname generation
+- Profile deletion with automatic fallback to remaining profiles
+
+**Profile Types:**
+- `SelfProfileRecord`: User's own profiles with management metadata
+- `PeerProfileRecord`: Other users' profiles with distance and activity data
+- `ProfileRecord`: Base interface shared by both types
+
+#### Local Storage Management
+**Storage Strategy:**
+- Profiles stored locally using `LocalStorage` utility
+- Storage keys: `StorageKeys.Profiles + '/activeProfileId'` and `StorageKeys.Profiles + '/profileRecords/{profileId}'`
+- Automatic loading and saving of profile data
+- Error recovery with default profile creation
+
+**Profile Operations:**
+- `addProfileRecord()`: Create new profile from available profile IDs
+- `updateProfileRecord()`: Update existing profile with validation
+- `delProfileRecord()`: Delete profile with automatic active profile management
+- `setActiveProfileId()`: Switch between user profiles
+
+#### API Integration
+**Backend Synchronization:**
+- Full CRUD operations: create, read, update, delete profiles
+- Media management: upload, reorder, delete media items
+- Location updates and tracking
+- Profile discovery and filtering
+- Integration with user authentication system
+
+#### Profile Discovery & Filtering
+**Search Capabilities:**
+- Advanced filtering by all profile attributes
+- Location-based proximity matching
+- Age range and preference filtering
+- Physical characteristic filters
+- Health status and safety practice filters
+
+#### Profile Setup Flow
+**User Interface:**
+- Guided profile creation wizard
+- Real-time form validation
+- Image upload and management interface
+- Profile switching controls
+- Navigation integration with back/next flow
+
+#### Internationalization
+**Multi-language Support:**
+- All profile field labels and descriptions localized
+- Profile type option translations (en-US, he-IL)
+- Random nickname generation supports multiple languages
+- Culturally appropriate profile attribute options
 
 ### 2. Location Services
 - Real-time location tracking per profile
