@@ -16,11 +16,12 @@ class UserServiceBuilder(ServiceBuilder):
                 {
                     "name": "profiles",
                     "extra_files": [
-                        Path("core") / "settings.py",
-                        Path("core") / "auth_utils.py",
-                        Path("core") / "rest_utils.py",
-                        Path("core") / "profile_utils.py",
+                        Path("src/common/aws_lambdas/core") / "settings.py",
+                        Path("src/common/aws_lambdas/core") / "auth_utils.py",
+                        Path("src/common/aws_lambdas/core") / "rest_utils.py",
+                        Path("src/common/aws_lambdas/core") / "profile_utils.py",
                     ],
+                    "drop_prefixes": ["src/common/aws_lambdas"],
                 },
             ],
         }

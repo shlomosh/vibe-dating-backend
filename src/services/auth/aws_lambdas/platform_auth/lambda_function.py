@@ -4,6 +4,7 @@ Vibe Platform Authentication Lambda Function
 This function handles platform authentication and user creation.
 """
 
+import os
 import base64
 import json
 from typing import Any, Dict

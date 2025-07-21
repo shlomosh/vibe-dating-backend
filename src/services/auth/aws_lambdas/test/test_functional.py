@@ -48,7 +48,7 @@ def test_platform_auth():
 
     # Mock AWS Secrets Manager calls
     with patch(
-        "core.auth_utils.get_secret_from_aws_secrets_manager"
+        "common.aws_lambdas.core.auth_utils.get_secret_from_aws_secrets_manager"
     ) as mock_get_secret:
         mock_get_secret.side_effect = lambda arn: {
             f"arn:aws:secretsmanager:{_aws_region}:{_aws_account}:secret:vibe-dating/telegram-bot-token/dev": "test_bot_token",
@@ -57,7 +57,7 @@ def test_platform_auth():
         }.get(arn, "test_secret")
 
         # Mock DynamoDB
-        with patch("core.dynamo_utils.dynamodb") as mock_dynamodb:
+        with patch("common.aws_lambdas.core.dynamo_utils.dynamodb") as mock_dynamodb:
             mock_table = MagicMock()
             mock_dynamodb.Table.return_value = mock_table
 
@@ -120,10 +120,10 @@ def test_user_jwt_authorizer():
     }
 
     with patch(
-        "core.auth_utils.get_secret_from_aws_secrets_manager",
+        "common.aws_lambdas.core.auth_utils.get_secret_from_aws_secrets_manager",
         return_value="test_jwt_secret",
     ):
-        with patch("core.auth_utils.jwt.decode", return_value=mock_payload):
+        with patch("common.aws_lambdas.core.auth_utils.jwt.decode", return_value=mock_payload):
             response = jwt_lambda_handler(test_event, None)
 
             print("JWT Authorizer Test Response:")
@@ -147,7 +147,7 @@ def test_user_id_generation():
     ] = f"arn:aws:secretsmanager:{_aws_region}:{_aws_account}:secret:vibe-dating/uuid-namespace/dev"
 
     with patch(
-        "core.auth_utils.get_secret_from_aws_secrets_manager",
+        "common.aws_lambdas.core.auth_utils.get_secret_from_aws_secrets_manager",
         return_value="123e4567-e89b-12d3-a456-426614174000",
     ):
         # Test cases
@@ -185,7 +185,7 @@ def test_telegram_verification():
     ] = f"arn:aws:secretsmanager:{_aws_region}:{_aws_account}:secret:vibe-dating/telegram-bot-token/dev"
 
     with patch(
-        "core.auth_utils.get_secret_from_aws_secrets_manager",
+        "common.aws_lambdas.core.auth_utils.get_secret_from_aws_secrets_manager",
         return_value="test_bot_token",
     ):
         # Test with valid Telegram data
@@ -228,10 +228,10 @@ def test_error_handling():
     }
 
     with patch(
-        "core.auth_utils.get_secret_from_aws_secrets_manager",
+        "common.aws_lambdas.core.auth_utils.get_secret_from_aws_secrets_manager",
         return_value="test_secret",
     ):
-        with patch("core.dynamo_utils.dynamodb") as mock_dynamodb:
+        with patch("common.aws_lambdas.core.dynamo_utils.dynamodb") as mock_dynamodb:
             mock_table = MagicMock()
             mock_dynamodb.Table.return_value = mock_table
 
@@ -256,7 +256,7 @@ def test_jwt_token_generation():
     ] = f"arn:aws:secretsmanager:{_aws_region}:{_aws_account}:secret:vibe-dating/jwt-secret/dev"
 
     with patch(
-        "core.auth_utils.get_secret_from_aws_secrets_manager",
+        "common.aws_lambdas.core.auth_utils.get_secret_from_aws_secrets_manager",
         return_value="test_jwt_secret",
     ):
         # Test JWT token generation

@@ -148,9 +148,16 @@ class ServiceBuilder(ServiceConstructor):
 
         # Copy extra files
         for extra_file in aws_lambda.get("extra_files", []):
+            extra_file_path = Path(extra_file).parent
+            for drop_prefix in aws_lambda.get("drop_prefixes", []):
+                try:
+                    extra_file_path = extra_file_path.relative_to(Path(drop_prefix))
+                    break
+                except ValueError:
+                    continue
             self.copy_lambda_files(
-                src_path=self.service_dir / "aws_lambdas" / extra_file,
-                dst_path=pkg_dir / extra_file.parent,
+                src_path=self.project_dir / extra_file,
+                dst_path=pkg_dir / extra_file_path,
             )
 
         # Create zip package

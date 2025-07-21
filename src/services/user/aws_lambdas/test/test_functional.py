@@ -56,7 +56,7 @@ def test_rest_utils():
     print("\nTesting REST utilities...")
     
     try:
-        from core.rest_utils import generate_response, ResponseError
+        from common.aws_lambdas.core.rest_utils import generate_response, ResponseError
         
         # Test generate_response
         response = generate_response(200, {"message": "success"})
@@ -88,7 +88,7 @@ def test_settings():
     print("\nTesting settings...")
     
     try:
-        from core.settings import CoreSettings
+        from common.aws_lambdas.core.settings import CoreSettings
         
         settings = CoreSettings()
         assert hasattr(settings, 'max_profile_count')
@@ -108,7 +108,7 @@ def test_profile_utils():
     print("\nTesting profile utilities...")
     
     try:
-        from core.profile_utils import validate_profile_ownership, get_user_profile_ids, upsert_profile
+        from common.aws_lambdas.core.profile_utils import validate_profile_ownership, get_user_profile_ids, upsert_profile
         
         # These functions require DynamoDB, so we'll test import and basic structure
         assert callable(validate_profile_ownership)

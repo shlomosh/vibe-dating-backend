@@ -1,5 +1,7 @@
 """
 Profile management utilities for the user service
+
+This module contains all profile-related functions shared across services.
 """
 
 import datetime

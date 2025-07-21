@@ -16,20 +16,22 @@ class AuthServiceBuilder(ServiceBuilder):
                 {
                     "name": "platform_auth",
                     "extra_files": [
-                        Path("core") / "settings.py",
-                        Path("core") / "auth_utils.py",
-                        Path("core") / "rest_utils.py",
-                        Path("core") / "dynamo_utils.py",
+                        Path("src/common/aws_lambdas/core") / "settings.py",
+                        Path("src/common/aws_lambdas/core") / "auth_utils.py",
+                        Path("src/common/aws_lambdas/core") / "rest_utils.py",
+                        Path("src/common/aws_lambdas/core") / "dynamo_utils.py",
                     ],
+                    "drop_prefixes": ["src/common/aws_lambdas"],
                 },
                 {
                     "name": "user_jwt_authorizer",
                     "extra_files": [
-                        Path("core") / "settings.py",
-                        Path("core") / "auth_utils.py",
-                        Path("core") / "rest_utils.py",
-                        Path("core") / "dynamo_utils.py",
+                        Path("src/common/aws_lambdas/core") / "settings.py",
+                        Path("src/common/aws_lambdas/core") / "auth_utils.py",
+                        Path("src/common/aws_lambdas/core") / "rest_utils.py",
+                        Path("src/common/aws_lambdas/core") / "dynamo_utils.py",
                     ],
+                    "drop_prefixes": ["src/common/aws_lambdas"],
                 },
             ],
         }

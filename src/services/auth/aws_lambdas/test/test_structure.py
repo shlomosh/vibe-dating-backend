@@ -128,8 +128,8 @@ def test_core_utils_import():
         parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         sys.path.insert(0, parent_dir)
 
-        from core.dynamo_utils import db_create_or_update_user_record
-        from core.rest_utils import ResponseError, generate_response
+        from common.aws_lambdas.core.dynamo_utils import db_create_or_update_user_record
+        from common.aws_lambdas.core.rest_utils import ResponseError, generate_response
 
         print("+ Core utilities imported successfully")
         return True

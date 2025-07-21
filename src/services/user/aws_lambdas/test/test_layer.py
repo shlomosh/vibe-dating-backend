@@ -38,10 +38,10 @@ def test_imports():
 def test_core_modules():
     """Test that core modules can be imported"""
     core_modules = [
-        "core.auth_utils",
-        "core.profile_utils", 
-        "core.rest_utils",
-        "core.settings"
+        "common.aws_lambdas.core.auth_utils",
+        "common.aws_lambdas.core.profile_utils", 
+        "common.aws_lambdas.core.rest_utils",
+        "common.aws_lambdas.core.settings"
     ]
     
     passed = 0

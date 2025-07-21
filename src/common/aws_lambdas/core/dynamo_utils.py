@@ -1,3 +1,9 @@
+"""
+Shared DynamoDB utilities for Vibe Lambda Functions
+
+This module contains common DynamoDB functions used by both auth and user services.
+"""
+
 import datetime
 import os
 from typing import Any, Dict
