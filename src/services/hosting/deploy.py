@@ -33,47 +33,90 @@ class HostingServiceDeployer(ServiceDeployer):
         self.core_cfg = ServiceConfigUtils("core", region=self.region, environment=self.environment).get_stacks_outputs()
         print(f"    Parameters from core: {self.core_cfg}")
 
+    def is_deployed(self) -> bool:
+        """Check if hosting infrastructure is already deployed"""
+        s3_stack_name = f"vibe-dating-hosting-s3-{self.environment}"
+
+        try:
+            # Check if S3 stack exists
+            self.cf.describe_stacks(StackName=s3_stack_name)
+            return True
+        except self.cf.exceptions.ClientError as e:
+            if "does not exist" in str(e):
+                return False
+            raise
+
     def deploy(self):
         """Deploy all hosting infrastructure stacks in the correct order."""
-        # Define stack configurations
-        stacks = {
-            "s3": {
-                "name": f"vibe-dating-hosting-s3-{self.environment}",
-                "template": "01-s3.yaml",
-                "parameters": {
-                    "Environment": self.environment,
-                    "DeploymentUUID": self.deployment_uuid,
-                },
-            },
-            "cloudfront": {
-                "name": f"vibe-dating-hosting-cloudfront-{self.environment}",
-                "template": "02-cloudfront.yaml",
-                "parameters": {
-                    "Environment": self.environment,
-                    "AppDomainName": self.parameters["AppDomainName"],
-                    "AllowedOrigins": self.parameters["AllowedOrigins"],
-                    "FrontendBucketName": f"${{vibe-dating-hosting-s3-{self.environment}.FrontendBucketName}}",
-                },
-                "capabilities": ["CAPABILITY_NAMED_IAM"],
-                "depends_on": ["s3"],
-            },
-            "route53": {
-                "name": f"vibe-dating-hosting-route53-{self.environment}",
-                "template": "03-route53.yaml",
-                "parameters": {
-                    "Environment": self.environment,
-                    "AppDomainName": self.parameters["AppDomainName"],
-                    "CloudFrontDistributionDomainName": f"${{vibe-dating-hosting-cloudfront-{self.environment}.CloudFrontDistributionDomainName}}",
-                },
-                "depends_on": ["cloudfront"],
+        # Deploy S3 stack first (without CloudFront ARN)
+        s3_stack_name = f"vibe-dating-hosting-s3-{self.environment}"
+        s3_stack = {
+            "name": s3_stack_name,
+            "template": "01-s3.yaml",
+            "parameters": {
+                "Environment": self.environment,
+                "DeploymentUUID": self.deployment_uuid,
+                "CloudFrontDistributionArn": "",  # Will be updated after CloudFront deployment
             },
         }
+        self.deploy_stack(
+            stack_name=s3_stack["name"],
+            template_file=s3_stack["template"],
+            parameters=s3_stack["parameters"],
+        )
 
-        # Define deployment order
-        stack_order = ["s3", "cloudfront", "route53"]
+        # Fetch outputs from S3 stack
+        s3_cfg = self._get_stack_outputs(s3_stack_name)
 
-        # Deploy stacks
-        self.deploy_stacks(stacks, stack_order)
+        # Deploy CloudFront stack using outputs from S3 stack
+        cloudfront_stack_name = f"vibe-dating-hosting-cloudfront-{self.environment}"
+        cloudfront_stack = {
+            "name": cloudfront_stack_name,
+            "template": "02-cloudfront.yaml",
+            "parameters": {
+                "Environment": self.environment,
+                "AppDomainName": self.parameters["AppDomainName"],
+                "AllowedOrigins": self.parameters["AllowedOrigins"],
+                "FrontendBucketName": s3_cfg["FrontendBucketName"],
+                "CertificateArn": "arn:aws:acm:us-east-1:555171060142:certificate/faa3b179-b4c8-426c-a9a3-c5f0536bba62",
+            },
+        }
+        self.deploy_stack(
+            stack_name=cloudfront_stack["name"],
+            template_file=cloudfront_stack["template"],
+            parameters=cloudfront_stack["parameters"],
+        )
+
+        # Fetch outputs from CloudFront stack
+        cloudfront_cfg = self._get_stack_outputs(cloudfront_stack_name)
+
+        # Update S3 stack with CloudFront distribution ARN
+        s3_update_parameters = {
+            "Environment": self.environment,
+            "DeploymentUUID": self.deployment_uuid,
+            "CloudFrontDistributionArn": cloudfront_cfg["CloudFrontDistributionArn"],
+        }
+        self.deploy_stack(
+            stack_name=s3_stack_name,
+            template_file="01-s3.yaml",
+            parameters=s3_update_parameters,
+        )
+
+        # Deploy Route53 stack using outputs from CloudFront stack
+        route53_stack = {
+            "name": f"vibe-dating-hosting-route53-{self.environment}",
+            "template": "03-route53.yaml",
+            "parameters": {
+                "Environment": self.environment,
+                "AppDomainName": self.parameters["AppDomainName"],
+                "CloudFrontDistributionDomainName": cloudfront_cfg["CloudFrontDistributionDomainName"],
+            },
+        }
+        self.deploy_stack(
+            stack_name=route53_stack["name"],
+            template_file=route53_stack["template"],
+            parameters=route53_stack["parameters"],
+        )
 
         # Print deployment summary
         self.print_deployment_summary()
@@ -104,7 +147,7 @@ class HostingServiceDeployer(ServiceDeployer):
             print(f"\n🌐 CloudFront Distribution:")
             print(f"   Distribution ID: {cf_outputs.get('CloudFrontDistributionId', 'N/A')}")
             print(f"   Distribution Domain: {cf_outputs.get('CloudFrontDistributionDomainName', 'N/A')}")
-            print(f"   SSL Certificate: {cf_outputs.get('SSLCertificateArn', 'N/A')}")
+            print(f"   Distribution ARN: {cf_outputs.get('CloudFrontDistributionArn', 'N/A')}")
         
         if "route53" in stack_outputs:
             route53_outputs = stack_outputs["route53"]
@@ -160,6 +203,10 @@ def main(action=None):
     ap = argparse.ArgumentParser(
         description="Deploy Vibe Dating App Hosting Service Infrastructure"
     )
+    ap.add_argument("task", default="deploy", help="task to run")
+    ap.add_argument(
+        "service", nargs="?", default="hosting", help="Service to run task for"
+    )
     ap.add_argument(
         "--environment",
         default=None,
@@ -185,10 +232,12 @@ def main(action=None):
         
         if args.validate:
             deployer.validate_templates()
-        elif action == "update":
+        elif action == "update" or (action is None and deployer.is_deployed()):
             deployer.update()
-        else:
+        elif action == "deploy" or (action is None and not deployer.is_deployed()):
             deployer.deploy()
+        else:
+            raise ValueError(f"Invalid action: {action}")
             
     except Exception as e:
         print(f"❌ Deployment failed: {e}")

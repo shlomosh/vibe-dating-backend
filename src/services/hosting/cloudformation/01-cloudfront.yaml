@@ -23,11 +23,6 @@ Parameters:
     Description: Name of the S3 bucket containing frontend assets
     Default: ""
 
-  CertificateArn:
-    Type: String
-    Description: ACM Certificate ARN for the custom domain
-    Default: "arn:aws:acm:us-east-1:555171060142:certificate/1cbb4fee-9528-45c5-949d-e0b658013ce4"
-
 Resources:
   # CloudFront Origin Access Control
   CloudFrontOAC:
@@ -47,8 +42,6 @@ Resources:
         Enabled: true
         Comment: !Sub 'Vibe Dating App Frontend - ${Environment}'
         DefaultRootObject: index.html
-        Aliases:
-          - !Ref AppDomainName
         Origins:
           - Id: S3Origin
             DomainName: !Sub '${FrontendBucketName}.s3.${AWS::Region}.amazonaws.com'
@@ -74,9 +67,7 @@ Resources:
           DefaultTTL: 86400
           MaxTTL: 31536000
         ViewerCertificate:
-          AcmCertificateArn: !Ref CertificateArn
-          SslSupportMethod: sni-only
-          MinimumProtocolVersion: TLSv1.2_2021
+          CloudFrontDefaultCertificate: true
         PriceClass: PriceClass_100
         HttpVersion: http2
         IPV6Enabled: true
@@ -103,4 +94,6 @@ Outputs:
     Description: ARN of the CloudFront distribution
     Value: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
     Export:
-      Name: !Sub '${AWS::StackName}-CloudFrontDistributionArn' 
+      Name: !Sub '${AWS::StackName}-CloudFrontDistributionArn'
+
+ 
