@@ -18,6 +18,12 @@ class CoreServiceDeployer(ServiceDeployer):
         """Initialize the core service deployer."""
         super().__init__("core", region, environment, deployment_uuid)
 
+    def update(self):
+        """Update existing hosting infrastructure"""
+        raise NotImplementedError(
+            "Updating hosting infrastructure is not supported by service."
+        )
+
     def deploy(self):
         """Deploy all core infrastructure stacks in the correct order."""
         # Define stack configurations
@@ -58,6 +64,10 @@ def main(action=None):
     ap = argparse.ArgumentParser(
         description="Deploy Vibe Dating App Core Service Infrastructure"
     )
+    ap.add_argument("task", default="deploy", help="task to run")
+    ap.add_argument(
+        "service", nargs="?", default="core", help="Service to run task for"
+    )
     ap.add_argument(
         "--environment",
         default=None,
@@ -70,6 +80,7 @@ def main(action=None):
     ap.add_argument(
         "--deployment-uuid", help="Custom deployment UUID (overide parameters.yaml)"
     )
+    ap.add_argument("--validate", action="store_true", help="Validate templates only")
     args = ap.parse_args()
 
     # Create deployer
@@ -79,8 +90,16 @@ def main(action=None):
         deployment_uuid=args.deployment_uuid,
     )
 
-    # Deploy core infrastructure
-    deployer.deploy()
+    if args.validate:
+        deployer.validate_templates(
+            templates=["01-s3.yaml", "02-dynamodb.yaml", "03-iam.yaml"]
+        )
+    elif action == "deploy" or (action is None and not deployer.is_deployed()):
+        deployer.deploy()
+    elif action == "update" or (action is None and deployer.is_deployed()):
+        deployer.update()
+    else:
+        raise ValueError(f"Invalid action: {action}")
 
 
 if __name__ == "__main__":

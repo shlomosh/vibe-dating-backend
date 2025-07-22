@@ -4,6 +4,18 @@ Test script to verify the new code structure and imports work correctly
 
 import os
 import sys
+from pathlib import Path
+
+# Add the lambda directories to the path
+project_root = str(Path(__file__).parent.parent.parent.parent.parent.parent)
+service_aws_lambdas_dir = (
+    Path(project_root) / "src" / "services" / "auth" / "aws_lambdas"
+)
+print(f"Adding {service_aws_lambdas_dir} to sys.path")
+sys.path.insert(0, str(service_aws_lambdas_dir))
+common_aws_lambdas_dir = Path(project_root) / "src" / "common" / "aws_lambdas"
+print(f"Adding {common_aws_lambdas_dir} to sys.path")
+sys.path.insert(0, str(common_aws_lambdas_dir))
 
 
 def test_auth_utils_import():
@@ -11,10 +23,6 @@ def test_auth_utils_import():
     print("Testing auth_utils import...")
 
     try:
-        # Add parent directory to path to import core modules
-        parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        sys.path.insert(0, parent_dir)
-
         from core.auth_utils import (
             generate_jwt_token,
             generate_policy,
@@ -24,6 +32,7 @@ def test_auth_utils_import():
 
         print("+ auth_utils imported successfully")
         return True
+
     except ImportError as e:
         print(f"❌ Failed to import auth_utils: {e}")
         return False
@@ -34,16 +43,14 @@ def test_platform_auth_import():
     print("\nTesting platform auth import...")
 
     try:
-        # Add platform_auth directory to path
-        platform_auth_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "platform_auth"
+        sys.path.insert(0, service_aws_lambdas_dir / "platform_auth")
+        from platform_auth.lambda_function import (
+            lambda_handler as platform_lambda_handler,
         )
-        sys.path.insert(0, platform_auth_path)
-
-        from lambda_function import lambda_handler
 
         print("+ Platform auth lambda_function imported successfully")
         return True
+
     except ImportError as e:
         print(f"❌ Failed to import platform auth: {e}")
         return False
@@ -55,15 +62,14 @@ def test_user_jwt_authorizer_import():
 
     try:
         # Add user_jwt_authorizer directory to path
-        user_jwt_authorizer_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "user_jwt_authorizer"
+        sys.path.insert(0, service_aws_lambdas_dir / "user_jwt_authorizer")
+        from user_jwt_authorizer.lambda_function import (
+            lambda_handler as user_jwt_authorizer_lambda_handler,
         )
-        sys.path.insert(0, user_jwt_authorizer_path)
-
-        from lambda_function import lambda_handler
 
         print("+ JWT authorizer lambda_function imported successfully")
         return True
+
     except ImportError as e:
         print(f"❌ Failed to import JWT authorizer: {e}")
         return False
@@ -75,15 +81,12 @@ def test_telegram_module_import():
 
     try:
         # Add platform_auth directory to path
-        platform_auth_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "platform_auth"
-        )
-        sys.path.insert(0, platform_auth_path)
-
-        from telegram import authenticate_user, telegram_verify_data
+        sys.path.insert(0, service_aws_lambdas_dir / "platform_auth")
+        from platform_auth.telegram import authenticate_user, telegram_verify_data
 
         print("+ Telegram module imported successfully")
         return True
+
     except ImportError as e:
         print(f"❌ Failed to import Telegram module: {e}")
         return False
@@ -124,15 +127,12 @@ def test_core_utils_import():
     print("\nTesting core utilities import...")
 
     try:
-        # Add parent directory to path
-        parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        sys.path.insert(0, parent_dir)
-
-        from common.aws_lambdas.core.dynamo_utils import db_create_or_update_user_record
-        from common.aws_lambdas.core.rest_utils import ResponseError, generate_response
+        from core.dynamo_utils import db_create_or_update_user_record
+        from core.rest_utils import ResponseError, generate_response
 
         print("+ Core utilities imported successfully")
         return True
+
     except ImportError as e:
         print(f"❌ Failed to import core utilities: {e}")
         return False

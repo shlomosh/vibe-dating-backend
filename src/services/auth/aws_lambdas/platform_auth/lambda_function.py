@@ -4,15 +4,16 @@ Vibe Platform Authentication Lambda Function
 This function handles platform authentication and user creation.
 """
 
-import os
 import base64
 import json
+import os
 from typing import Any, Dict
 
 from core.auth_utils import generate_jwt_token, hash_string_to_id
 from core.dynamo_utils import db_create_or_update_user_record
 from core.rest_utils import ResponseError, generate_response
 from core.settings import CoreSettings
+
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
@@ -32,19 +33,23 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         request_body = event.get("body")
         if not request_body:
             raise ResponseError(400, {"error": "Missing request body"})
-        
+
         # Handle base64 encoded body
         if event.get("isBase64Encoded", False):
             try:
-                request_body = base64.b64decode(request_body).decode('utf-8')
+                request_body = base64.b64decode(request_body).decode("utf-8")
             except Exception as e:
-                raise ResponseError(400, {"error": f"Failed to decode base64 body: {str(e)}"})
-        
+                raise ResponseError(
+                    400, {"error": f"Failed to decode base64 body: {str(e)}"}
+                )
+
         try:
             body = json.loads(request_body)
         except json.JSONDecodeError as e:
-            raise ResponseError(400, {"error": f"Invalid JSON in request body: {str(e)}"})
-        
+            raise ResponseError(
+                400, {"error": f"Invalid JSON in request body: {str(e)}"}
+            )
+
         platform = body.get("platform")
         platform_token = body.get("platformToken")
         platform_metadata = body.get("platformMetadata", {})
@@ -81,7 +86,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         core_settings = CoreSettings()
 
         # Generate profile IDs
-        vibe_user_profile_ids = [hash_string_to_id(f"{vibe_user_id}:{profile_idx}") for profile_idx in range(0, core_settings.max_profile_count)]
+        vibe_user_profile_ids = [
+            hash_string_to_id(f"{vibe_user_id}:{profile_idx}")
+            for profile_idx in range(0, core_settings.max_profile_count)
+        ]
 
         return generate_response(
             200,

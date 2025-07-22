@@ -266,6 +266,42 @@ class ServiceDeployer(ABC, ServiceConstructor):
         print(f"\nAll {self.service} infrastructure stacks deployed successfully!")
         print(f"   Deployed stacks: {', '.join(deployed_stacks)}")
 
+    def validate_templates(self, templates: List[str]):
+        """Validate CloudFormation templates"""
+        print("🔍 Validating CloudFormation templates...")
+
+        for template in templates:
+            template_path = self.template_dir / template
+            if not template_path.exists():
+                print(f"❌ Template not found: {template_path}")
+                sys.exit(1)
+
+            try:
+                # Validate template using AWS CLI
+                subprocess.run(
+                    [
+                        "aws",
+                        "cloudformation",
+                        "validate-template",
+                        "--template-body",
+                        f"file://{template_path}",
+                    ],
+                    check=True,
+                    capture_output=True,
+                )
+                print(f"✅ Template validated: {template}")
+            except subprocess.CalledProcessError as e:
+                print(f"❌ Template validation failed: {template}")
+                print(f"   Error: {e}")
+                sys.exit(1)
+
+        print("✅ All templates validated successfully")
+
+    @abstractmethod
+    def update(self):
+        """Update the service infrastructure. Must be implemented by subclasses."""
+        pass
+
     @abstractmethod
     def deploy(self):
         """Deploy the service infrastructure. Must be implemented by subclasses."""

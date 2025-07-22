@@ -11,22 +11,19 @@ Parameters:
   AppDomainName:
     Type: String
     Description: Domain name for the application (e.g., tma.vibe-dating.io)
-    Default: tma.vibe-dating.io
   
-  AllowedOrigins:
+  AppAllowedOrigins:
     Type: String
     Description: Comma-separated list of allowed CORS origins
-    Default: "https://web.telegram.org,https://t.me,https://shlomosh.github.io,https://tma.vibe-dating.io"
   
+  AppCertificateArn:
+    Type: String
+    Description: ACM Certificate ARN for the custom domain
+
   FrontendBucketName:
     Type: String
     Description: Name of the S3 bucket containing frontend assets
     Default: ""
-
-  CertificateArn:
-    Type: String
-    Description: ACM Certificate ARN for the custom domain
-    Default: "arn:aws:acm:us-east-1:555171060142:certificate/1cbb4fee-9528-45c5-949d-e0b658013ce4"
 
 Resources:
   # CloudFront Origin Access Control
@@ -74,7 +71,7 @@ Resources:
           DefaultTTL: 86400
           MaxTTL: 31536000
         ViewerCertificate:
-          AcmCertificateArn: !Ref CertificateArn
+          AcmCertificateArn: !Ref AppCertificateArn
           SslSupportMethod: sni-only
           MinimumProtocolVersion: TLSv1.2_2021
         PriceClass: PriceClass_100

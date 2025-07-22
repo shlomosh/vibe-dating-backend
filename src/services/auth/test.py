@@ -3,8 +3,6 @@
 Auth Service Lambda Test Script
 """
 
-from pathlib import Path
-
 from core.test_utils import ServiceTester
 
 

@@ -30,7 +30,9 @@ class AuthServiceDeployer(ServiceDeployer):
         )
 
         # Get core-stack parameters from AWS CloudFormation outputs
-        self.core_cfg = ServiceConfigUtils("core", region=self.region, environment=self.environment).get_stacks_outputs()
+        self.core_cfg = ServiceConfigUtils(
+            "core", region=self.region, environment=self.environment
+        ).get_stacks_outputs()
         print(f"    Parameters from core: {self.core_cfg}")
 
         # Initialize Lambda client for updates
@@ -197,7 +199,9 @@ class AuthServiceDeployer(ServiceDeployer):
             "parameters": {
                 "Environment": self.environment,
                 "LambdaCodeBucketName": self.core_cfg["s3"]["LambdaCodeBucketName"],
-                "LambdaExecutionRoleArn": self.core_cfg["iam"]["LambdaExecutionRoleArn"],
+                "LambdaExecutionRoleArn": self.core_cfg["iam"][
+                    "LambdaExecutionRoleArn"
+                ],
                 "DynamoDBTableName": self.core_cfg["dynamodb"]["DynamoDBTableName"],
             },
         }
@@ -216,8 +220,15 @@ class AuthServiceDeployer(ServiceDeployer):
             "template": "02-apigateway.yaml",
             "parameters": {
                 "Environment": self.environment,
-                "UserJWTAuthorizerFunctionArn": lambda_cfg["UserJWTAuthorizerFunctionArn"],
-                "ApiGatewayAuthorizerRoleArn": self.core_cfg["iam"]["ApiGatewayAuthorizerRoleArn"],
+                "ApiDomainName": self.parameters["ApiDomainName"],
+                "ApiHostedZoneId": self.parameters["ApiHostedZoneId"],
+                "ApiCertificateArn": self.parameters["ApiCertificateArn"],
+                "ApiGatewayAuthorizerRoleArn": self.core_cfg["iam"][
+                    "ApiGatewayAuthorizerRoleArn"
+                ],
+                "UserJWTAuthorizerFunctionArn": lambda_cfg[
+                    "UserJWTAuthorizerFunctionArn"
+                ],
                 "PlatformAuthFunctionArn": lambda_cfg["PlatformAuthFunctionArn"],
             },
         }
@@ -249,6 +260,7 @@ def main(action=None):
     ap.add_argument(
         "--deployment-uuid", help="Custom deployment UUID (override parameters.yaml)"
     )
+    ap.add_argument("--validate", action="store_true", help="Validate templates only")
     args = ap.parse_args()
 
     # Create deployer
@@ -258,7 +270,9 @@ def main(action=None):
         deployment_uuid=args.deployment_uuid,
     )
 
-    if action == "deploy" or (action is None and not deployer.is_deployed()):
+    if args.validate:
+        deployer.validate_templates(templates=["01-lambda.yaml", "02-apigateway.yaml"])
+    elif action == "deploy" or (action is None and not deployer.is_deployed()):
         deployer.deploy()
     elif action == "update" or (action is None and deployer.is_deployed()):
         deployer.update()

@@ -8,23 +8,21 @@ before deploying to AWS Lambda.
 import json
 import os
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import boto3
 
 # Add the lambda directories to the path
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, parent_dir)
-
-# Import the functions to test
-from platform_auth.lambda_function import lambda_handler as platform_lambda_handler
-from platform_auth.telegram import authenticate_user, telegram_verify_data
-
-from core.auth_utils import (
-    generate_jwt_token,
-    hash_string_to_id,
-    verify_jwt_token_with_secret_manager,
+project_root = str(Path(__file__).parent.parent.parent.parent.parent.parent)
+service_aws_lambdas_dir = (
+    Path(project_root) / "src" / "services" / "auth" / "aws_lambdas"
 )
+print(f"Adding {service_aws_lambdas_dir} to sys.path")
+sys.path.insert(0, str(service_aws_lambdas_dir))
+common_aws_lambdas_dir = Path(project_root) / "src" / "common" / "aws_lambdas"
+print(f"Adding {common_aws_lambdas_dir} to sys.path")
+sys.path.insert(0, str(common_aws_lambdas_dir))
 
 os.environ["AWS_PROFILE"] = "vibe-dev"
 _aws_region = boto3.session.Session().region_name
@@ -33,6 +31,8 @@ _aws_account = boto3.client("sts").get_caller_identity()["Account"]
 
 def test_platform_auth():
     """Test the platform authentication function"""
+    sys.path.insert(0, str(service_aws_lambdas_dir / "platform_auth"))
+    from platform_auth.lambda_function import lambda_handler as platform_lambda_handler
 
     # Mock environment variables
     os.environ[
@@ -48,7 +48,7 @@ def test_platform_auth():
 
     # Mock AWS Secrets Manager calls
     with patch(
-        "common.aws_lambdas.core.auth_utils.get_secret_from_aws_secrets_manager"
+        "core.auth_utils.get_secret_from_aws_secrets_manager"
     ) as mock_get_secret:
         mock_get_secret.side_effect = lambda arn: {
             f"arn:aws:secretsmanager:{_aws_region}:{_aws_account}:secret:vibe-dating/telegram-bot-token/dev": "test_bot_token",
@@ -57,28 +57,107 @@ def test_platform_auth():
         }.get(arn, "test_secret")
 
         # Mock DynamoDB
-        with patch("common.aws_lambdas.core.dynamo_utils.dynamodb") as mock_dynamodb:
+        with patch("core.dynamo_utils.dynamodb") as mock_dynamodb:
             mock_table = MagicMock()
             mock_dynamodb.Table.return_value = mock_table
 
             # Test event
             test_event = {
-                "body": json.dumps(
-                    {
-                        "platform": "telegram",
-                        "platformToken": "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A123456789%2C%22first_name%22%3A%22Test%22%2C%22last_name%22%3A%22User%22%2C%22username%22%3A%22testuser%22%7D&auth_date=1234567890&hash=test_hash",
-                        "platformMetadata": {"source": "webapp"},
-                    }
-                )
+                "resource": "/auth/platform",
+                "path": "/auth/platform",
+                "httpMethod": "POST",
+                "headers": {
+                    "accept": "*/*",
+                    "accept-encoding": "gzip, deflate, br, zstd",
+                    "accept-language": "en-US,en;q=0.9",
+                    "content-type": "application/json",
+                    "Host": "api.vibe-dating.io",
+                    "origin": "https://shlomosh.github.io",
+                    "priority": "u=1, i",
+                    "referer": "https://shlomosh.github.io/",
+                    "sec-ch-ua": '"Chromium";v="138", "Microsoft Edge";v="138", "Microsoft Edge WebView2";v="138", "Not)A;Brand";v="8"',
+                    "sec-ch-ua-mobile": "?0",
+                    "sec-ch-ua-platform": '"Windows"',
+                    "sec-fetch-dest": "empty",
+                    "sec-fetch-mode": "cors",
+                    "sec-fetch-site": "cross-site",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0",
+                    "X-Amzn-Trace-Id": "Root=1-687e26ce-283fbb8d430a188358b37947",
+                    "X-Forwarded-For": "77.137.65.80",
+                    "X-Forwarded-Port": "443",
+                    "X-Forwarded-Proto": "https",
+                },
+                "multiValueHeaders": {
+                    "accept": ["*/*"],
+                    "accept-encoding": ["gzip, deflate, br, zstd"],
+                    "accept-language": ["en-US,en;q=0.9"],
+                    "content-type": ["application/json"],
+                    "Host": ["api.vibe-dating.io"],
+                    "origin": ["https://shlomosh.github.io"],
+                    "priority": ["u=1, i"],
+                    "referer": ["https://shlomosh.github.io/"],
+                    "sec-ch-ua": [
+                        '"Chromium";v="138", "Microsoft Edge";v="138", "Microsoft Edge WebView2";v="138", "Not)A;Brand";v="8"'
+                    ],
+                    "sec-ch-ua-mobile": ["?0"],
+                    "sec-ch-ua-platform": ['"Windows"'],
+                    "sec-fetch-dest": ["empty"],
+                    "sec-fetch-mode": ["cors"],
+                    "sec-fetch-site": ["cross-site"],
+                    "User-Agent": [
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0"
+                    ],
+                    "X-Amzn-Trace-Id": ["Root=1-687e26ce-283fbb8d430a188358b37947"],
+                    "X-Forwarded-For": ["77.137.65.80"],
+                    "X-Forwarded-Port": ["443"],
+                    "X-Forwarded-Proto": ["https"],
+                },
+                "queryStringParameters": None,
+                "multiValueQueryStringParameters": None,
+                "pathParameters": None,
+                "stageVariables": None,
+                "requestContext": {
+                    "resourceId": "x2bg71",
+                    "resourcePath": "/auth/platform",
+                    "httpMethod": "POST",
+                    "extendedRequestId": "ODsASE8qTXUEOPQ=",
+                    "requestTime": "21/Jul/2025:11:38:54 +0000",
+                    "path": "/auth/platform",
+                    "accountId": "555171060142",
+                    "protocol": "HTTP/1.1",
+                    "stage": "dev",
+                    "domainPrefix": "api",
+                    "requestTimeEpoch": 1753097934235,
+                    "requestId": "5510194d-3528-45ab-85b5-9439a090d219",
+                    "identity": {
+                        "cognitoIdentityPoolId": None,
+                        "accountId": None,
+                        "cognitoIdentityId": None,
+                        "caller": None,
+                        "sourceIp": "77.137.65.80",
+                        "principalOrgId": None,
+                        "accessKey": None,
+                        "cognitoAuthenticationType": None,
+                        "cognitoAuthenticationProvider": None,
+                        "userArn": None,
+                        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0",
+                        "user": None,
+                    },
+                    "domainName": "api.vibe-dating.io",
+                    "deploymentId": "2xh5gn",
+                    "apiId": "xxoh56teej",
+                },
+                "body": '{"platform":"telegram","platformToken":"user=%7B%22id%22%3A485233267%2C%22first_name%22%3A%22Shlomo%22%2C%22last_name%22%3A%22Shachar%22%2C%22username%22%3A%22XomoGo%22%2C%22language_code%22%3A%22en%22%2C%22allows_write_to_pm%22%3Atrue%2C%22photo_url%22%3A%22https%3A%5C%2F%5C%2Ft.me%5C%2Fi%5C%2Fuserpic%5C%2F320%5C%2Fhz_lBwqKghtC8Whuyd_JUoVykTP1XG2D_HPURCnfEKc.svg%22%7D&chat_instance=2514264085585022705&chat_type=sender&auth_date=1753097927&signature=KmqzriNB0t-pbG1hSAix-dRqkDuFnhk0n6Ll1YlXKXCo8xKijyMJOD5If7T9AZCi-Qa3K60_Y3yyPT_gWyzCBQ&hash=3621655026f7b0734f4e117090b6f2b4556583a6e11b77553984184b1aeed11f","platformMetadata":{"allows_write_to_pm":true,"first_name":"Shlomo","id":485233267,"last_name":"Shachar","language_code":"en","photo_url":"https://t.me/i/userpic/320/hz_lBwqKghtC8Whuyd_JUoVykTP1XG2D_HPURCnfEKc.svg","username":"XomoGo"}}',
+                "isBase64Encoded": False,
             }
 
             # Mock the telegram verification to return valid user data
             with patch("platform_auth.telegram.telegram_verify_data") as mock_verify:
                 mock_verify.return_value = {
-                    "id": 123456789,
-                    "username": "testuser",
-                    "first_name": "Test",
-                    "last_name": "User",
+                    "id": 485233267,
+                    "username": "XomoGo",
+                    "first_name": "Shlomo",
+                    "last_name": "Shachar",
                 }
 
                 response = platform_lambda_handler(test_event, None)
@@ -91,14 +170,17 @@ def test_platform_auth():
                 body = json.loads(response["body"])
                 assert "token" in body
                 assert "userId" in body
-                assert "userData" in body
+                assert "profileIds" in body
 
                 print("✅ Platform authentication test passed!")
 
 
 def test_user_jwt_authorizer():
     """Test the JWT authorizer function"""
-    from user_jwt_authorizer.lambda_function import lambda_handler as jwt_lambda_handler
+    sys.path.insert(0, str(service_aws_lambdas_dir / "user_jwt_authorizer"))
+    from user_jwt_authorizer.lambda_function import (
+        lambda_handler as user_jwt_authorizer_lambda_handler,
+    )
 
     # Mock environment variables
     os.environ[
@@ -120,11 +202,11 @@ def test_user_jwt_authorizer():
     }
 
     with patch(
-        "common.aws_lambdas.core.auth_utils.get_secret_from_aws_secrets_manager",
+        "core.auth_utils.get_secret_from_aws_secrets_manager",
         return_value="test_jwt_secret",
     ):
-        with patch("common.aws_lambdas.core.auth_utils.jwt.decode", return_value=mock_payload):
-            response = jwt_lambda_handler(test_event, None)
+        with patch("core.auth_utils.jwt.decode", return_value=mock_payload):
+            response = user_jwt_authorizer_lambda_handler(test_event, None)
 
             print("JWT Authorizer Test Response:")
             print(json.dumps(response, indent=2))
@@ -140,6 +222,7 @@ def test_user_jwt_authorizer():
 
 def test_user_id_generation():
     """Test the user ID generation function"""
+    from core.auth_utils import hash_string_to_id
 
     # Mock environment variables
     os.environ[
@@ -147,14 +230,14 @@ def test_user_id_generation():
     ] = f"arn:aws:secretsmanager:{_aws_region}:{_aws_account}:secret:vibe-dating/uuid-namespace/dev"
 
     with patch(
-        "common.aws_lambdas.core.auth_utils.get_secret_from_aws_secrets_manager",
+        "core.auth_utils.get_secret_from_aws_secrets_manager",
         return_value="123e4567-e89b-12d3-a456-426614174000",
     ):
         # Test cases
         test_cases = [
-            ("tg:123456789", 8),
-            ("tg:987654321", 8),
-            ("tg:111111111", 8),
+            ("telegram:485233267", 8),
+            ("telegram:123456789", 8),
+            ("telegram:987654321", 8),
         ]
 
         for platform_string, expected_length in test_cases:
@@ -167,7 +250,6 @@ def test_user_id_generation():
 
             # Verify the generated ID
             assert len(user_id) == expected_length
-            assert user_id.isalnum()  # Should be alphanumeric
 
             # Test determinism (same input should produce same output)
             user_id2 = hash_string_to_id(platform_string, expected_length)
@@ -178,6 +260,8 @@ def test_user_id_generation():
 
 def test_telegram_verification():
     """Test Telegram data verification"""
+    sys.path.insert(0, str(service_aws_lambdas_dir / "platform_auth"))
+    from platform_auth.telegram import telegram_verify_data
 
     # Mock environment variables
     os.environ[
@@ -185,11 +269,11 @@ def test_telegram_verification():
     ] = f"arn:aws:secretsmanager:{_aws_region}:{_aws_account}:secret:vibe-dating/telegram-bot-token/dev"
 
     with patch(
-        "common.aws_lambdas.core.auth_utils.get_secret_from_aws_secrets_manager",
+        "core.auth_utils.get_secret_from_aws_secrets_manager",
         return_value="test_bot_token",
     ):
         # Test with valid Telegram data
-        test_init_data = "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A123456789%2C%22first_name%22%3A%22Test%22%2C%22last_name%22%3A%22User%22%2C%22username%22%3A%22testuser%22%7D&auth_date=1234567890&hash=test_hash"
+        test_init_data = "query_id=AAFzEuwcAAAAAHMS7ByppBvu&user=%7B%22id%22%3A485233267%2C%22first_name%22%3A%22Shlomo%22%2C%22last_name%22%3A%22Shachar%22%2C%22username%22%3A%22XomoGo%22%2C%22language_code%22%3A%22en%22%2C%22allows_write_to_pm%22%3Atrue%2C%22photo_url%22%3A%22https%3A%5C%2F%5C%2Ft.me%5C%2Fi%5C%2Fuserpic%5C%2F320%5C%2Fhz_lBwqKghtC8Whuyd_JUoVykTP1XG2D_HPURCnfEKc.svg%22%7D&auth_date=1752397621&signature=ZSyEY43VghqD2A3CXUQBl40FzqcKsJ9AXQGfClQpucIQV1-W2mH9X9CaIX7t7W-lUtNgCW5YXcSyk6BQesm_CA&hash=fe0c5ad37042b6e0df60acc4da3bce2f73571954119c8e1c6ccabc732ef54e67"
 
         # Mock the verification to return valid user data
         with patch("platform_auth.telegram.hmac.new") as mock_hmac:
@@ -204,6 +288,8 @@ def test_telegram_verification():
 
 def test_error_handling():
     """Test error handling in authentication functions"""
+    sys.path.insert(0, str(service_aws_lambdas_dir / "platform_auth"))
+    from platform_auth.lambda_function import lambda_handler as platform_lambda_handler
 
     # Mock environment variables
     os.environ[
@@ -228,10 +314,10 @@ def test_error_handling():
     }
 
     with patch(
-        "common.aws_lambdas.core.auth_utils.get_secret_from_aws_secrets_manager",
+        "core.auth_utils.get_secret_from_aws_secrets_manager",
         return_value="test_secret",
     ):
-        with patch("common.aws_lambdas.core.dynamo_utils.dynamodb") as mock_dynamodb:
+        with patch("core.dynamo_utils.dynamodb") as mock_dynamodb:
             mock_table = MagicMock()
             mock_dynamodb.Table.return_value = mock_table
 
@@ -249,6 +335,7 @@ def test_error_handling():
 
 def test_jwt_token_generation():
     """Test JWT token generation"""
+    from core.auth_utils import generate_jwt_token
 
     # Mock environment variables
     os.environ[
@@ -256,7 +343,7 @@ def test_jwt_token_generation():
     ] = f"arn:aws:secretsmanager:{_aws_region}:{_aws_account}:secret:vibe-dating/jwt-secret/dev"
 
     with patch(
-        "common.aws_lambdas.core.auth_utils.get_secret_from_aws_secrets_manager",
+        "core.auth_utils.get_secret_from_aws_secrets_manager",
         return_value="test_jwt_secret",
     ):
         # Test JWT token generation

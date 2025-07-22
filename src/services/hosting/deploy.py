@@ -5,10 +5,7 @@ Deploys hosting infrastructure stacks (S3, CloudFront, Route53) in the correct o
 """
 
 import argparse
-import subprocess
 import sys
-
-import boto3
 
 from core.config_utils import ServiceConfigUtils
 from core.deploy_utils import ServiceDeployer
@@ -30,7 +27,9 @@ class HostingServiceDeployer(ServiceDeployer):
         )
 
         # Get core-stack parameters from AWS CloudFormation outputs
-        self.core_cfg = ServiceConfigUtils("core", region=self.region, environment=self.environment).get_stacks_outputs()
+        self.core_cfg = ServiceConfigUtils(
+            "core", region=self.region, environment=self.environment
+        ).get_stacks_outputs()
         print(f"    Parameters from core: {self.core_cfg}")
 
     def is_deployed(self) -> bool:
@@ -46,6 +45,12 @@ class HostingServiceDeployer(ServiceDeployer):
                 return False
             raise
 
+    def update(self):
+        """Update existing hosting infrastructure"""
+        raise NotImplementedError(
+            "Updating hosting infrastructure is not supported by service."
+        )
+
     def deploy(self):
         """Deploy all hosting infrastructure stacks in the correct order."""
         # Deploy S3 stack first (without CloudFront ARN)
@@ -56,7 +61,7 @@ class HostingServiceDeployer(ServiceDeployer):
             "parameters": {
                 "Environment": self.environment,
                 "DeploymentUUID": self.deployment_uuid,
-                "CloudFrontDistributionArn": "",  # Will be updated after CloudFront deployment
+                "CloudFrontDistributionArn": "",  # will be updated after CloudFront deployment
             },
         }
         self.deploy_stack(
@@ -76,9 +81,9 @@ class HostingServiceDeployer(ServiceDeployer):
             "parameters": {
                 "Environment": self.environment,
                 "AppDomainName": self.parameters["AppDomainName"],
-                "AllowedOrigins": self.parameters["AllowedOrigins"],
+                "AppAllowedOrigins": self.parameters["AppAllowedOrigins"],
+                "AppCertificateArn": self.parameters["AppCertificateArn"],
                 "FrontendBucketName": s3_cfg["FrontendBucketName"],
-                "CertificateArn": "arn:aws:acm:us-east-1:555171060142:certificate/faa3b179-b4c8-426c-a9a3-c5f0536bba62",
             },
         }
         self.deploy_stack(
@@ -109,7 +114,9 @@ class HostingServiceDeployer(ServiceDeployer):
             "parameters": {
                 "Environment": self.environment,
                 "AppDomainName": self.parameters["AppDomainName"],
-                "CloudFrontDistributionDomainName": cloudfront_cfg["CloudFrontDistributionDomainName"],
+                "CloudFrontDistributionDomainName": cloudfront_cfg[
+                    "CloudFrontDistributionDomainName"
+                ],
             },
         }
         self.deploy_stack(
@@ -117,85 +124,6 @@ class HostingServiceDeployer(ServiceDeployer):
             template_file=route53_stack["template"],
             parameters=route53_stack["parameters"],
         )
-
-        # Print deployment summary
-        self.print_deployment_summary()
-
-    def print_deployment_summary(self):
-        """Print a summary of the deployed infrastructure"""
-        print("\n" + "="*60)
-        print("🎉 HOSTING SERVICE DEPLOYMENT COMPLETED")
-        print("="*60)
-        
-        # Get stack outputs
-        config = ServiceConfigUtils("hosting", region=self.region, environment=self.environment)
-        stack_outputs = config.get_stacks_outputs()
-        
-        print(f"\n📋 Deployment Information:")
-        print(f"   Environment: {self.environment}")
-        print(f"   Region: {self.region}")
-        print(f"   Domain: {self.parameters['AppDomainName']}")
-        
-        if "s3" in stack_outputs:
-            s3_outputs = stack_outputs["s3"]
-            print(f"\n📦 S3 Bucket:")
-            print(f"   Bucket Name: {s3_outputs.get('FrontendBucketName', 'N/A')}")
-            print(f"   Bucket ARN: {s3_outputs.get('FrontendBucketArn', 'N/A')}")
-        
-        if "cloudfront" in stack_outputs:
-            cf_outputs = stack_outputs["cloudfront"]
-            print(f"\n🌐 CloudFront Distribution:")
-            print(f"   Distribution ID: {cf_outputs.get('CloudFrontDistributionId', 'N/A')}")
-            print(f"   Distribution Domain: {cf_outputs.get('CloudFrontDistributionDomainName', 'N/A')}")
-            print(f"   Distribution ARN: {cf_outputs.get('CloudFrontDistributionArn', 'N/A')}")
-        
-        if "route53" in stack_outputs:
-            route53_outputs = stack_outputs["route53"]
-            print(f"\n🔗 DNS Configuration:")
-            print(f"   Frontend Domain: {route53_outputs.get('FrontendDomainName', 'N/A')}")
-            print(f"   A Record: {route53_outputs.get('FrontendARecordName', 'N/A')}")
-        
-        print(f"\n🚀 Next Steps:")
-        print(f"   1. Set VIBE_FRONTEND_PATH environment variable to your frontend repository path")
-        print(f"   2. Run: poetry run service-build hosting")
-        print(f"   3. Your frontend will be available at: https://{self.parameters['AppDomainName']}")
-        
-        print(f"\n📚 Documentation:")
-        print(f"   - Service README: src/services/hosting/README.md")
-        print(f"   - API Documentation: docs/api.md")
-        
-        print("="*60)
-
-    def update(self):
-        """Update existing hosting infrastructure"""
-        print("🔄 Updating Hosting Service infrastructure...")
-        self.deploy()
-
-    def validate_templates(self):
-        """Validate CloudFormation templates"""
-        print("🔍 Validating CloudFormation templates...")
-        
-        required_templates = ["01-s3.yaml", "02-cloudfront.yaml", "03-route53.yaml"]
-        
-        for template in required_templates:
-            template_path = self.template_dir / template
-            if not template_path.exists():
-                print(f"❌ Template not found: {template_path}")
-                sys.exit(1)
-            
-            try:
-                # Validate template using AWS CLI
-                subprocess.run([
-                    "aws", "cloudformation", "validate-template",
-                    "--template-body", f"file://{template_path}"
-                ], check=True, capture_output=True)
-                print(f"✅ Template validated: {template}")
-            except subprocess.CalledProcessError as e:
-                print(f"❌ Template validation failed: {template}")
-                print(f"   Error: {e}")
-                sys.exit(1)
-        
-        print("✅ All templates validated successfully")
 
 
 def main(action=None):
@@ -220,29 +148,26 @@ def main(action=None):
         "--deployment-uuid", help="Custom deployment UUID (override parameters.yaml)"
     )
     ap.add_argument("--validate", action="store_true", help="Validate templates only")
-    
     args = ap.parse_args()
-    
-    try:
-        deployer = HostingServiceDeployer(
-            region=args.region,
-            environment=args.environment,
-            deployment_uuid=args.deployment_uuid
+
+    # Create deployer
+    deployer = HostingServiceDeployer(
+        region=args.region,
+        environment=args.environment,
+        deployment_uuid=args.deployment_uuid,
+    )
+
+    if args.validate:
+        deployer.validate_templates(
+            templates=["01-s3.yaml", "02-cloudfront.yaml", "03-route53.yaml"]
         )
-        
-        if args.validate:
-            deployer.validate_templates()
-        elif action == "update" or (action is None and deployer.is_deployed()):
-            deployer.update()
-        elif action == "deploy" or (action is None and not deployer.is_deployed()):
-            deployer.deploy()
-        else:
-            raise ValueError(f"Invalid action: {action}")
-            
-    except Exception as e:
-        print(f"❌ Deployment failed: {e}")
-        sys.exit(1)
+    elif action == "update" or (action is None and deployer.is_deployed()):
+        deployer.update()
+    elif action == "deploy" or (action is None and not deployer.is_deployed()):
+        deployer.deploy()
+    else:
+        raise ValueError(f"Invalid action: {action}")
 
 
 if __name__ == "__main__":
-    main() 
+    main()

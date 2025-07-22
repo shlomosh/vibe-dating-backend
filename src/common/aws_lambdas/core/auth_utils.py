@@ -216,17 +216,18 @@ def verify_jwt_token_with_secret_manager(token: str) -> Dict[str, Any]:
 def get_allocated_profile_ids(user_id: str) -> list:
     """
     Get allocated profile IDs for a user
-    
+
     Args:
         user_id: The user ID
-        
+
     Returns:
         list: List of allocated profile IDs for the user
     """
     from .settings import CoreSettings
+
     core_settings = CoreSettings()
-    
+
     return [
-        hash_string_to_id(f"{user_id}:{profile_idx}") 
+        hash_string_to_id(f"{user_id}:{profile_idx}")
         for profile_idx in range(0, core_settings.max_profile_count)
     ]

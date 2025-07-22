@@ -10,35 +10,27 @@ Parameters:
 
   ApiDomainName:
     Type: String
-    Default: api.vibe-dating.io
     Description: Domain name for the API Gateway
 
-  AllowedOrigins:
+  ApiHostedZoneId:
     Type: String
-    Default: "https://web.telegram.org,https://t.me,https://shlomosh.github.io,https://tma.vibe-dating.io"
-    Description: Allowed CORS origins
+    Description: Route 53 Hosted Zone ID for the domain
 
-  UserJWTAuthorizerFunctionArn:
+  ApiCertificateArn:
     Type: String
-    Description: JWT Authorizer Lambda Function ARN (imported from lambda stack)
+    Description: ACM Certificate ARN for the custom domain
 
   ApiGatewayAuthorizerRoleArn:
     Type: String
     Description: API Gateway Authorizer Role ARN (imported from iam stack)
 
+  UserJWTAuthorizerFunctionArn:
+    Type: String
+    Description: JWT Authorizer Lambda Function ARN (imported from lambda stack)
+
   PlatformAuthFunctionArn:
     Type: String
     Description: Platform Auth Lambda Function ARN (imported from lambda stack)
-
-  CertificateArn:
-    Type: String
-    Description: ACM Certificate ARN for the custom domain
-    Default: "arn:aws:acm:il-central-1:555171060142:certificate/1cbb4fee-9528-45c5-949d-e0b658013ce4"
-
-  HostedZoneId:
-    Type: String
-    Description: Route 53 Hosted Zone ID for the domain
-    Default: "Z02615543R07F6C5EKHGP"
 
 Resources:
   # API Gateway
@@ -63,7 +55,7 @@ Resources:
     Condition: HasCertificate
     Properties:
       DomainName: !Ref ApiDomainName
-      RegionalCertificateArn: !Ref CertificateArn
+      RegionalCertificateArn: !Ref ApiCertificateArn
       EndpointConfiguration:
         Types:
           - REGIONAL
@@ -92,7 +84,7 @@ Resources:
     Type: AWS::Route53::RecordSet
     Condition: HasCertificate
     Properties:
-      HostedZoneId: !Ref HostedZoneId
+      HostedZoneId: !Ref ApiHostedZoneId
       Name: !Ref ApiDomainName
       Type: A
       AliasTarget:
@@ -228,7 +220,7 @@ Resources:
         gatewayresponse.header.Access-Control-Allow-Credentials: "'true'"
 
 Conditions:
-  HasCertificate: !Not [!Equals [!Ref CertificateArn, ""]]
+  HasCertificate: !Not [!Equals [!Ref ApiCertificateArn, ""]]
 
 Outputs:
   ApiGatewayUrl:

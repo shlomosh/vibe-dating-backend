@@ -30,11 +30,15 @@ class UserServiceDeployer(ServiceDeployer):
         )
 
         # Get core-stack parameters from AWS CloudFormation outputs
-        self.core_cfg = ServiceConfigUtils("core", region=self.region, environment=self.environment).get_stacks_outputs()
+        self.core_cfg = ServiceConfigUtils(
+            "core", region=self.region, environment=self.environment
+        ).get_stacks_outputs()
         print(f"    Parameters from core: {self.core_cfg}")
 
         # Get auth-stack parameters from AWS CloudFormation outputs
-        self.auth_cfg = ServiceConfigUtils("auth", region=self.region, environment=self.environment).get_stacks_outputs()
+        self.auth_cfg = ServiceConfigUtils(
+            "auth", region=self.region, environment=self.environment
+        ).get_stacks_outputs()
         print(f"    Parameters from auth: {self.auth_cfg}")
 
         # Initialize Lambda client for updates
@@ -178,7 +182,9 @@ class UserServiceDeployer(ServiceDeployer):
             "parameters": {
                 "Environment": self.environment,
                 "LambdaCodeBucketName": self.core_cfg["s3"]["LambdaCodeBucketName"],
-                "LambdaExecutionRoleArn": self.core_cfg["iam"]["LambdaExecutionRoleArn"],
+                "LambdaExecutionRoleArn": self.core_cfg["iam"][
+                    "LambdaExecutionRoleArn"
+                ],
                 "DynamoDBTableName": self.core_cfg["dynamodb"]["DynamoDBTableName"],
                 "AuthLayerArn": self.auth_cfg["lambda"]["AuthLayerArn"],
             },
@@ -199,8 +205,12 @@ class UserServiceDeployer(ServiceDeployer):
             "parameters": {
                 "Environment": self.environment,
                 "ApiGatewayId": self.auth_cfg["apigateway"]["ApiGatewayId"],
-                "ApiGatewayRootResourceId": self.auth_cfg["apigateway"]["ApiGatewayRootResourceId"],
-                "ApiGatewayAuthorizerId": self.auth_cfg["apigateway"]["ApiGatewayAuthorizerId"],
+                "ApiGatewayRootResourceId": self.auth_cfg["apigateway"][
+                    "ApiGatewayRootResourceId"
+                ],
+                "ApiGatewayAuthorizerId": self.auth_cfg["apigateway"][
+                    "ApiGatewayAuthorizerId"
+                ],
                 "ProfilesFunctionArn": lambda_cfg["ProfilesFunctionArn"],
             },
         }

@@ -1,6 +1,7 @@
-import yaml
 from pathlib import Path
 from typing import Any, Dict
+
+import yaml
 
 
 class ServiceConstructor:
@@ -24,6 +25,8 @@ class ServiceConstructor:
         from core.config_utils import ServiceConfigUtils
 
         # Get core-stack parameters from AWS CloudFormation outputs
-        config = ServiceConfigUtils("core", region=self.region, environment=self.environment).get_stacks_outputs()
+        config = ServiceConfigUtils(
+            "core", region=self.region, environment=self.environment
+        ).get_stacks_outputs()
 
         return config[f"s3"]["LambdaCodeBucketName"]
