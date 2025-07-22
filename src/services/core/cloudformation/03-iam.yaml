@@ -8,6 +8,10 @@ Parameters:
     AllowedValues: [dev, staging, prod]
     Description: Environment name
 
+  Region:
+    Type: String
+    Description: Region for the application (e.g., il-central-1)
+
   DynamoDBTableArn:
     Type: String
     Description: DynamoDB Table ARN (imported from dynamodb stack)
@@ -78,7 +82,7 @@ Resources:
                 Action:
                   - secretsmanager:GetSecretValue
                 Resource:
-                  - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/*'
+                  - !Sub 'arn:aws:secretsmanager:${Region}:${AWS::AccountId}:secret:vibe-dating/*'
       Tags:
         - Key: Environment
           Value: !Ref Environment
@@ -104,7 +108,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: lambda:InvokeFunction
-                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:vibe-user-jwt-authorizer-${Environment}'
+                Resource: !Sub 'arn:aws:lambda:${Region}:${AWS::AccountId}:function:vibe-user-jwt-authorizer-${Environment}'
       Tags:
         - Key: Environment
           Value: !Ref Environment

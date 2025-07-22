@@ -34,18 +34,23 @@ class CoreServiceDeployer(ServiceDeployer):
                 "parameters": {
                     "Environment": self.environment,
                     "DeploymentUUID": self.deployment_uuid,
+                    "Region": self.parameters["ApiRegion"],
                 },
             },
             "dynamodb": {
                 "name": f"vibe-dating-core-dynamodb-{self.environment}",
                 "template": "02-dynamodb.yaml",
-                "parameters": {"Environment": self.environment},
+                "parameters": {
+                    "Environment": self.environment,
+                    "Region": self.parameters["ApiRegion"],
+                },
             },
             "iam": {
                 "name": f"vibe-dating-core-iam-{self.environment}",
                 "template": "03-iam.yaml",
                 "parameters": {
                     "Environment": self.environment,
+                    "Region": self.parameters["ApiRegion"],
                     "DynamoDBTableArn": f"${{vibe-dating-core-dynamodb-{self.environment}.DynamoDBTableArn}}",
                     "DynamoDBKMSKeyArn": f"${{vibe-dating-core-dynamodb-{self.environment}.DynamoDBKMSKeyArn}}",
                     "LambdaCodeBucketArn": f"${{vibe-dating-core-s3-{self.environment}.LambdaCodeBucketArn}}",

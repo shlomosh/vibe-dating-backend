@@ -8,6 +8,10 @@ Parameters:
     AllowedValues: [dev, staging, prod]
     Description: Environment name
 
+  Region:
+    Type: String
+    Description: Region for the application (e.g., il-central-1)
+
   LambdaCodeBucketName:
     Type: String
     Description: Lambda Code Bucket Name (imported from s3 stack)
@@ -55,9 +59,9 @@ Resources:
         - !Ref AuthLayer
       Environment:
         Variables:
-          TELEGRAM_BOT_TOKEN_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/telegram-bot-token/${Environment}'
-          JWT_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}'
-          UUID_NAMESPACE_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/uuid-namespace/${Environment}'
+          TELEGRAM_BOT_TOKEN_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${Region}:${AWS::AccountId}:secret:vibe-dating/telegram-bot-token/${Environment}'
+          JWT_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${Region}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}'
+          UUID_NAMESPACE_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${Region}:${AWS::AccountId}:secret:vibe-dating/uuid-namespace/${Environment}'
           DYNAMODB_TABLE: !Ref DynamoDBTableName
       Timeout: 30
       MemorySize: 256
@@ -82,7 +86,7 @@ Resources:
         - !Ref AuthLayer
       Environment:
         Variables:
-          JWT_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}'
+          JWT_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${Region}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}'
           DYNAMODB_TABLE: !Ref DynamoDBTableName
       Timeout: 10
       MemorySize: 128

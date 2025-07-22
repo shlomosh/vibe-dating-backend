@@ -41,7 +41,7 @@ class ServiceDeployer(ABC, ServiceConstructor):
             self.parameters = yaml.safe_load(f)
 
         # Override parameters if provided
-        self.region = region or self.parameters["Region"]
+        self.region = region or self.get_region_from_parameters()
         self.environment = environment or self.parameters["Environment"]
         self.deployment_uuid = deployment_uuid or self.parameters["DeploymentUUID"]
 
@@ -50,6 +50,14 @@ class ServiceDeployer(ABC, ServiceConstructor):
         self.s3 = boto3.client("s3", region_name=self.region)
 
         self.stack_outputs = {}
+
+    def get_region_from_parameters(self) -> str:
+        """Get the region for the service from parameters.yaml."""
+        return self.parameters["ApiRegion"]
+
+    def get_environment(self) -> str:
+        """Get the environment for the service."""
+        return self.environment
 
     def check_prerequisites(self, required_templates: List[str]):
         """Check that all prerequisites are met"""
@@ -203,8 +211,8 @@ class ServiceDeployer(ABC, ServiceConstructor):
         """Deploy multiple stacks in the specified order with dependency resolution."""
         print(f"Starting {self.service.title()} Service Infrastructure Deployment")
         print(f"   Environment: {self.environment}")
-        print(f"   Region: {self.region}")
         print(f"   Deployment UUID: {self.deployment_uuid}")
+        print(f"   Region: {self.region}")
 
         # Check prerequisites
         required_templates = [

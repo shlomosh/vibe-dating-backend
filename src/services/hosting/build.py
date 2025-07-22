@@ -24,10 +24,10 @@ class HostingServiceBuilder(ServiceBuilder):
         # Get frontend path from environment variable
         self.frontend_path = os.getenv("VIBE_FRONTEND_PATH")
         if not self.frontend_path:
-            raise ValueError("VIBE_FRONTEND_PATH environment variable is required")
+            self.frontend_path = input("Enter vibe-dating-frontend Directory: ")
 
-        self.frontend_dir = Path(self.frontend_path)
-        if not self.frontend_dir.exists():
+        self.frontend_path = Path(self.frontend_path)
+        if not self.frontend_path.exists():
             raise ValueError(f"Frontend directory not found: {self.frontend_path}")
 
     def check_frontend_prerequisites(self):
@@ -35,18 +35,18 @@ class HostingServiceBuilder(ServiceBuilder):
         print("• Checking frontend build prerequisites...")
 
         # Check if frontend directory exists
-        if not self.frontend_dir.exists():
-            print(f"❌ Frontend directory not found: {self.frontend_dir}")
+        if not self.frontend_path.exists():
+            print(f"❌ Frontend directory not found: {self.frontend_path}")
             sys.exit(1)
 
         # Check if package.json exists
-        package_json = self.frontend_dir / "package.json"
+        package_json = self.frontend_path / "package.json"
         if not package_json.exists():
             print(f"❌ package.json not found in frontend directory: {package_json}")
             sys.exit(1)
 
         # Check if node_modules exists
-        node_modules = self.frontend_dir / "node_modules"
+        node_modules = self.frontend_path / "node_modules"
         if not node_modules.exists():
             print(
                 "⚠️  node_modules not found. Run 'npm install' in frontend directory first."
@@ -62,10 +62,10 @@ class HostingServiceBuilder(ServiceBuilder):
         try:
             # Change to frontend directory
             original_cwd = os.getcwd()
-            os.chdir(self.frontend_dir)
+            os.chdir(self.frontend_path)
 
             # Check if node_modules exists
-            if not (self.frontend_dir / "node_modules").exists():
+            if not (self.frontend_path / "node_modules").exists():
                 print("  Installing npm dependencies...")
                 subprocess.run(["npm", "install"], check=True)
             else:
@@ -89,7 +89,7 @@ class HostingServiceBuilder(ServiceBuilder):
         try:
             # Change to frontend directory
             original_cwd = os.getcwd()
-            os.chdir(self.frontend_dir)
+            os.chdir(self.frontend_path)
 
             # Run Vite build
             print("  Running 'npm run build'...")
@@ -99,7 +99,7 @@ class HostingServiceBuilder(ServiceBuilder):
             os.chdir(original_cwd)
 
             # Check if dist directory was created
-            dist_dir = self.frontend_dir / "dist"
+            dist_dir = self.frontend_path / "dist"
             if not dist_dir.exists():
                 print("❌ Frontend build failed: dist directory not found")
                 sys.exit(1)
@@ -136,7 +136,7 @@ class HostingServiceBuilder(ServiceBuilder):
                 bucket_name = f"vibe-frontend-{self.environment}"
 
             # Upload dist directory to S3
-            dist_dir = self.frontend_dir / "dist"
+            dist_dir = self.frontend_path / "dist"
             s3_path = f"s3://{bucket_name}/"
 
             print(f"  Uploading {dist_dir} to {s3_path}")
@@ -233,7 +233,7 @@ class HostingServiceBuilder(ServiceBuilder):
                 self.invalidate_cloudfront_cache()
 
             print("\n✅ Hosting Service build completed successfully!")
-            print(f"   Frontend built: {self.frontend_dir / 'dist'}")
+            print(f"   Frontend built: {self.frontend_path / 'dist'}")
             if upload_to_s3:
                 print("   Assets uploaded to S3")
                 print("   CloudFront cache invalidation initiated")

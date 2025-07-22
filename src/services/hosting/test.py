@@ -169,8 +169,8 @@ class HostingServiceTester(ServiceTester):
         # Check that required parameters exist
         required_params = [
             "Environment",
-            "Region",
             "DeploymentUUID",
+            "AppRegion",
             "AppDomainName",
             "AllowedOrigins",
         ]

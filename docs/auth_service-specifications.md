@@ -310,7 +310,7 @@ ApiGatewayAuthorizer:
     Name: VibePlatformAuthorizer
     Type: TOKEN
     AuthorizerUri: !Sub 
-      - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+      - arn:aws:apigateway:${ApiRegion}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
       - LambdaArn: !GetAtt AuthorizerFunction.Arn
     AuthorizerCredentials: !GetAtt ApiGatewayAuthorizerRole.Arn
     AuthorizerResultTtlInSeconds: 300

@@ -18,7 +18,7 @@ class ServiceConstructor:
             self.parameters = yaml.safe_load(f)
 
         # Override parameters if provided
-        self.region = self.parameters["Region"]
+        self.region = self.parameters["ApiRegion"]
         self.environment = self.parameters["Environment"]
 
     def get_lambda_code_bucket_name(self):

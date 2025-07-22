@@ -28,7 +28,7 @@ class ServiceConfigUtils(ServiceConstructor):
             self.parameters = yaml.safe_load(f)
 
         # Override parameters if provided
-        self.region = region or self.parameters["Region"]
+        self.region = region or self.parameters["ApiRegion"]
         self.environment = environment or self.parameters["Environment"]
 
         # Setup AWS CloudFormation client
@@ -56,7 +56,7 @@ class ServiceConfigUtils(ServiceConstructor):
                 outputs[output["OutputKey"]] = output["OutputValue"]
             return outputs
         except Exception as e:
-            print(f"Error getting outputs for stack {stack_name}: {e}")
+            print(f"No outputs for stack {stack_name}: {e}")
             return {}
 
     def _discover_service_stacks(self) -> Dict[str, str]:

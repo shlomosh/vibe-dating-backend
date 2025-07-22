@@ -64,8 +64,8 @@ Follow the existing naming patterns:
 The service should read deployment parameters from `src/config/parameters.yaml`:
 
 - `Environment`: Deployment environment (dev/staging/prod)
-- `Region`: AWS region for deployment  
 - `DeploymentUUID`: Unique identifier for deployment tracking
+- `AppRegion`: AWS region for deployment  
 - `AppDomainName`: Domain for the application (tma.vibe-dating.io)
 - `AllowedOrigins`: CORS allowed origins configuration
 

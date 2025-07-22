@@ -8,6 +8,10 @@ Parameters:
     AllowedValues: [dev, staging, prod]
     Description: Environment name
 
+  ApiRegion:
+    Type: String
+    Description: Region for the application (e.g., il-central-1)
+
   ApiGatewayId:
     Type: String
     Description: API Gateway ID (imported from auth stack)
@@ -53,7 +57,7 @@ Resources:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
         Uri: !Sub 
-          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - arn:aws:apigateway:${ApiRegion}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
           - LambdaArn: !Ref ProfilesFunctionArn
 
   # Profile Upsert Method (PUT /profiles/{profileId})
@@ -69,7 +73,7 @@ Resources:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
         Uri: !Sub 
-          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - arn:aws:apigateway:${ApiRegion}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
           - LambdaArn: !Ref ProfilesFunctionArn
 
   # Profile Delete Method (DELETE /profiles/{profileId})
@@ -85,7 +89,7 @@ Resources:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
         Uri: !Sub 
-          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - arn:aws:apigateway:${ApiRegion}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
           - LambdaArn: !Ref ProfilesFunctionArn
 
   # OPTIONS method for CORS on /profiles/{profileId}
@@ -127,7 +131,7 @@ Resources:
       FunctionName: !Ref ProfilesFunctionArn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayId}/*'
+      SourceArn: !Sub 'arn:aws:execute-api:${ApiRegion}:${AWS::AccountId}:${ApiGatewayId}/*'
 
   # API Gateway Deployment (create new deployment for user service endpoints)
   UserServiceApiGatewayDeployment:

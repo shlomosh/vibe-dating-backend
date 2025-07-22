@@ -1,0 +1,199 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Vibe Dating - Website Hosting Resources Infrastructure'
+
+Parameters:
+  WebDomainName:
+    Type: String
+    Description: 'The domain name for the website'
+  
+  Region:
+    Type: String
+    Description: 'The region for the website'
+  
+  WebHostedZoneId:
+    Type: String
+    Description: 'Route 53 Hosted Zone ID for vibe-dating.io (find this in Route 53 console)'
+    
+  DeploymentUUID:
+    Type: String
+    Description: Unique identifier for deployment tracking
+
+Resources:
+  # S3 Bucket for website content
+  WebsiteBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub '${WebDomainName}-${DeploymentUUID}'
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: Name
+          Value: !Sub '${WebDomainName}-website-bucket'
+
+  # S3 Bucket for www redirect
+  WWWBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub 'www-${WebDomainName}-${DeploymentUUID}'
+      WebsiteConfiguration:
+        RedirectAllRequestsTo:
+          HostName: !Ref WebDomainName
+          Protocol: https
+      Tags:
+        - Key: Name
+          Value: !Sub 'www.${WebDomainName}-redirect-bucket'
+
+  # Bucket Policy for public read access
+  WebsiteBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref WebsiteBucket
+      PolicyDocument:
+        Statement:
+          - Sid: PublicReadForGetBucketObjects
+            Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub 'arn:aws:s3:::${WebsiteBucket}/*'
+    DependsOn: WebsiteBucket
+
+  # SSL Certificate for CloudFront (now in us-east-1)
+  SSLCertificate:
+    Type: 'AWS::CertificateManager::Certificate'
+    Properties:
+      DomainName: !Ref WebDomainName
+      SubjectAlternativeNames:
+        - !Sub 'www.${WebDomainName}'
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref WebDomainName
+          HostedZoneId: !Ref WebHostedZoneId
+        - DomainName: !Sub 'www.${WebDomainName}'
+          HostedZoneId: !Ref WebHostedZoneId
+      Tags:
+        - Key: Name
+          Value: !Sub '${WebDomainName}-ssl-cert'
+
+  # CloudFront Distribution
+  CloudFrontDistribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref WebDomainName
+          - !Sub 'www.${WebDomainName}'
+        DefaultCacheBehavior:
+          TargetOriginId: !Sub 'S3-${WebsiteBucket}'
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          DefaultTTL: 86400
+          MaxTTL: 31536000
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2
+        Origins:
+          - DomainName: !Sub '${WebsiteBucket}.s3-website-us-east-1.amazonaws.com'
+            Id: !Sub 'S3-${WebsiteBucket}'
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: http-only
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          AcmCertificateArn: !Ref SSLCertificate
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 404
+            ResponsePagePath: /error.html
+          - ErrorCode: 403
+            ResponseCode: 404
+            ResponsePagePath: /error.html
+      Tags:
+        - Key: Name
+          Value: !Sub '${WebDomainName}-cloudfront'
+
+  # Route 53 A Record for root domain
+  DNSARecord:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      HostedZoneId: !Ref WebHostedZoneId
+      Name: !Ref WebDomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2  # CloudFront hosted zone ID (global)
+
+  # Route 53 A Record for www subdomain
+  DNSWWWRecord:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      HostedZoneId: !Ref WebHostedZoneId
+      Name: !Sub 'www.${WebDomainName}'
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2  # CloudFront hosted zone ID (global)
+
+Outputs:
+  WebsiteURL:
+    Description: 'URL of the website'
+    Value: !Sub 'https://${WebDomainName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-WebsiteURL'
+
+  WWWWebsiteURL:
+    Description: 'URL of the website with www'
+    Value: !Sub 'https://www.${WebDomainName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-WWWWebsiteURL'
+
+  CloudFrontDistributionId:
+    Description: 'CloudFront Distribution ID'
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontDistributionId'
+
+  CloudFrontDomainName:
+    Description: 'CloudFront Distribution Domain Name'
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontDomainName'
+
+  S3BucketName:
+    Description: 'Name of the S3 bucket'
+    Value: !Ref WebsiteBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-S3BucketName'
+
+  S3WebsiteEndpoint:
+    Description: 'S3 Website Endpoint'
+    Value: !Sub '${WebsiteBucket}.s3-website-us-east-1.amazonaws.com'
+    Export:
+      Name: !Sub '${AWS::StackName}-S3WebsiteEndpoint'
+
+  SSLCertificateArn:
+    Description: 'ARN of the SSL Certificate'
+    Value: !Ref SSLCertificate
+    Export:
+      Name: !Sub '${AWS::StackName}-SSLCertificateArn'

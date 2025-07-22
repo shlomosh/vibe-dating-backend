@@ -26,11 +26,9 @@ class HostingServiceDeployer(ServiceDeployer):
             deployment_uuid=deployment_uuid,
         )
 
-        # Get core-stack parameters from AWS CloudFormation outputs
-        self.core_cfg = ServiceConfigUtils(
-            "core", region=self.region, environment=self.environment
-        ).get_stacks_outputs()
-        print(f"    Parameters from core: {self.core_cfg}")
+    def get_region_from_parameters(self) -> str:
+        """Get the region for the service from parameters.yaml."""
+        return self.parameters["AppRegion"]
 
     def is_deployed(self) -> bool:
         """Check if hosting infrastructure is already deployed"""
@@ -53,37 +51,22 @@ class HostingServiceDeployer(ServiceDeployer):
 
     def deploy(self):
         """Deploy all hosting infrastructure stacks in the correct order."""
-        # Deploy S3 stack first (without CloudFront ARN)
-        s3_stack_name = f"vibe-dating-hosting-s3-{self.environment}"
-        s3_stack = {
-            "name": s3_stack_name,
-            "template": "01-s3.yaml",
-            "parameters": {
-                "Environment": self.environment,
-                "DeploymentUUID": self.deployment_uuid,
-                "CloudFrontDistributionArn": "",  # will be updated after CloudFront deployment
-            },
-        }
-        self.deploy_stack(
-            stack_name=s3_stack["name"],
-            template_file=s3_stack["template"],
-            parameters=s3_stack["parameters"],
+        app_s3_bucket_name = (
+            f"vibe-dating-frontend-{self.environment}-{self.deployment_uuid}"
         )
-
-        # Fetch outputs from S3 stack
-        s3_cfg = self._get_stack_outputs(s3_stack_name)
 
         # Deploy CloudFront stack using outputs from S3 stack
         cloudfront_stack_name = f"vibe-dating-hosting-cloudfront-{self.environment}"
         cloudfront_stack = {
             "name": cloudfront_stack_name,
-            "template": "02-cloudfront.yaml",
+            "template": "01-cloudfront.yaml",
             "parameters": {
                 "Environment": self.environment,
+                "Region": self.parameters["AppRegion"],
                 "AppDomainName": self.parameters["AppDomainName"],
                 "AppAllowedOrigins": self.parameters["AppAllowedOrigins"],
                 "AppCertificateArn": self.parameters["AppCertificateArn"],
-                "FrontendBucketName": s3_cfg["FrontendBucketName"],
+                "AppBucketName": app_s3_bucket_name,
             },
         }
         self.deploy_stack(
@@ -95,17 +78,29 @@ class HostingServiceDeployer(ServiceDeployer):
         # Fetch outputs from CloudFront stack
         cloudfront_cfg = self._get_stack_outputs(cloudfront_stack_name)
 
-        # Update S3 stack with CloudFront distribution ARN
-        s3_update_parameters = {
-            "Environment": self.environment,
-            "DeploymentUUID": self.deployment_uuid,
-            "CloudFrontDistributionArn": cloudfront_cfg["CloudFrontDistributionArn"],
+        # Deploy S3 stack first (without CloudFront ARN)
+        s3_stack_name = f"vibe-dating-hosting-s3-{self.environment}"
+        s3_stack = {
+            "name": s3_stack_name,
+            "template": "02-s3.yaml",
+            "parameters": {
+                "Environment": self.environment,
+                "DeploymentUUID": self.deployment_uuid,
+                "Region": self.parameters["AppRegion"],
+                "AppBucketName": app_s3_bucket_name,
+                "CloudFrontDistributionArn": cloudfront_cfg[
+                    "CloudFrontDistributionArn"
+                ],
+            },
         }
         self.deploy_stack(
-            stack_name=s3_stack_name,
-            template_file="01-s3.yaml",
-            parameters=s3_update_parameters,
+            stack_name=s3_stack["name"],
+            template_file=s3_stack["template"],
+            parameters=s3_stack["parameters"],
         )
+
+        # Fetch outputs from S3 stack
+        s3_cfg = self._get_stack_outputs(s3_stack_name)
 
         # Deploy Route53 stack using outputs from CloudFront stack
         route53_stack = {
@@ -124,6 +119,25 @@ class HostingServiceDeployer(ServiceDeployer):
             template_file=route53_stack["template"],
             parameters=route53_stack["parameters"],
         )
+
+        if False:
+            # Deploy Website stack
+            website_stack = {
+                "name": f"vibe-dating-hosting-website-{self.environment}",
+                "template": "04-website.yaml",
+                "parameters": {
+                    "Environment": self.environment,
+                    "DeploymentUUID": self.deployment_uuid,
+                    "Region": self.parameters["WebRegion"],
+                    "WebDomainName": self.parameters["WebDomainName"],
+                    "WebHostedZoneId": self.parameters["WebHostedZoneId"],
+                },
+            }
+            self.deploy_stack(
+                stack_name=website_stack["name"],
+                template_file=website_stack["template"],
+                parameters=website_stack["parameters"],
+            )
 
 
 def main(action=None):
@@ -159,7 +173,7 @@ def main(action=None):
 
     if args.validate:
         deployer.validate_templates(
-            templates=["01-s3.yaml", "02-cloudfront.yaml", "03-route53.yaml"]
+            templates=["01-cloudfront.yaml", "02-s3.yaml", "03-route53.yaml"]
         )
     elif action == "update" or (action is None and deployer.is_deployed()):
         deployer.update()

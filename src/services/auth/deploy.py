@@ -198,6 +198,7 @@ class AuthServiceDeployer(ServiceDeployer):
             "template": "01-lambda.yaml",
             "parameters": {
                 "Environment": self.environment,
+                "Region": self.parameters["ApiRegion"],
                 "LambdaCodeBucketName": self.core_cfg["s3"]["LambdaCodeBucketName"],
                 "LambdaExecutionRoleArn": self.core_cfg["iam"][
                     "LambdaExecutionRoleArn"
@@ -220,6 +221,7 @@ class AuthServiceDeployer(ServiceDeployer):
             "template": "02-apigateway.yaml",
             "parameters": {
                 "Environment": self.environment,
+                "Region": self.parameters["ApiRegion"],
                 "ApiDomainName": self.parameters["ApiDomainName"],
                 "ApiHostedZoneId": self.parameters["ApiHostedZoneId"],
                 "ApiCertificateArn": self.parameters["ApiCertificateArn"],

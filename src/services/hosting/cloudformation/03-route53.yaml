@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Route53 DNS configuration for Vibe Dating App frontend'
+Description: 'Vibe Dating - Frontend-Hosting Route53 Resources Infrastructure'
 
 Parameters:
   Environment:

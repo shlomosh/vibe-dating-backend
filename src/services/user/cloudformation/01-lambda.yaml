@@ -8,6 +8,10 @@ Parameters:
     AllowedValues: [dev, staging, prod]
     Description: Environment name
 
+  ApiRegion:
+    Type: String
+    Description: Region for the application (e.g., il-central-1)
+
   LambdaCodeBucketName:
     Type: String
     Description: Lambda Code Bucket Name (imported from s3 stack)
@@ -55,8 +59,8 @@ Resources:
         - !Ref UserLayer
       Environment:
         Variables:
-          JWT_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}'
-          UUID_NAMESPACE_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vibe-dating/uuid-namespace/${Environment}'
+          JWT_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${ApiRegion}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}'
+          UUID_NAMESPACE_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${ApiRegion}:${AWS::AccountId}:secret:vibe-dating/uuid-namespace/${Environment}'
           DYNAMODB_TABLE: !Ref DynamoDBTableName
       Timeout: 30
       MemorySize: 256

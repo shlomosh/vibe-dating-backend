@@ -108,7 +108,7 @@ export AWS_PROFILE=vibe-dev
 
 #### CloudFormation Stacks
 - **Stack Name**: `vibe-dating-auth-service`
-- **Region**: `il-central-1` (default)
+- **ApiRegion**: `il-central-1` (default)
 - **Capabilities**: `CAPABILITY_NAMED_IAM` for IAM role creation
 - **Tags**: Environment and Service tags for resource management
 

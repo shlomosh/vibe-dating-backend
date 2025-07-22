@@ -8,6 +8,10 @@ Parameters:
     AllowedValues: [dev, staging, prod]
     Description: Environment name
 
+  Region:
+    Type: String
+    Description: Region for the application (e.g., il-central-1)
+
   ApiDomainName:
     Type: String
     Description: Domain name for the API Gateway
@@ -99,7 +103,7 @@ Resources:
       Type: TOKEN
       RestApiId: !Ref ApiGateway
       AuthorizerUri: !Sub 
-        - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+        - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
         - LambdaArn: !Ref UserJWTAuthorizerFunctionArn
       AuthorizerCredentials: !Ref ApiGatewayAuthorizerRoleArn
       AuthorizerResultTtlInSeconds: 300
@@ -112,7 +116,7 @@ Resources:
       FunctionName: !Ref UserJWTAuthorizerFunctionArn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*'
+      SourceArn: !Sub 'arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGateway}/*'
 
   # API Gateway Resources and Methods
   AuthResource:
@@ -140,7 +144,7 @@ Resources:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
         Uri: !Sub 
-          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
           - LambdaArn: !Ref PlatformAuthFunctionArn
       RequestParameters:
         method.request.header.Content-Type: true
@@ -152,7 +156,7 @@ Resources:
       FunctionName: !Ref PlatformAuthFunctionArn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*'
+      SourceArn: !Sub 'arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGateway}/*'
 
   # OPTIONS method for CORS
   PlatformAuthOptionsMethod:
@@ -225,7 +229,7 @@ Conditions:
 Outputs:
   ApiGatewayUrl:
     Description: 'API Gateway URL'
-    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Value: !Sub 'https://${ApiGateway}.execute-api.${Region}.amazonaws.com/${Environment}'
     Export:
       Name: !Sub '${AWS::StackName}-ApiGatewayUrl'
 

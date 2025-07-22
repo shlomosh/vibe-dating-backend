@@ -148,8 +148,8 @@ The service reads configuration from `src/config/parameters.yaml`:
 
 ```yaml
 Environment: "dev"
-Region: "il-central-1"
 DeploymentUUID: "8e64f92e-580e-11f0-80ef-00155d453b17"
+AppRegion: "il-central-1"
 AppDomainName: "tma.vibe-dating.io"
 AllowedOrigins: "https://web.telegram.org,https://t.me,https://shlomosh.github.io,https://tma.vibe-dating.io"
 ```

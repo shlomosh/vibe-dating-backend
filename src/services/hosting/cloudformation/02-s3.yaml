@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'S3 bucket for Vibe Dating App frontend assets'
+Description: 'Vibe Dating - Frontend-Hosting S3 Resources Infrastructure'
 
 Parameters:
   Environment:
@@ -8,9 +8,17 @@ Parameters:
     Default: dev
     AllowedValues: [dev, staging, prod]
   
+  Region:
+    Type: String
+    Description: Region for the application (e.g., us-east-1)
+
   DeploymentUUID:
     Type: String
     Description: Unique identifier for deployment tracking
+
+  AppBucketName:
+    Type: String
+    Description: Name of the S3 bucket containing frontend assets
 
   CloudFrontDistributionArn:
     Type: String
@@ -21,12 +29,12 @@ Resources:
   FrontendBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub 'vibe-frontend-${Environment}-${DeploymentUUID}'
+      BucketName: !Ref AppBucketName
       PublicAccessBlockConfiguration:
-        BlockPublicAcls: false
-        BlockPublicPolicy: false
-        IgnorePublicAcls: false
-        RestrictPublicBuckets: false
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
       VersioningConfiguration:
         Status: Enabled
       BucketEncryption:
@@ -49,7 +57,6 @@ Resources:
   # Bucket Policy for CloudFront Access
   FrontendBucketPolicy:
     Type: AWS::S3::BucketPolicy
-    Condition: HasCloudFrontDistribution
     Properties:
       Bucket: !Ref FrontendBucket
       PolicyDocument:
@@ -60,28 +67,19 @@ Resources:
             Principal:
               Service: cloudfront.amazonaws.com
             Action: s3:GetObject
-            Resource: !Sub '${FrontendBucket}/*'
+            Resource: !Join ['', [!GetAtt FrontendBucket.Arn, '/*']]
             Condition:
               StringEquals:
                 AWS:SourceArn: !Ref CloudFrontDistributionArn
 
-Conditions:
-  HasCloudFrontDistribution: !Not [!Equals [!Ref CloudFrontDistributionArn, ""]]
-
 Outputs:
-  FrontendBucketName:
-    Description: Name of the S3 bucket for frontend assets
-    Value: !Ref FrontendBucket
-    Export:
-      Name: !Sub '${AWS::StackName}-FrontendBucketName'
-
-  FrontendBucketArn:
+  AppBucketArn:
     Description: ARN of the S3 bucket for frontend assets
     Value: !GetAtt FrontendBucket.Arn
     Export:
       Name: !Sub '${AWS::StackName}-FrontendBucketArn'
 
-  FrontendBucketDomainName:
+  AppBucketDomainName:
     Description: Domain name of the S3 bucket
     Value: !GetAtt FrontendBucket.DomainName
     Export:
