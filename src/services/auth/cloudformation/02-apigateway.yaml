@@ -28,11 +28,11 @@ Parameters:
     Type: String
     Description: API Gateway Authorizer Role ARN (imported from iam stack)
 
-  UserJWTAuthorizerFunctionArn:
+  AuthJWTAuthorizerFunctionArn:
     Type: String
     Description: JWT Authorizer Lambda Function ARN (imported from lambda stack)
 
-  PlatformAuthFunctionArn:
+  AuthPlatformFunctionArn:
     Type: String
     Description: Platform Auth Lambda Function ARN (imported from lambda stack)
 
@@ -99,12 +99,12 @@ Resources:
   ApiGatewayAuthorizer:
     Type: AWS::ApiGateway::Authorizer
     Properties:
-      Name: !Sub 'vibe-user-jwt-authorizer-${Environment}'
+      Name: !Sub 'vibe-auth-jwt-authorizer-${Environment}'
       Type: TOKEN
       RestApiId: !Ref ApiGateway
       AuthorizerUri: !Sub 
         - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-        - LambdaArn: !Ref UserJWTAuthorizerFunctionArn
+        - LambdaArn: !Ref AuthJWTAuthorizerFunctionArn
       AuthorizerCredentials: !Ref ApiGatewayAuthorizerRoleArn
       AuthorizerResultTtlInSeconds: 300
       IdentitySource: method.request.header.Authorization
@@ -113,7 +113,7 @@ Resources:
   AuthorizerLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref UserJWTAuthorizerFunctionArn
+      FunctionName: !Ref AuthJWTAuthorizerFunctionArn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGateway}/*'
@@ -126,18 +126,18 @@ Resources:
       ParentId: !GetAtt ApiGateway.RootResourceId
       PathPart: auth
 
-  PlatformAuthResource:
+  AuthPlatformResource:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref ApiGateway
       ParentId: !Ref AuthResource
       PathPart: platform
 
-  PlatformAuthMethod:
+  AuthPlatformMethod:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref ApiGateway
-      ResourceId: !Ref PlatformAuthResource
+      ResourceId: !Ref AuthPlatformResource
       HttpMethod: POST
       AuthorizationType: NONE
       Integration:
@@ -145,25 +145,25 @@ Resources:
         IntegrationHttpMethod: POST
         Uri: !Sub 
           - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - LambdaArn: !Ref PlatformAuthFunctionArn
+          - LambdaArn: !Ref AuthPlatformFunctionArn
       RequestParameters:
         method.request.header.Content-Type: true
 
   # Lambda permission for API Gateway to invoke platform auth function
-  PlatformAuthLambdaPermission:
+  AuthPlatformLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref PlatformAuthFunctionArn
+      FunctionName: !Ref AuthPlatformFunctionArn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGateway}/*'
 
   # OPTIONS method for CORS
-  PlatformAuthOptionsMethod:
+  AuthPlatformOptionsMethod:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref ApiGateway
-      ResourceId: !Ref PlatformAuthResource
+      ResourceId: !Ref AuthPlatformResource
       HttpMethod: OPTIONS
       AuthorizationType: NONE
       Integration:
@@ -194,8 +194,8 @@ Resources:
   ApiGatewayDeployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
-      - PlatformAuthMethod
-      - PlatformAuthOptionsMethod
+      - AuthPlatformMethod
+      - AuthPlatformOptionsMethod
     Properties:
       RestApiId: !Ref ApiGateway
       StageName: !Ref Environment

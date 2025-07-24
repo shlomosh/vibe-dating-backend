@@ -17,7 +17,7 @@ def test_imports():
 
         print("+ PyJWT imported successfully")
     except ImportError as e:
-        print(f"❌ Failed to import PyJWT: {e}")
+        print(f"[FAIL] Failed to import PyJWT: {e}")
         return False
 
     try:
@@ -25,7 +25,7 @@ def test_imports():
 
         print("+ boto3 imported successfully")
     except ImportError as e:
-        print(f"❌ Failed to import boto3: {e}")
+        print(f"[FAIL] Failed to import boto3: {e}")
         return False
 
     try:
@@ -33,7 +33,7 @@ def test_imports():
 
         print("+ requests imported successfully")
     except ImportError as e:
-        print(f"❌ Failed to import requests: {e}")
+        print(f"[FAIL] Failed to import requests: {e}")
         return False
 
     try:
@@ -41,7 +41,7 @@ def test_imports():
 
         print("+ urllib3 imported successfully")
     except ImportError as e:
-        print(f"❌ Failed to import urllib3: {e}")
+        print(f"[FAIL] Failed to import urllib3: {e}")
         return False
 
     try:
@@ -49,7 +49,7 @@ def test_imports():
 
         print("+ python-dateutil imported successfully")
     except ImportError as e:
-        print(f"❌ Failed to import python-dateutil: {e}")
+        print(f"[FAIL] Failed to import python-dateutil: {e}")
         return False
 
     return True
@@ -98,11 +98,11 @@ def test_jwt_functionality():
             print("+ JWT encoding/decoding works correctly")
             return True
         else:
-            print("❌ JWT encoding/decoding failed")
+            print("[FAIL] JWT encoding/decoding failed")
             return False
 
     except Exception as e:
-        print(f"❌ JWT functionality test failed: {e}")
+        print(f"[FAIL] JWT functionality test failed: {e}")
         return False
 
 
@@ -120,7 +120,7 @@ def test_boto3_functionality():
         return True
 
     except Exception as e:
-        print(f"❌ boto3 functionality test failed: {e}")
+        print(f"[FAIL] boto3 functionality test failed: {e}")
         return False
 
 
@@ -139,11 +139,11 @@ def test_dateutil_functionality():
             print("+ python-dateutil date parsing works correctly")
             return True
         else:
-            print("❌ python-dateutil date parsing failed")
+            print("[FAIL] python-dateutil date parsing failed")
             return False
 
     except Exception as e:
-        print(f"❌ python-dateutil functionality test failed: {e}")
+        print(f"[FAIL] python-dateutil functionality test failed: {e}")
         return False
 
 
@@ -166,19 +166,19 @@ def main():
     # Summary
     print("\n" + "=" * 30)
     print("Test Summary:")
-    print(f"  Imports: {'+ PASS' if imports_ok else 'X FAIL'}")
-    print(f"  Python Path: {'+ PASS' if path_ok else 'X FAIL'}")
-    print(f"  JWT Functionality: {'+ PASS' if jwt_ok else 'X FAIL'}")
-    print(f"  Boto3 Functionality: {'+ PASS' if boto3_ok else 'X FAIL'}")
-    print(f"  DateUtil Functionality: {'+ PASS' if dateutil_ok else 'X FAIL'}")
+    print(f"  Imports: {'PASS' if imports_ok else 'FAIL'}")
+    print(f"  Python Path: {'PASS' if path_ok else 'FAIL'}")
+    print(f"  JWT Functionality: {'PASS' if jwt_ok else 'FAIL'}")
+    print(f"  Boto3 Functionality: {'PASS' if boto3_ok else 'FAIL'}")
+    print(f"  DateUtil Functionality: {'PASS' if dateutil_ok else 'FAIL'}")
 
     all_passed = imports_ok and path_ok and jwt_ok and boto3_ok and dateutil_ok
 
     if all_passed:
-        print("\n+ All tests passed! Lambda layer is working correctly.")
+        print("\n[PASS] All tests passed! Lambda layer is working correctly.")
         return 0
     else:
-        print("\n❌ Some tests failed. Please check the Lambda layer setup.")
+        print("\n[FAIL] Some tests failed. Please check the Lambda layer setup.")
         return 1
 
 

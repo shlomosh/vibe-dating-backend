@@ -59,9 +59,9 @@ src/services/auth/
 ├── aws_lambdas/
 │   ├── core/
 │   │   └── auth_utils.py      # Shared auth utilities
-│   ├── platform_auth/
+│   ├── auth_platform/
 │   │   └── lambda_function.py # Platform authentication Lambda
-│   ├── user_jwt_authorizer/
+│   ├── auth_jwt_authorizer/
 │   │   └── lambda_function.py # JWT authorization Lambda
 │   ├── test/                  # Test files
 │   │   ├── test_layer.py      # Lambda layer test

@@ -307,7 +307,7 @@ def lambda_authorizer(event, context):
 ApiGatewayAuthorizer:
   Type: AWS::ApiGateway::Authorizer
   Properties:
-    Name: VibePlatformAuthorizer
+    Name: AuthJwtAuthorizer
     Type: TOKEN
     AuthorizerUri: !Sub 
       - arn:aws:apigateway:${ApiRegion}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations

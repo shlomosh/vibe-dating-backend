@@ -45,7 +45,7 @@ Resources:
       #     Value: auth
 
   # Lambda function for platform authentication
-  PlatformAuthFunction:
+  AuthPlatformFunction:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub 'vibe-platform-auth-${Environment}'
@@ -54,7 +54,7 @@ Resources:
       Role: !Ref LambdaExecutionRoleArn
       Code:
         S3Bucket: !Ref LambdaCodeBucketName
-        S3Key: lambda/platform_auth.zip
+        S3Key: lambda/auth_platform.zip
       Layers:
         - !Ref AuthLayer
       Environment:
@@ -72,16 +72,16 @@ Resources:
           Value: auth
 
   # Lambda function for JWT authorization
-  UserJWTAuthorizerFunction:
+  AuthJWTAuthorizerFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub 'vibe-user-jwt-authorizer-${Environment}'
+      FunctionName: !Sub 'vibe-auth-jwt-authorizer-${Environment}'
       Runtime: python3.11
       Handler: lambda_function.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
       Code:
         S3Bucket: !Ref LambdaCodeBucketName
-        S3Key: lambda/user_jwt_authorizer.zip
+        S3Key: lambda/auth_jwt_authorizer.zip
       Layers:
         - !Ref AuthLayer
       Environment:
@@ -97,30 +97,30 @@ Resources:
           Value: auth
 
   # CloudWatch Log Group for Lambda functions
-  PlatformAuthLogGroup:
+  AuthPlatformLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/vibe-platform-auth-${Environment}'
       RetentionInDays: 14
 
-  UserJWTAuthorizerLogGroup:
+  AuthJWTAuthorizerLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/vibe-user-jwt-authorizer-${Environment}'
+      LogGroupName: !Sub '/aws/lambda/vibe-auth-jwt-authorizer-${Environment}'
       RetentionInDays: 14
 
 Outputs:
-  PlatformAuthFunctionArn:
+  AuthPlatformFunctionArn:
     Description: 'Platform Auth Lambda Function ARN'
-    Value: !GetAtt PlatformAuthFunction.Arn
+    Value: !GetAtt AuthPlatformFunction.Arn
     Export:
-      Name: !Sub '${AWS::StackName}-PlatformAuthFunctionArn'
+      Name: !Sub '${AWS::StackName}-AuthPlatformFunctionArn'
 
-  UserJWTAuthorizerFunctionArn:
+  AuthJWTAuthorizerFunctionArn:
     Description: 'JWT Authorizer Lambda Function ARN'
-    Value: !GetAtt UserJWTAuthorizerFunction.Arn
+    Value: !GetAtt AuthJWTAuthorizerFunction.Arn
     Export:
-      Name: !Sub '${AWS::StackName}-UserJWTAuthorizerFunctionArn'
+      Name: !Sub '${AWS::StackName}-AuthJWTAuthorizerFunctionArn'
 
   AuthLayerArn:
     Description: 'Vibe Base Layer ARN'
@@ -128,14 +128,14 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-AuthLayerArn'
 
-  PlatformAuthFunctionName:
+  AuthPlatformFunctionName:
     Description: 'Platform Auth Lambda Function Name'
-    Value: !Ref PlatformAuthFunction
+    Value: !Ref AuthPlatformFunction
     Export:
-      Name: !Sub '${AWS::StackName}-PlatformAuthFunctionName'
+      Name: !Sub '${AWS::StackName}-AuthPlatformFunctionName'
 
-  UserJWTAuthorizerFunctionName:
+  AuthJWTAuthorizerFunctionName:
     Description: 'JWT Authorizer Lambda Function Name'
-    Value: !Ref UserJWTAuthorizerFunction
+    Value: !Ref AuthJWTAuthorizerFunction
     Export:
-      Name: !Sub '${AWS::StackName}-UserJWTAuthorizerFunctionName' 
+      Name: !Sub '${AWS::StackName}-AuthJWTAuthorizerFunctionName' 

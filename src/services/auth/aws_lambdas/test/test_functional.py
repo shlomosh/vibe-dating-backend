@@ -29,10 +29,10 @@ _aws_region = boto3.session.Session().region_name
 _aws_account = boto3.client("sts").get_caller_identity()["Account"]
 
 
-def test_platform_auth():
+def test_auth_platform():
     """Test the platform authentication function"""
-    sys.path.insert(0, str(service_aws_lambdas_dir / "platform_auth"))
-    from platform_auth.lambda_function import lambda_handler as platform_lambda_handler
+    sys.path.insert(0, str(service_aws_lambdas_dir / "auth_platform"))
+    from auth_platform.lambda_function import lambda_handler as platform_lambda_handler
 
     # Mock environment variables
     os.environ[
@@ -152,7 +152,7 @@ def test_platform_auth():
             }
 
             # Mock the telegram verification to return valid user data
-            with patch("platform_auth.telegram.telegram_verify_data") as mock_verify:
+            with patch("auth_platform.telegram.telegram_verify_data") as mock_verify:
                 mock_verify.return_value = {
                     "id": 485233267,
                     "username": "XomoGo",
@@ -172,14 +172,14 @@ def test_platform_auth():
                 assert "userId" in body
                 assert "profileIds" in body
 
-                print("✅ Platform authentication test passed!")
+                print("[PASS] Platform authentication test passed!")
 
 
-def test_user_jwt_authorizer():
+def test_auth_jwt_authorizer():
     """Test the JWT authorizer function"""
-    sys.path.insert(0, str(service_aws_lambdas_dir / "user_jwt_authorizer"))
-    from user_jwt_authorizer.lambda_function import (
-        lambda_handler as user_jwt_authorizer_lambda_handler,
+    sys.path.insert(0, str(service_aws_lambdas_dir / "auth_jwt_authorizer"))
+    from auth_jwt_authorizer.lambda_function import (
+        lambda_handler as auth_jwt_authorizer_lambda_handler,
     )
 
     # Mock environment variables
@@ -206,7 +206,7 @@ def test_user_jwt_authorizer():
         return_value="test_jwt_secret",
     ):
         with patch("core.auth_utils.jwt.decode", return_value=mock_payload):
-            response = user_jwt_authorizer_lambda_handler(test_event, None)
+            response = auth_jwt_authorizer_lambda_handler(test_event, None)
 
             print("JWT Authorizer Test Response:")
             print(json.dumps(response, indent=2))
@@ -217,7 +217,7 @@ def test_user_jwt_authorizer():
             assert "context" in response
             assert response["principalId"] == "aB3cD4eF"
 
-            print("✅ JWT authorizer test passed!")
+            print("[PASS] JWT authorizer test passed!")
 
 
 def test_user_id_generation():
@@ -255,13 +255,13 @@ def test_user_id_generation():
             user_id2 = hash_string_to_id(platform_string, expected_length)
             assert user_id == user_id2
 
-            print("• User ID generation test passed!")
+            print("[PASS] User ID generation test passed!")
 
 
 def test_telegram_verification():
     """Test Telegram data verification"""
-    sys.path.insert(0, str(service_aws_lambdas_dir / "platform_auth"))
-    from platform_auth.telegram import telegram_verify_data
+    sys.path.insert(0, str(service_aws_lambdas_dir / "auth_platform"))
+    from auth_platform.telegram import telegram_verify_data
 
     # Mock environment variables
     os.environ[
@@ -276,20 +276,20 @@ def test_telegram_verification():
         test_init_data = "query_id=AAFzEuwcAAAAAHMS7ByppBvu&user=%7B%22id%22%3A485233267%2C%22first_name%22%3A%22Shlomo%22%2C%22last_name%22%3A%22Shachar%22%2C%22username%22%3A%22XomoGo%22%2C%22language_code%22%3A%22en%22%2C%22allows_write_to_pm%22%3Atrue%2C%22photo_url%22%3A%22https%3A%5C%2F%5C%2Ft.me%5C%2Fi%5C%2Fuserpic%5C%2F320%5C%2Fhz_lBwqKghtC8Whuyd_JUoVykTP1XG2D_HPURCnfEKc.svg%22%7D&auth_date=1752397621&signature=ZSyEY43VghqD2A3CXUQBl40FzqcKsJ9AXQGfClQpucIQV1-W2mH9X9CaIX7t7W-lUtNgCW5YXcSyk6BQesm_CA&hash=fe0c5ad37042b6e0df60acc4da3bce2f73571954119c8e1c6ccabc732ef54e67"
 
         # Mock the verification to return valid user data
-        with patch("platform_auth.telegram.hmac.new") as mock_hmac:
+        with patch("auth_platform.telegram.hmac.new") as mock_hmac:
             mock_hmac.return_value.hexdigest.return_value = "test_hash"
 
             try:
                 user_data = telegram_verify_data(test_init_data, "test_bot_token")
-                print("✅ Telegram verification test passed!")
+                print("[PASS] Telegram verification test passed!")
             except Exception as e:
-                print(f"❌ Telegram verification test failed: {e}")
+                print(f"[FAIL] Telegram verification test failed: {e}")
 
 
 def test_error_handling():
     """Test error handling in authentication functions"""
-    sys.path.insert(0, str(service_aws_lambdas_dir / "platform_auth"))
-    from platform_auth.lambda_function import lambda_handler as platform_lambda_handler
+    sys.path.insert(0, str(service_aws_lambdas_dir / "auth_platform"))
+    from auth_platform.lambda_function import lambda_handler as platform_lambda_handler
 
     # Mock environment variables
     os.environ[
@@ -330,7 +330,7 @@ def test_error_handling():
             body = json.loads(response["body"])
             assert "error" in body
 
-            print("✅ Error handling test passed!")
+            print("[PASS] Error handling test passed!")
 
 
 def test_jwt_token_generation():
@@ -352,14 +352,14 @@ def test_jwt_token_generation():
         try:
             token = generate_jwt_token(signed_data)
             print(f"Generated JWT token: {token[:50]}...")
-            print("✅ JWT token generation test passed!")
+            print("[PASS] JWT token generation test passed!")
         except Exception as e:
-            print(f"❌ JWT token generation test failed: {e}")
+            print(f"[FAIL] JWT token generation test failed: {e}")
 
 
 def main():
     """Run all tests"""
-    print("• Running Vibe Authentication Service Tests\n")
+    print("[INFO] Running Vibe Authentication Service Tests\n")
 
     try:
         test_user_id_generation()
@@ -371,19 +371,19 @@ def main():
         test_telegram_verification()
         print()
 
-        test_platform_auth()
+        test_auth_platform()
         print()
 
-        test_user_jwt_authorizer()
+        test_auth_jwt_authorizer()
         print()
 
         test_error_handling()
         print()
 
-        print("✅ All tests passed!")
+        print("[PASS] All tests passed!")
 
     except Exception as e:
-        print(f"❌ Test failed: {str(e)}")
+        print(f"[FAIL] Test failed: {str(e)}")
         import traceback
 
         traceback.print_exc()

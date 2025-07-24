@@ -14,7 +14,7 @@ class AuthServiceBuilder(ServiceBuilder):
             "aws_layers": [{"name": "auth_layer", "requirements": "requirements.txt"}],
             "aws_lambdas": [
                 {
-                    "name": "platform_auth",
+                    "name": "auth_platform",
                     "extra_files": [
                         Path("src/common/aws_lambdas/core") / "settings.py",
                         Path("src/common/aws_lambdas/core") / "auth_utils.py",
@@ -24,7 +24,7 @@ class AuthServiceBuilder(ServiceBuilder):
                     "drop_prefixes": ["src/common/aws_lambdas"],
                 },
                 {
-                    "name": "user_jwt_authorizer",
+                    "name": "auth_jwt_authorizer",
                     "extra_files": [
                         Path("src/common/aws_lambdas/core") / "settings.py",
                         Path("src/common/aws_lambdas/core") / "auth_utils.py",

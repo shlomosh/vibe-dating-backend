@@ -140,8 +140,8 @@ class AuthServiceDeployer(ServiceDeployer):
                     print(f"  Skipping Lambda layer update for: {aws_layer_name}")
 
             # Update platform auth function
-            if "PlatformAuthFunctionArn" in stack_outputs:
-                aws_lambda_arn = stack_outputs["PlatformAuthFunctionArn"]
+            if "AuthPlatformFunctionArn" in stack_outputs:
+                aws_lambda_arn = stack_outputs["AuthPlatformFunctionArn"]
                 aws_lambda_name = aws_lambda_arn.split(":")[-1]
 
                 # Ask user if they want to update the function
@@ -152,7 +152,7 @@ class AuthServiceDeployer(ServiceDeployer):
                 if update_question == "y":
                     print(f"  Updating platform auth function: {aws_lambda_name}")
                     self._update_aws_lambda(
-                        aws_lambda_name, s3_bucket, "lambda/platform_auth.zip"
+                        aws_lambda_name, s3_bucket, "lambda/auth_platform.zip"
                     )
                     updated_functions.append(aws_lambda_name)
                 else:
@@ -161,8 +161,8 @@ class AuthServiceDeployer(ServiceDeployer):
                     )
 
             # Update JWT authorizer function
-            if "UserJWTAuthorizerFunctionArn" in stack_outputs:
-                aws_lambda_arn = stack_outputs["UserJWTAuthorizerFunctionArn"]
+            if "AuthJWTAuthorizerFunctionArn" in stack_outputs:
+                aws_lambda_arn = stack_outputs["AuthJWTAuthorizerFunctionArn"]
                 aws_lambda_name = aws_lambda_arn.split(":")[-1]
 
                 # Ask user if they want to update the function
@@ -173,7 +173,7 @@ class AuthServiceDeployer(ServiceDeployer):
                 if update_question == "y":
                     print(f"  Updating JWT authorizer function: {aws_lambda_name}")
                     self._update_aws_lambda(
-                        aws_lambda_name, s3_bucket, "lambda/user_jwt_authorizer.zip"
+                        aws_lambda_name, s3_bucket, "lambda/auth_jwt_authorizer.zip"
                     )
                     updated_functions.append(aws_lambda_name)
                 else:
@@ -228,10 +228,10 @@ class AuthServiceDeployer(ServiceDeployer):
                 "ApiGatewayAuthorizerRoleArn": self.core_cfg["iam"][
                     "ApiGatewayAuthorizerRoleArn"
                 ],
-                "UserJWTAuthorizerFunctionArn": lambda_cfg[
-                    "UserJWTAuthorizerFunctionArn"
+                "AuthJWTAuthorizerFunctionArn": lambda_cfg[
+                    "AuthJWTAuthorizerFunctionArn"
                 ],
-                "PlatformAuthFunctionArn": lambda_cfg["PlatformAuthFunctionArn"],
+                "AuthPlatformFunctionArn": lambda_cfg["AuthPlatformFunctionArn"],
             },
         }
 

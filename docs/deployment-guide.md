@@ -22,8 +22,8 @@ vibe-dating-backend/
 │   └── auth/                    # Authentication Service
 │       ├── aws_lambdas/         # Lambda Functions
 │       │   ├── core/            # Shared utilities
-│       │   ├── platform_auth/   # Telegram authentication
-│       │   ├── user_jwt_authorizer/  # JWT token validation
+│       │   ├── auth_platform/   # Telegram authentication
+│       │   ├── auth_jwt_authorizer/  # JWT token validation
 │       │   └── test/            # Lambda tests
 │       └── cloudformation/      # Infrastructure templates
 ├── scripts/                     # Poetry-based deployment scripts
@@ -112,8 +112,8 @@ poetry run build-lambda
 #### Generated Artifacts
 
 - **`build/lambda/auth_layer.zip`**: Shared Python dependencies layer
-- **`build/lambda/platform_auth.zip`**: Telegram authentication function
-- **`build/lambda/user_jwt_authorizer.zip`**: JWT authorization function
+- **`build/lambda/auth_platform.zip`**: Telegram authentication function
+- **`build/lambda/auth_jwt_authorizer.zip`**: JWT authorization function
 
 #### Build Process Details
 

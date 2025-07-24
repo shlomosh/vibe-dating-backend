@@ -27,17 +27,17 @@ class HostingServiceTester(ServiceTester):
         # Check if Poetry is installed
         try:
             subprocess.run(["poetry", "--version"], check=True, capture_output=True)
-            print("✅ Poetry is installed")
+            print("[PASS] Poetry is installed")
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print("❌ Poetry is not installed. Please install Poetry first.")
+            print("[FAIL] Poetry is not installed. Please install Poetry first.")
             sys.exit(1)
 
         # Check if CloudFormation directory exists
         if not self.lambda_dir.exists():
-            print(f"❌ CloudFormation directory not found: {self.lambda_dir}")
+            print(f"[FAIL] CloudFormation directory not found: {self.lambda_dir}")
             sys.exit(1)
 
-        print("✅ All test prerequisites met")
+        print("[PASS] All test prerequisites met")
 
     def test_structure(self):
         """Test the hosting service structure"""
@@ -50,9 +50,9 @@ class HostingServiceTester(ServiceTester):
 
         for dir_path in required_dirs:
             if not dir_path.exists():
-                print(f"❌ Required directory not found: {dir_path}")
+                print(f"[FAIL] Required directory not found: {dir_path}")
                 sys.exit(1)
-            print(f"✅ Directory exists: {dir_path.name}")
+            print(f"[PASS] Directory exists: {dir_path.name}")
 
         # Check required files
         required_files = [
@@ -66,11 +66,11 @@ class HostingServiceTester(ServiceTester):
 
         for file_path in required_files:
             if not file_path.exists():
-                print(f"❌ Required file not found: {file_path}")
+                print(f"[FAIL] Required file not found: {file_path}")
                 sys.exit(1)
-            print(f"✅ File exists: {file_path.name}")
+            print(f"[PASS] File exists: {file_path.name}")
 
-        print("✅ Structure test passed")
+        print("[PASS] Structure test passed")
 
     def test_cloudformation_templates(self):
         """Test CloudFormation templates"""
@@ -85,7 +85,7 @@ class HostingServiceTester(ServiceTester):
         for template in template_files:
             template_path = self.service_dir / "cloudformation" / template
             if not template_path.exists():
-                print(f"❌ Template not found: {template_path}")
+                print(f"[FAIL] Template not found: {template_path}")
                 sys.exit(1)
 
             try:
@@ -101,13 +101,13 @@ class HostingServiceTester(ServiceTester):
                     check=True,
                     capture_output=True,
                 )
-                print(f"✅ Template validated: {template}")
+                print(f"[PASS] Template validated: {template}")
             except subprocess.CalledProcessError as e:
-                print(f"❌ Template validation failed: {template}")
+                print(f"[FAIL] Template validation failed: {template}")
                 print(f"   Error: {e}")
                 sys.exit(1)
 
-        print("✅ CloudFormation templates test passed")
+        print("[PASS] CloudFormation templates test passed")
 
     def test_build_script(self):
         """Test the build script"""
@@ -115,7 +115,7 @@ class HostingServiceTester(ServiceTester):
 
         build_script = self.service_dir / "build.py"
         if not build_script.exists():
-            print(f"❌ Build script not found: {build_script}")
+            print(f"[FAIL] Build script not found: {build_script}")
             sys.exit(1)
 
         # Test that the script can be imported
@@ -125,12 +125,12 @@ class HostingServiceTester(ServiceTester):
             spec = importlib.util.spec_from_file_location("build", build_script)
             build_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(build_module)
-            print("✅ Build script can be imported")
+            print("[PASS] Build script can be imported")
         except Exception as e:
-            print(f"❌ Build script import failed: {e}")
+            print(f"[FAIL] Build script import failed: {e}")
             sys.exit(1)
 
-        print("✅ Build script test passed")
+        print("[PASS] Build script test passed")
 
     def test_deploy_script(self):
         """Test the deploy script"""
@@ -138,7 +138,7 @@ class HostingServiceTester(ServiceTester):
 
         deploy_script = self.service_dir / "deploy.py"
         if not deploy_script.exists():
-            print(f"❌ Deploy script not found: {deploy_script}")
+            print(f"[FAIL] Deploy script not found: {deploy_script}")
             sys.exit(1)
 
         # Test that the script can be imported
@@ -148,19 +148,19 @@ class HostingServiceTester(ServiceTester):
             spec = importlib.util.spec_from_file_location("deploy", deploy_script)
             deploy_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(deploy_module)
-            print("✅ Deploy script can be imported")
+            print("[PASS] Deploy script can be imported")
         except Exception as e:
-            print(f"❌ Deploy script import failed: {e}")
+            print(f"[FAIL] Deploy script import failed: {e}")
             sys.exit(1)
 
-        print("✅ Deploy script test passed")
+        print("[PASS] Deploy script test passed")
 
     def test_environment_variables(self):
         """Test environment variable configuration"""
         print("• Testing environment variables...")
 
         # Check if VIBE_FRONTEND_PATH is documented (not required for tests)
-        print("✅ Environment variables test passed (VIBE_FRONTEND_PATH documented)")
+        print("[PASS] Environment variables test passed (VIBE_FRONTEND_PATH documented)")
 
     def test_parameters_integration(self):
         """Test parameters.yaml integration"""
@@ -177,11 +177,11 @@ class HostingServiceTester(ServiceTester):
 
         for param in required_params:
             if param not in self.parameters:
-                print(f"❌ Required parameter not found: {param}")
+                print(f"[FAIL] Required parameter not found: {param}")
                 sys.exit(1)
-            print(f"✅ Parameter exists: {param}")
+            print(f"[PASS] Parameter exists: {param}")
 
-        print("✅ Parameters integration test passed")
+        print("[PASS] Parameters integration test passed")
 
     def test_frontend_integration(self):
         """Test frontend integration configuration"""
@@ -192,12 +192,12 @@ class HostingServiceTester(ServiceTester):
         if frontend_path:
             frontend_dir = Path(frontend_path)
             if frontend_dir.exists():
-                print(f"✅ Frontend directory found: {frontend_path}")
+                print(f"[PASS] Frontend directory found: {frontend_path}")
 
                 # Check for package.json
                 package_json = frontend_dir / "package.json"
                 if package_json.exists():
-                    print("✅ package.json found in frontend directory")
+                    print("[PASS] package.json found in frontend directory")
                 else:
                     print("⚠️  package.json not found in frontend directory")
             else:
@@ -205,7 +205,7 @@ class HostingServiceTester(ServiceTester):
         else:
             print("⚠️  VIBE_FRONTEND_PATH not set (optional for tests)")
 
-        print("✅ Frontend integration test passed")
+        print("[PASS] Frontend integration test passed")
 
     def run_tests(self):
         """Run all hosting service tests"""
@@ -230,7 +230,7 @@ class HostingServiceTester(ServiceTester):
             print("=" * 50)
 
         except Exception as e:
-            print(f"\n❌ Hosting Service tests failed: {e}")
+            print(f"\n[FAIL] Hosting Service tests failed: {e}")
             sys.exit(1)
 
 

@@ -34,17 +34,17 @@ def test_auth_utils_import():
         return True
 
     except ImportError as e:
-        print(f"❌ Failed to import auth_utils: {e}")
+        print(f"[FAIL] Failed to import auth_utils: {e}")
         return False
 
 
-def test_platform_auth_import():
+def test_auth_platform_import():
     """Test that platform auth can be imported"""
     print("\nTesting platform auth import...")
 
     try:
-        sys.path.insert(0, service_aws_lambdas_dir / "platform_auth")
-        from platform_auth.lambda_function import (
+        sys.path.insert(0, service_aws_lambdas_dir / "auth_platform")
+        from auth_platform.lambda_function import (
             lambda_handler as platform_lambda_handler,
         )
 
@@ -52,26 +52,26 @@ def test_platform_auth_import():
         return True
 
     except ImportError as e:
-        print(f"❌ Failed to import platform auth: {e}")
+        print(f"[FAIL] Failed to import platform auth: {e}")
         return False
 
 
-def test_user_jwt_authorizer_import():
+def test_auth_jwt_authorizer_import():
     """Test that JWT authorizer can be imported"""
     print("\nTesting JWT authorizer import...")
 
     try:
-        # Add user_jwt_authorizer directory to path
-        sys.path.insert(0, service_aws_lambdas_dir / "user_jwt_authorizer")
-        from user_jwt_authorizer.lambda_function import (
-            lambda_handler as user_jwt_authorizer_lambda_handler,
+        # Add auth_jwt_authorizer directory to path
+        sys.path.insert(0, service_aws_lambdas_dir / "auth_jwt_authorizer")
+        from auth_jwt_authorizer.lambda_function import (
+            lambda_handler as auth_jwt_authorizer_lambda_handler,
         )
 
         print("+ JWT authorizer lambda_function imported successfully")
         return True
 
     except ImportError as e:
-        print(f"❌ Failed to import JWT authorizer: {e}")
+        print(f"[FAIL] Failed to import JWT authorizer: {e}")
         return False
 
 
@@ -80,15 +80,15 @@ def test_telegram_module_import():
     print("\nTesting Telegram module import...")
 
     try:
-        # Add platform_auth directory to path
-        sys.path.insert(0, service_aws_lambdas_dir / "platform_auth")
-        from platform_auth.telegram import authenticate_user, telegram_verify_data
+        # Add auth_platform directory to path
+        sys.path.insert(0, service_aws_lambdas_dir / "auth_platform")
+        from auth_platform.telegram import authenticate_user, telegram_verify_data
 
         print("+ Telegram module imported successfully")
         return True
 
     except ImportError as e:
-        print(f"❌ Failed to import Telegram module: {e}")
+        print(f"[FAIL] Failed to import Telegram module: {e}")
         return False
 
 
@@ -114,11 +114,11 @@ def test_auth_functions():
             print("+ generate_policy function works correctly")
             return True
         else:
-            print("❌ generate_policy function failed")
+            print("[FAIL] generate_policy function failed")
             return False
 
     except Exception as e:
-        print(f"❌ Auth functions test failed: {e}")
+        print(f"[FAIL] Auth functions test failed: {e}")
         return False
 
 
@@ -134,7 +134,7 @@ def test_core_utils_import():
         return True
 
     except ImportError as e:
-        print(f"❌ Failed to import core utilities: {e}")
+        print(f"[FAIL] Failed to import core utilities: {e}")
         return False
 
 
@@ -145,8 +145,8 @@ def main():
 
     # Test imports
     auth_ok = test_auth_utils_import()
-    platform_ok = test_platform_auth_import()
-    jwt_ok = test_user_jwt_authorizer_import()
+    platform_ok = test_auth_platform_import()
+    jwt_ok = test_auth_jwt_authorizer_import()
     telegram_ok = test_telegram_module_import()
     core_ok = test_core_utils_import()
 
@@ -156,22 +156,22 @@ def main():
     # Summary
     print("\n" + "=" * 30)
     print("Test Summary:")
-    print(f"  Auth Utils Import: {'+ PASS' if auth_ok else 'X FAIL'}")
-    print(f"  Platform Auth Import: {'+ PASS' if platform_ok else 'X FAIL'}")
-    print(f"  JWT Authorizer Import: {'+ PASS' if jwt_ok else 'X FAIL'}")
-    print(f"  Telegram Module Import: {'+ PASS' if telegram_ok else 'X FAIL'}")
-    print(f"  Core Utils Import: {'+ PASS' if core_ok else 'X FAIL'}")
-    print(f"  Auth Functions: {'+ PASS' if functions_ok else 'X FAIL'}")
+    print(f"  Auth Utils Import: {'PASS' if auth_ok else 'FAIL'}")
+    print(f"  Platform Auth Import: {'PASS' if platform_ok else 'FAIL'}")
+    print(f"  JWT Authorizer Import: {'PASS' if jwt_ok else 'FAIL'}")
+    print(f"  Telegram Module Import: {'PASS' if telegram_ok else 'FAIL'}")
+    print(f"  Core Utils Import: {'PASS' if core_ok else 'FAIL'}")
+    print(f"  Auth Functions: {'PASS' if functions_ok else 'FAIL'}")
 
     all_passed = (
         auth_ok and platform_ok and jwt_ok and telegram_ok and core_ok and functions_ok
     )
 
     if all_passed:
-        print("\n+ All tests passed! Code structure is working correctly.")
+        print("\n[PASS] All tests passed! Code structure is working correctly.")
         return 0
     else:
-        print("\n❌ Some tests failed. Please check the code structure.")
+        print("\n[FAIL] Some tests failed. Please check the code structure.")
         return 1
 
 

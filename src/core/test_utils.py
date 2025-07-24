@@ -37,22 +37,22 @@ class ServiceTester(ServiceConstructor):
         # Check if Poetry is installed
         try:
             subprocess.run(["poetry", "--version"], check=True, capture_output=True)
-            print("✅ Poetry is installed")
+            print("[PASS] Poetry is installed")
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print("❌ Poetry is not installed. Please install Poetry first.")
+            print("[FAIL] Poetry is not installed. Please install Poetry first.")
             sys.exit(1)
 
         # Check if Lambda directory exists
         if not self.lambda_dir.exists():
-            print(f"❌ Lambda directory not found: {self.lambda_dir}")
+            print(f"[FAIL] Lambda directory not found: {self.lambda_dir}")
             sys.exit(1)
 
         # Check if test directory exists
         if not self.test_dir.exists():
-            print(f"❌ Test directory not found: {self.test_dir}")
+            print(f"[FAIL] Test directory not found: {self.test_dir}")
             sys.exit(1)
 
-        print("✅ All test prerequisites met")
+        print("[PASS] All test prerequisites met")
 
     def install_test_dependencies(self):
         """Install test dependencies using Poetry"""
@@ -65,9 +65,9 @@ class ServiceTester(ServiceConstructor):
                 check=True,
                 cwd=self.project_dir,
             )
-            print("✅ Test dependencies installed")
+            print("[PASS] Test dependencies installed")
         except subprocess.CalledProcessError as e:
-            print(f"❌ Failed to install test dependencies: {e}")
+            print(f"[FAIL] Failed to install test dependencies: {e}")
             sys.exit(1)
 
     def run_lambda_layer_test(self):
@@ -88,11 +88,11 @@ class ServiceTester(ServiceConstructor):
             )
 
             print(result.stdout)
-            print("✅ Lambda layer test passed")
+            print("[PASS] Lambda layer test passed")
             return True
 
         except subprocess.CalledProcessError as e:
-            print(f"❌ Lambda layer test failed:")
+            print(f"[FAIL] Lambda layer test failed:")
             print(e.stdout)
             print(e.stderr)
             return False
@@ -115,11 +115,11 @@ class ServiceTester(ServiceConstructor):
             )
 
             print(result.stdout)
-            print("✅ Code structure test passed")
+            print("[PASS] Code structure test passed")
             return True
 
         except subprocess.CalledProcessError as e:
-            print(f"❌ Code structure test failed:")
+            print(f"[FAIL] Code structure test failed:")
             print(e.stdout)
             print(e.stderr)
             return False
@@ -142,11 +142,11 @@ class ServiceTester(ServiceConstructor):
             )
 
             print(result.stdout)
-            print("✅ Functional test passed")
+            print("[PASS] Functional test passed")
             return True
 
         except subprocess.CalledProcessError as e:
-            print(f"❌ Functional test failed:")
+            print(f"[FAIL] Functional test failed:")
             print(e.stdout)
             print(e.stderr)
             return False
@@ -164,7 +164,7 @@ class ServiceTester(ServiceConstructor):
                 cwd=self.project_dir,
                 capture_output=True,
             )
-            print("  ✅ Black passed")
+            print("  [PASS] Black passed")
 
             # Run isort
             print("  Running isort...")
@@ -174,13 +174,13 @@ class ServiceTester(ServiceConstructor):
                 cwd=self.project_dir,
                 capture_output=True,
             )
-            print("  ✅ isort passed")
+            print("  [PASS] isort passed")
 
-            print("✅ All linting checks passed")
+            print("[PASS] All linting checks passed")
             return True
 
         except subprocess.CalledProcessError as e:
-            print(f"❌ Linting failed: {e}")
+            print(f"[FAIL] Linting failed: {e}")
             return False
 
     def test(self):
@@ -205,7 +205,7 @@ class ServiceTester(ServiceConstructor):
                     result = test_func()
                     results.append((test_name, result))
                 except Exception as e:
-                    print(f"❌ {test_name} test failed with exception: {e}")
+                    print(f"[FAIL] {test_name} test failed with exception: {e}")
                     results.append((test_name, False))
 
             # Show summary
@@ -214,7 +214,7 @@ class ServiceTester(ServiceConstructor):
             total = len(results)
 
             for test_name, result in results:
-                status = "✅ PASS" if result else "❌ FAIL"
+                status = "PASS" if result else "FAIL"
                 print(f"  {test_name}: {status}")
                 if result:
                     passed += 1
@@ -222,12 +222,12 @@ class ServiceTester(ServiceConstructor):
             print(f"\nResults: {passed}/{total} tests passed")
 
             if passed == total:
-                print("✅ All tests passed!")
+                print("[PASS] All tests passed!")
                 return True
             else:
-                print("❌ Some tests failed")
+                print("[FAIL] Some tests failed")
                 return False
 
         except Exception as e:
-            print(f"❌ Testing failed: {e}")
+            print(f"[FAIL] Testing failed: {e}")
             return False

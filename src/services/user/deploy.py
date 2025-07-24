@@ -156,13 +156,17 @@ class UserServiceDeployer(ServiceDeployer):
                 ).lower()
 
                 if update_question == "y":
-                    print(f"  Updating user profile management function: {aws_lambda_name}")
+                    print(
+                        f"  Updating user profile management function: {aws_lambda_name}"
+                    )
                     self._update_aws_lambda(
                         aws_lambda_name, s3_bucket, "lambda/user_profile_mgmt.zip"
                     )
                     updated_functions.append(aws_lambda_name)
                 else:
-                    print(f"  Skipping user profile management function update for: {aws_lambda_name}")
+                    print(
+                        f"  Skipping user profile management function update for: {aws_lambda_name}"
+                    )
 
             print(f"✅ Successfully updated {len(updated_functions)} Lambda resources:")
             for func in updated_functions:
