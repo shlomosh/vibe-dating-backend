@@ -1,4 +1,4 @@
-# User Authentication & API Security Specification
+# Authentication Service
 
 ## Overview
 

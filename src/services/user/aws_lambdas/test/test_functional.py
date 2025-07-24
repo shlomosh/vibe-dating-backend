@@ -135,10 +135,10 @@ def test_profile_utils():
 
 
 def test_lambda_handlers():
-    """Test that the profiles Lambda handler can be imported and has correct structure"""
+    """Test that the profile management Lambda handler can be imported and has correct structure"""
     print("\nTesting Lambda handlers...")
 
-    lambda_modules = ["profiles.lambda_function"]
+    lambda_modules = ["user_profile_mgmt.lambda_function"]
 
     passed = 0
     failed = 0

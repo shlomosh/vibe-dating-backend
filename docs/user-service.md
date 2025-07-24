@@ -1,4 +1,4 @@
-# Telegram User ID to Vibe User ID Hashing
+# User Service - ID Hashing & Management
 
 This document explains how Telegram user IDs are converted into Vibe user IDs using a deterministic hashing process.
 

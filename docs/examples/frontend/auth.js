@@ -165,29 +165,18 @@ class VibeApiClient {
     }
 
     /**
-     * Get user profiles
+     * Get a specific profile by ID
      */
-    async getProfiles() {
-        const response = await this.auth.apiRequest('/profiles');
+    async getProfile(profileId) {
+        const response = await this.auth.apiRequest(`/profile/${profileId}`);
         return response.json();
     }
 
     /**
-     * Create a new profile
+     * Create or update a profile
      */
-    async createProfile(profileData) {
-        const response = await this.auth.apiRequest('/profiles', {
-            method: 'POST',
-            body: JSON.stringify(profileData)
-        });
-        return response.json();
-    }
-
-    /**
-     * Update profile
-     */
-    async updateProfile(profileId, profileData) {
-        const response = await this.auth.apiRequest(`/profiles/${profileId}`, {
+    async upsertProfile(profileId, profileData) {
+        const response = await this.auth.apiRequest(`/profile/${profileId}`, {
             method: 'PUT',
             body: JSON.stringify(profileData)
         });
@@ -198,7 +187,7 @@ class VibeApiClient {
      * Delete profile
      */
     async deleteProfile(profileId) {
-        const response = await this.auth.apiRequest(`/profiles/${profileId}`, {
+        const response = await this.auth.apiRequest(`/profile/${profileId}`, {
             method: 'DELETE'
         });
         return response.json();
@@ -211,7 +200,7 @@ class VibeApiClient {
         const formData = new FormData();
         formData.append('media', mediaFile);
 
-        const response = await this.auth.apiRequest(`/profiles/${profileId}/media`, {
+        const response = await this.auth.apiRequest(`/profile/${profileId}/media`, {
             method: 'POST',
             headers: {
                 // Remove Content-Type to let browser set it with boundary
@@ -225,7 +214,7 @@ class VibeApiClient {
      * Update profile location
      */
     async updateLocation(profileId, location) {
-        const response = await this.auth.apiRequest(`/profiles/${profileId}/location`, {
+        const response = await this.auth.apiRequest(`/profile/${profileId}/location`, {
             method: 'PUT',
             body: JSON.stringify(location)
         });
@@ -262,19 +251,20 @@ async function initializeVibeApp() {
         // Create API client
         const apiClient = new VibeApiClient(authService);
 
-        // Example: Get user profiles
-        const profiles = await apiClient.getProfiles();
-        console.log('User profiles:', profiles);
+        // Example: Get a specific profile
+        const profileId = 'example_profile_id';
+        const profile = await apiClient.getProfile(profileId);
+        console.log('Profile:', profile);
 
-        // Example: Create a new profile
-        const newProfile = await apiClient.createProfile({
+        // Example: Create or update a profile
+        const newProfile = await apiClient.upsertProfile(profileId, {
             name: 'My Dating Profile',
             age: 25,
             bio: 'Looking for meaningful connections',
             interests: ['music', 'travel', 'sports'],
             lookingFor: ['friendship', 'relationship']
         });
-        console.log('Created profile:', newProfile);
+        console.log('Created/Updated profile:', newProfile);
 
         // Example: Update location
         const location = {
@@ -282,7 +272,7 @@ async function initializeVibeApp() {
             longitude: -74.0060,
             precision: 5
         };
-        await apiClient.updateLocation(newProfile.id, location);
+        await apiClient.updateLocation(profileId, location);
 
         // Example: Discover nearby profiles
         const nearbyProfiles = await apiClient.discoverProfiles(location, 5);

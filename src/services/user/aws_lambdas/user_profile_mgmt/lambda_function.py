@@ -1,5 +1,5 @@
 """
-Profiles Lambda Function
+Profile Management Lambda Function
 
 Handles all profile-related operations for authenticated users.
 Supports GET, PUT, and DELETE operations for profile management.
@@ -62,7 +62,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 def handle_get_profile(user_id: str, profile_id: str) -> Dict[str, Any]:
     """
-    Handle GET /profiles/{profileId}
+    Handle GET /profile-mgmt/{profileId}
 
     Args:
         user_id: The user ID
@@ -87,7 +87,7 @@ def handle_upsert_profile(
     event: Dict[str, Any], user_id: str, profile_id: str
 ) -> Dict[str, Any]:
     """
-    Handle PUT /profiles/{profileId} - Create or update profile
+    Handle PUT /profile-mgmt/{profileId} - Create or update profile
 
     Args:
         event: Lambda event object
@@ -139,7 +139,7 @@ def handle_upsert_profile(
 
 def handle_delete_profile(user_id: str, profile_id: str) -> Dict[str, Any]:
     """
-    Handle DELETE /profiles/{profileId}
+    Handle DELETE /profile-mgmt/{profileId}
 
     Args:
         user_id: The user ID

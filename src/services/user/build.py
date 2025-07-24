@@ -14,7 +14,7 @@ class UserServiceBuilder(ServiceBuilder):
             "aws_layers": [{"name": "user_layer", "requirements": "requirements.txt"}],
             "aws_lambdas": [
                 {
-                    "name": "profiles",
+                    "name": "user_profile_mgmt",
                     "extra_files": [
                         Path("src/common/aws_lambdas/core") / "settings.py",
                         Path("src/common/aws_lambdas/core") / "auth_utils.py",

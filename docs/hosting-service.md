@@ -1,4 +1,4 @@
-# Hosting Service Development Task
+# Hosting Service
 
 ## Overview
 

@@ -1,4 +1,4 @@
-# Vibe Backend API Documentation
+# API Reference - Vibe Dating Backend
 
 ## Overview
 
@@ -144,8 +144,8 @@ Authorization: Bearer <jwt_token>
 
 ### Profile Management
 
-#### GET /profiles
-Get all profiles for current user.
+#### GET /profile/{profileId}
+Get a specific profile by ID.
 
 **Headers:**
 ```
@@ -154,46 +154,44 @@ Authorization: Bearer <jwt_token>
 
 **Response:**
 ```json
-[
-  {
-    "profile_id": "profile_id",
-    "user_id": "user_id",
-    "name": "Profile Name",
-    "age": 25,
-    "bio": "Profile description",
-    "interests": ["music", "travel"],
-    "looking_for": ["friendship", "relationship"],
-    "location": {
-      "latitude": 40.7128,
-      "longitude": -74.0060,
-      "geohash": "dr5ru",
-      "precision": 5,
-      "last_updated": "2024-01-01T12:00:00Z"
-    },
-    "media": [
-      {
-        "media_id": "media_id",
-        "type": "image",
-        "url": "https://media.vibe-dating.io/original/media_id.jpg",
-        "thumbnail_url": "https://media.vibe-dating.io/thumb/media_id.jpg",
-        "order": 1,
-        "metadata": {
-          "width": 1920,
-          "height": 1080,
-          "size": 2048576,
-          "format": "jpeg"
-        }
+{
+  "profileId": "profile_id",
+  "userId": "user_id",
+  "name": "Profile Name",
+  "age": 25,
+  "bio": "Profile description",
+  "interests": ["music", "travel"],
+  "looking_for": ["friendship", "relationship"],
+  "location": {
+    "latitude": 40.7128,
+    "longitude": -74.0060,
+    "geohash": "dr5ru",
+    "precision": 5,
+    "last_updated": "2024-01-01T12:00:00Z"
+  },
+  "media": [
+    {
+      "media_id": "media_id",
+      "type": "image",
+      "url": "https://media.vibe-dating.io/original/media_id.jpg",
+      "thumbnail_url": "https://media.vibe-dating.io/thumb/media_id.jpg",
+      "order": 1,
+      "metadata": {
+        "width": 1920,
+        "height": 1080,
+        "size": 2048576,
+        "format": "jpeg"
       }
-    ],
-    "is_active": true,
-    "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-01T12:00:00Z"
-  }
-]
+    }
+  ],
+  "is_active": true,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T12:00:00Z"
+}
 ```
 
-#### POST /profiles
-Create a new profile.
+#### PUT /profile/{profileId}
+Create or update a profile.
 
 **Headers:**
 ```
@@ -211,39 +209,34 @@ Authorization: Bearer <jwt_token>
 }
 ```
 
-#### GET /profiles/{profile_id}
-Get specific profile details.
-
-**Headers:**
-```
-Authorization: Bearer <jwt_token>
-```
-
-#### PUT /profiles/{profile_id}
-Update profile information.
-
-**Headers:**
-```
-Authorization: Bearer <jwt_token>
-```
-
-**Request Body:**
+**Response:**
 ```json
 {
-  "name": "Updated Name",
-  "age": 26,
-  "bio": "Updated description",
-  "interests": ["music", "travel", "sports"],
-  "looking_for": ["relationship"]
+  "profileId": "profile_id",
+  "userId": "user_id",
+  "name": "Profile Name",
+  "age": 25,
+  "bio": "Profile description",
+  "interests": ["music", "travel"],
+  "looking_for": ["friendship", "relationship"],
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T12:00:00Z"
 }
 ```
 
-#### DELETE /profiles/{profile_id}
+#### DELETE /profile/{profileId}
 Delete a profile.
 
 **Headers:**
 ```
 Authorization: Bearer <jwt_token>
+```
+
+**Response:**
+```json
+{
+  "message": "Profile deleted successfully"
+}
 ```
 
 ### Location Services

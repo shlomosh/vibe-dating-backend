@@ -49,12 +49,10 @@ class DynamoDBDumper:
         
     def check_prerequisites(self):
         """Check that all prerequisites are met"""
-        print("• Checking prerequisites...")
         
         # Check if boto3 is installed
         try:
             import boto3
-            print("• boto3 is available")
         except ImportError:
             print("❌ boto3 is not installed. Please install it first.")
             sys.exit(1)
@@ -62,7 +60,6 @@ class DynamoDBDumper:
         # Check AWS credentials
         try:
             self.dynamodb_client.list_tables()
-            print("• AWS credentials are configured")
         except NoCredentialsError:
             print("❌ AWS credentials not configured. Please run 'aws configure' first.")
             sys.exit(1)
@@ -74,7 +71,6 @@ class DynamoDBDumper:
         try:
             table = self.dynamodb.Table(self.table_name)
             table.load()
-            print(f"• DynamoDB table '{self.table_name}' exists")
         except ClientError as e:
             if e.response['Error']['Code'] == 'ResourceNotFoundException':
                 print(f"❌ DynamoDB table '{self.table_name}' not found")
@@ -82,8 +78,6 @@ class DynamoDBDumper:
             else:
                 print(f"❌ Error accessing table: {e}")
                 sys.exit(1)
-                
-        print("✅ All prerequisites met")
         
     def get_table_info(self) -> Dict[str, Any]:
         """Get table information and statistics"""
@@ -365,6 +359,10 @@ class DynamoDBDumper:
         except ClientError as e:
             print(f"❌ Failed to export schema: {e}")
 
+    def debug_console(self):
+        """Console log table data"""
+        table = self.dynamodb.Table(self.table_name)
+        from IPython import embed; embed(banner1="\nAccess dynamodb table using 'table' variable\n")
 
 def main():
     """Main function"""
@@ -390,6 +388,9 @@ Examples:
 
   # Get table info
   python scripts/dynamodb_dump.py info
+
+  # Start interactive debug console
+  python scripts/dynamodb_dump.py debug
         """
     )
     
@@ -397,8 +398,7 @@ Examples:
     
     # Dump command
     dump_parser = subparsers.add_parser('dump', help='Dump table data')
-    dump_parser.add_argument('--entity-type', choices=['user', 'profile', 'room', 'message', 'media', 'block', 'ban', 'location'], 
-                           help='Filter by entity type')
+    dump_parser.add_argument('--entity-type', choices=['user', 'profile', 'room', 'message', 'media', 'block', 'ban', 'location'], help='Filter by entity type')
     dump_parser.add_argument('--entity-id', help='Specific entity ID to dump')
     dump_parser.add_argument('--output', help='Output file path')
     dump_parser.add_argument('--format', choices=['json', 'csv'], default='json', help='Output format')
@@ -413,6 +413,9 @@ Examples:
     
     # Info command
     subparsers.add_parser('info', help='Show table information')
+    
+    # Debug command
+    subparsers.add_parser('debug', help='Start interactive debug console')
     
     args = parser.parse_args()
     
@@ -441,10 +444,9 @@ Examples:
     elif args.command == 'schema':
         dumper.export_table_schema(args.output)
         
-    elif args.command == 'info':
+    elif args.command == 'info' or args.command == 'debug':
         info = dumper.get_table_info()
         if info:
-            print("📊 Table Information:")
             print("-" * 40)
             for key, value in info.items():
                 if key == "table_size_bytes":
@@ -452,7 +454,10 @@ Examples:
                     print(f"{key:<20}: {size_mb:.2f} MB")
                 else:
                     print(f"{key:<20}: {value}")
+            print("-" * 40)
 
+        if args.command == 'debug':
+            dumper.debug_console()
 
 if __name__ == "__main__":
     main() 

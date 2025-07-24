@@ -10,10 +10,10 @@ from pathlib import Path
 
 
 def test_lambda_structure():
-    """Test that the profiles Lambda function directory exists and has proper structure"""
+    """Test that the profile management Lambda function directory exists and has proper structure"""
     current_dir = Path(__file__).parent.parent
 
-    lambda_functions = ["profiles"]
+    lambda_functions = ["user_profile_mgmt"]
 
     passed = 0
     failed = 0
@@ -48,13 +48,13 @@ def test_lambda_structure():
 
 
 def test_lambda_imports():
-    """Test that the profiles Lambda function module can be imported"""
+    """Test that the profile management Lambda function module can be imported"""
     current_dir = Path(__file__).parent.parent
 
     # Add the parent directory to Python path for imports
     sys.path.insert(0, str(current_dir))
 
-    lambda_modules = [("profiles", "profiles.lambda_function")]
+    lambda_modules = [("user_profile_mgmt", "user_profile_mgmt.lambda_function")]
 
     passed = 0
     failed = 0

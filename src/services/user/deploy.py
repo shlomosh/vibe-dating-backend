@@ -145,24 +145,24 @@ class UserServiceDeployer(ServiceDeployer):
                 else:
                     print(f"  Skipping Lambda layer update for: {aws_layer_name}")
 
-            # Update profiles function
-            if "ProfilesFunctionArn" in stack_outputs:
-                aws_lambda_arn = stack_outputs["ProfilesFunctionArn"]
+            # Update profile management function
+            if "UserProfileMgmtFunctionArn" in stack_outputs:
+                aws_lambda_arn = stack_outputs["UserProfileMgmtFunctionArn"]
                 aws_lambda_name = aws_lambda_arn.split(":")[-1]
 
                 # Ask user if they want to update the function
                 update_question = input(
-                    f"  Do you want to update profiles function {aws_lambda_name}? (y/n): "
+                    f"  Do you want to update user profile management function {aws_lambda_name}? (y/n): "
                 ).lower()
 
                 if update_question == "y":
-                    print(f"  Updating profiles function: {aws_lambda_name}")
+                    print(f"  Updating user profile management function: {aws_lambda_name}")
                     self._update_aws_lambda(
-                        aws_lambda_name, s3_bucket, "lambda/profiles.zip"
+                        aws_lambda_name, s3_bucket, "lambda/user_profile_mgmt.zip"
                     )
                     updated_functions.append(aws_lambda_name)
                 else:
-                    print(f"  Skipping profiles function update for: {aws_lambda_name}")
+                    print(f"  Skipping user profile management function update for: {aws_lambda_name}")
 
             print(f"✅ Successfully updated {len(updated_functions)} Lambda resources:")
             for func in updated_functions:
@@ -211,7 +211,7 @@ class UserServiceDeployer(ServiceDeployer):
                 "ApiGatewayAuthorizerId": self.auth_cfg["apigateway"][
                     "ApiGatewayAuthorizerId"
                 ],
-                "ProfilesFunctionArn": lambda_cfg["ProfilesFunctionArn"],
+                "UserProfileMgmtFunctionArn": lambda_cfg["UserProfileMgmtFunctionArn"],
             },
         }
 

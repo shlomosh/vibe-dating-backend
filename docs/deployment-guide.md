@@ -1,4 +1,4 @@
-# Vibe Dating App - Deployment Guide
+# Deployment Guide
 
 ## Overview
 

@@ -1,4 +1,4 @@
-# AWS Secrets Manager Integration Summary
+# Secrets Management
 
 ## Overview
 

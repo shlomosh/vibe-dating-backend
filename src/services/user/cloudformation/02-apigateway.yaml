@@ -24,27 +24,27 @@ Parameters:
     Type: String
     Description: API Gateway Authorizer ID (imported from auth stack)
 
-  ProfilesFunctionArn:
+  UserProfileMgmtFunctionArn:
     Type: String
-    Description: Profiles Lambda Function ARN (imported from lambda stack)
+    Description: User Profile Management Lambda Function ARN (imported from lambda stack)
 
 Resources:
   # API Gateway Resources
-  ProfilesResource:
+  ProfileResource:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref ApiGatewayId
       ParentId: !Ref ApiGatewayRootResourceId
-      PathPart: profiles
+      PathPart: profile
 
   ProfileIdResource:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref ApiGatewayId
-      ParentId: !Ref ProfilesResource
+      ParentId: !Ref ProfileResource
       PathPart: '{profileId}'
 
-  # Profile Get Method (GET /profiles/{profileId})
+  # Profile Get Method (GET /profile/{profileId})
   ProfileGetMethod:
     Type: AWS::ApiGateway::Method
     Properties:
@@ -58,9 +58,9 @@ Resources:
         IntegrationHttpMethod: POST
         Uri: !Sub 
           - arn:aws:apigateway:${ApiRegion}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - LambdaArn: !Ref ProfilesFunctionArn
+          - LambdaArn: !Ref UserProfileMgmtFunctionArn
 
-  # Profile Upsert Method (PUT /profiles/{profileId})
+  # Profile Upsert Method (PUT /profile/{profileId})
   ProfileUpsertMethod:
     Type: AWS::ApiGateway::Method
     Properties:
@@ -74,9 +74,9 @@ Resources:
         IntegrationHttpMethod: POST
         Uri: !Sub 
           - arn:aws:apigateway:${ApiRegion}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - LambdaArn: !Ref ProfilesFunctionArn
+          - LambdaArn: !Ref UserProfileMgmtFunctionArn
 
-  # Profile Delete Method (DELETE /profiles/{profileId})
+  # Profile Delete Method (DELETE /profile/{profileId})
   ProfileDeleteMethod:
     Type: AWS::ApiGateway::Method
     Properties:
@@ -90,9 +90,9 @@ Resources:
         IntegrationHttpMethod: POST
         Uri: !Sub 
           - arn:aws:apigateway:${ApiRegion}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - LambdaArn: !Ref ProfilesFunctionArn
+          - LambdaArn: !Ref UserProfileMgmtFunctionArn
 
-  # OPTIONS method for CORS on /profiles/{profileId}
+  # OPTIONS method for CORS on /profile/{profileId}
   ProfileIdOptionsMethod:
     Type: AWS::ApiGateway::Method
     Properties:
@@ -124,11 +124,11 @@ Resources:
             method.response.header.Access-Control-Allow-Methods: true
             method.response.header.Access-Control-Allow-Credentials: true
 
-  # Lambda permission for API Gateway to invoke profiles function
-  ProfilesLambdaPermission:
+  # Lambda permission for API Gateway to invoke user profile management function
+  UserProfileMgmtLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref ProfilesFunctionArn
+      FunctionName: !Ref UserProfileMgmtFunctionArn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${ApiRegion}:${AWS::AccountId}:${ApiGatewayId}/*'
@@ -147,11 +147,11 @@ Resources:
       Description: !Sub 'User service deployment for ${Environment}'
 
 Outputs:
-  ProfilesResourceId:
-    Description: 'Profiles Resource ID'
-    Value: !Ref ProfilesResource
+  ProfileResourceId:
+    Description: 'Profile Resource ID'
+    Value: !Ref ProfileResource
     Export:
-      Name: !Sub '${AWS::StackName}-ProfilesResourceId'
+      Name: !Sub '${AWS::StackName}-ProfileResourceId'
 
   ProfileIdResourceId:
     Description: 'Profile ID Resource ID'

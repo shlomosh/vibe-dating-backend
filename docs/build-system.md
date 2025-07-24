@@ -1,4 +1,4 @@
-# Build System Documentation
+# Build System
 
 ## Overview
 

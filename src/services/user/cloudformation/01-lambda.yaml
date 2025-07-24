@@ -43,17 +43,17 @@ Resources:
       CompatibleArchitectures:
         - x86_64
 
-  # Single Lambda function for all profile operations
-  ProfilesFunction:
+  # Single Lambda function for all user profile operations
+  UserProfileMgmtFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub 'vibe-profiles-${Environment}'
+      FunctionName: !Sub 'vibe-user-profile-mgmt-${Environment}'
       Runtime: python3.11
       Handler: lambda_function.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
       Code:
         S3Bucket: !Ref LambdaCodeBucketName
-        S3Key: lambda/profiles.zip
+        S3Key: lambda/user_profile_mgmt.zip
       Layers:
         - !Ref AuthLayerArn
         - !Ref UserLayer
@@ -71,18 +71,18 @@ Resources:
           Value: user
 
   # CloudWatch Log Group for Lambda function
-  ProfilesLogGroup:
+  UserProfileMgmtLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/vibe-profiles-${Environment}'
+      LogGroupName: !Sub '/aws/lambda/vibe-user-profile-mgmt-${Environment}'
       RetentionInDays: 14
 
 Outputs:
-  ProfilesFunctionArn:
-    Description: 'Profiles Lambda Function ARN'
-    Value: !GetAtt ProfilesFunction.Arn
+  UserProfileMgmtFunctionArn:
+    Description: 'User Profile Management Lambda Function ARN'
+    Value: !GetAtt UserProfileMgmtFunction.Arn
     Export:
-      Name: !Sub '${AWS::StackName}-ProfilesFunctionArn'
+      Name: !Sub '${AWS::StackName}-UserProfileMgmtFunctionArn'
 
   UserLayerArn:
     Description: 'User Service Layer ARN'
@@ -90,8 +90,8 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-UserLayerArn'
 
-  ProfilesFunctionName:
-    Description: 'Profiles Lambda Function Name'
-    Value: !Ref ProfilesFunction
+  UserProfileMgmtFunctionName:
+    Description: 'User Profile Management Lambda Function Name'
+    Value: !Ref UserProfileMgmtFunction
     Export:
-      Name: !Sub '${AWS::StackName}-ProfilesFunctionName'
+      Name: !Sub '${AWS::StackName}-UserProfileMgmtFunctionName'
