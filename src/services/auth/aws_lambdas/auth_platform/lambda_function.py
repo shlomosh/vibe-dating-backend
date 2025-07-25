@@ -11,7 +11,7 @@ from typing import Any, Dict
 
 from core.auth_utils import generate_jwt_token, hash_string_to_id
 from core.dynamo_utils import db_create_or_update_user_record
-from core.rest_utils import ResponseError, generate_response
+from core.rest_utils import ResponseError, generate_response, parse_request_body
 from core.settings import CoreSettings
 
 
@@ -30,25 +30,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         print(f"Event: {event}")
 
         # Parse request body
-        request_body = event.get("body")
-        if not request_body:
-            raise ResponseError(400, {"error": "Missing request body"})
-
-        # Handle base64 encoded body
-        if event.get("isBase64Encoded", False):
-            try:
-                request_body = base64.b64decode(request_body).decode("utf-8")
-            except Exception as e:
-                raise ResponseError(
-                    400, {"error": f"Failed to decode base64 body: {str(e)}"}
-                )
-
-        try:
-            body = json.loads(request_body)
-        except json.JSONDecodeError as e:
-            raise ResponseError(
-                400, {"error": f"Invalid JSON in request body: {str(e)}"}
-            )
+        body = parse_request_body(event)
 
         platform = body.get("platform")
         platform_token = body.get("platformToken")

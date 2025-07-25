@@ -160,7 +160,9 @@ class HostingServiceTester(ServiceTester):
         print("• Testing environment variables...")
 
         # Check if VIBE_FRONTEND_PATH is documented (not required for tests)
-        print("[PASS] Environment variables test passed (VIBE_FRONTEND_PATH documented)")
+        print(
+            "[PASS] Environment variables test passed (VIBE_FRONTEND_PATH documented)"
+        )
 
     def test_parameters_integration(self):
         """Test parameters.yaml integration"""

@@ -10,8 +10,8 @@ import json
 from typing import Any, Dict
 
 from core.auth_utils import extract_user_id_from_context, get_allocated_profile_ids
-from core.profile_utils import delete_profile, get_profile, upsert_profile
-from core.rest_utils import ResponseError, generate_response
+from core.profile_utils import ProfileManager
+from core.rest_utils import ResponseError, generate_response, parse_request_body
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -30,25 +30,29 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Extract user ID from JWT token context
         user_id = extract_user_id_from_context(event)
+        profile_mgmt = ProfileManager(user_id)
 
         # Get HTTP method and path parameters
         http_method = event.get("httpMethod", "")
         path_parameters = event.get("pathParameters", {}) or {}
-        profile_id = path_parameters.get("profileId")
 
-        # Validate profile ID if provided
-        if profile_id:
-            allocated_profile_ids = get_allocated_profile_ids(user_id)
-            if profile_id not in allocated_profile_ids:
-                raise ResponseError(403, {"error": "Profile ID not allocated to user"})
+        # Validate profile ID
+        profile_id = path_parameters.get("profileId")
+        if not profile_mgmt.validate_profile_id(
+            profile_id, is_existing=http_method in ["GET", "DELETE"]
+        ):
+            raise ResponseError(400, {"error": "Invalid profile ID"})
 
         # Route based on HTTP method
-        if http_method == "GET":
-            return handle_get_profile(user_id, profile_id)
-        elif http_method == "PUT":
-            return handle_upsert_profile(event, user_id, profile_id)
+        if http_method == "PUT":
+            profile_record = parse_request_body(event).get("profile", None)
+            return handle_upsert_profile(
+                profile_mgmt, profile_id, profile_record=profile_record
+            )
+        elif http_method == "GET":
+            return handle_get_profile(profile_mgmt, profile_id)
         elif http_method == "DELETE":
-            return handle_delete_profile(user_id, profile_id)
+            return handle_delete_profile(profile_mgmt, profile_id)
         else:
             raise ResponseError(405, {"error": f"Method {http_method} not allowed"})
 
@@ -60,7 +64,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         return generate_response(500, {"error": f"Internal server error: {str(e)}"})
 
 
-def handle_get_profile(user_id: str, profile_id: str) -> Dict[str, Any]:
+def handle_get_profile(profile_mgmt: ProfileManager, profile_id: str) -> Dict[str, Any]:
     """
     Handle GET /profile/{profileId}
 
@@ -74,25 +78,29 @@ def handle_get_profile(user_id: str, profile_id: str) -> Dict[str, Any]:
     if not profile_id:
         raise ResponseError(400, {"error": "profileId path parameter is required"})
 
-    # Get the profile
-    profile = get_profile(profile_id)
+    try:
+        profile_record = profile_mgmt.get(profile_id)
 
-    if not profile:
-        raise ResponseError(404, {"error": "Profile not found"})
+        if not profile_record:
+            raise ResponseError(404, {"error": "Profile record not found"})
 
-    return generate_response(200, {"profile": profile})
+        return generate_response(200, {"profile": profile_record})
+    except ValueError as e:
+        raise ResponseError(400, {"error": str(e)})
+    except Exception as e:
+        raise ResponseError(500, {"error": f"Failed to get profile: {str(e)}"})
 
 
 def handle_upsert_profile(
-    event: Dict[str, Any], user_id: str, profile_id: str
+    profile_mgmt: ProfileManager, profile_id: str, profile_record: Dict[str, Any]
 ) -> Dict[str, Any]:
     """
     Handle PUT /profile/{profileId} - Create or update profile
 
     Args:
-        event: Lambda event object
         user_id: The user ID
         profile_id: The profile ID
+        profile_record: Profile record
 
     Returns:
         Dict[str, Any]: API Gateway response
@@ -100,44 +108,40 @@ def handle_upsert_profile(
     if not profile_id:
         raise ResponseError(400, {"error": "profileId path parameter is required"})
 
-    # Parse request body
-    request_body = event.get("body")
-    if not request_body:
-        raise ResponseError(400, {"error": "Missing request body"})
-
-    # Handle base64 encoded body
-    if event.get("isBase64Encoded", False):
-        try:
-            request_body = base64.b64decode(request_body).decode("utf-8")
-        except Exception as e:
-            raise ResponseError(
-                400, {"error": f"Failed to decode base64 body: {str(e)}"}
-            )
+    if not profile_record:
+        raise ResponseError(400, {"error": "No profile record provided"})
 
     try:
-        body = json.loads(request_body)
-    except json.JSONDecodeError as e:
-        raise ResponseError(400, {"error": f"Invalid JSON in request body: {str(e)}"})
+        # Check if profile exists to determine if it's a create or update
+        profile_exists = profile_id in profile_mgmt.active_profile_ids
 
-    # Extract profile data
-    profile_data = body.get("profileData", {})
-    if not profile_data:
-        raise ResponseError(400, {"error": "profileData is required"})
+        # Perform upsert operation
+        success = profile_mgmt.upsert(profile_id, profile_record)
 
-    # Upsert the profile (create if not exists, update if exists)
-    result = upsert_profile(user_id, profile_id, profile_data)
+        if not success:
+            raise ResponseError(500, {"error": "Failed to upsert profile"})
 
-    return generate_response(
-        200,
-        {
-            "message": "Profile saved successfully",
-            "profile": result["profile"],
-            "created": result["created"],
-        },
-    )
+        # Get the updated profile data
+        updated_profile = profile_mgmt.get(profile_id)
+
+        message = "Profile created" if not profile_exists else "Profile updated"
+        return generate_response(
+            200,
+            {
+                "message": message,
+                "profile": updated_profile,
+                "created": not profile_exists,
+            },
+        )
+    except ValueError as e:
+        raise ResponseError(400, {"error": str(e)})
+    except Exception as e:
+        raise ResponseError(500, {"error": f"Failed to upsert profile: {str(e)}"})
 
 
-def handle_delete_profile(user_id: str, profile_id: str) -> Dict[str, Any]:
+def handle_delete_profile(
+    profile_mgmt: ProfileManager, profile_id: str
+) -> Dict[str, Any]:
     """
     Handle DELETE /profile/{profileId}
 
@@ -151,10 +155,14 @@ def handle_delete_profile(user_id: str, profile_id: str) -> Dict[str, Any]:
     if not profile_id:
         raise ResponseError(400, {"error": "profileId path parameter is required"})
 
-    # Delete the profile
-    success = delete_profile(user_id, profile_id)
+    try:
+        success = profile_mgmt.delete(profile_id)
 
-    if success:
-        return generate_response(200, {"message": "Profile deleted successfully"})
-    else:
-        raise ResponseError(500, {"error": "Failed to delete profile"})
+        if success:
+            return generate_response(200, {"message": "Profile deleted"})
+        else:
+            raise ResponseError(500, {"error": "Failed to delete profile"})
+    except ValueError as e:
+        raise ResponseError(400, {"error": str(e)})
+    except Exception as e:
+        raise ResponseError(500, {"error": f"Failed to delete profile: {str(e)}"})

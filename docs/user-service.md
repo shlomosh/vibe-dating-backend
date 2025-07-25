@@ -27,7 +27,7 @@ This creates a string in the format: `telegram:123456789` where:
 The platform identifier string is then hashed using the following process:
 
 ```python
-def hash_string_to_id(platform_id_string: str, length: int = 8) -> str:
+def hash_string_to_id(platform_id_string: str) -> str:
     """
     Convert platform ID string to Vibe user ID using UUID v5
 
@@ -56,7 +56,7 @@ def hash_string_to_id(platform_id_string: str, length: int = 8) -> str:
     base64_string = base64.b64encode(uuid_bytes).decode("utf-8")
 
     # Remove padding and return first N characters
-    return base64_string.rstrip("=")[:length]
+    return base64_string.rstrip("=")[:core_settings.record_id_length]
 ```
 
 #### UUID v5 Generation
@@ -71,7 +71,7 @@ uuid_bytes = user_uuid.bytes
 base64_string = base64.b64encode(uuid_bytes).decode("utf-8")
 
 # Remove padding and return first N characters
-return base64_string.rstrip("=")[:length]
+return base64_string.rstrip("=")[:core_settings.record_id_length]
 ```
 
 This converts the UUID to Base64 by:

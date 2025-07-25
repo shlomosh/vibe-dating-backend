@@ -233,15 +233,19 @@ def test_user_id_generation():
         "core.auth_utils.get_secret_from_aws_secrets_manager",
         return_value="123e4567-e89b-12d3-a456-426614174000",
     ):
+        from core.settings import CoreSettings
+
+        core_settings = CoreSettings()
+
         # Test cases
         test_cases = [
-            ("telegram:485233267", 8),
-            ("telegram:123456789", 8),
-            ("telegram:987654321", 8),
+            ("telegram:485233267", core_settings.record_id_length),
+            ("telegram:123456789", core_settings.record_id_length),
+            ("telegram:987654321", core_settings.record_id_length),
         ]
 
         for platform_string, expected_length in test_cases:
-            user_id = hash_string_to_id(platform_string, expected_length)
+            user_id = hash_string_to_id(platform_string)
 
             print(f"Platform: {platform_string}")
             print(f"Generated User ID: {user_id}")
@@ -252,7 +256,7 @@ def test_user_id_generation():
             assert len(user_id) == expected_length
 
             # Test determinism (same input should produce same output)
-            user_id2 = hash_string_to_id(platform_string, expected_length)
+            user_id2 = hash_string_to_id(platform_string)
             assert user_id == user_id2
 
             print("[PASS] User ID generation test passed!")

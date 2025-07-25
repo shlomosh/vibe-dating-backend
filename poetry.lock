@@ -447,6 +447,52 @@ files = [
 ]
 
 [[package]]
+name = "msgspec"
+version = "0.18.0"
+description = "A fast serialization and validation library, with builtin support for JSON, MessagePack, YAML, and TOML."
+optional = false
+python-versions = ">=3.8"
+groups = ["main", "lambda"]
+files = [
+    {file = "msgspec-0.18.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:ec4f95f03e9fcaef942f5b76856ad1b6bace5cc4db4555939ff25262faa5ad63"},
+    {file = "msgspec-0.18.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:0d28fcd20d07b565f42289bc7791493cf3b602ad41002db3fe5642802bbf137a"},
+    {file = "msgspec-0.18.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e7bc1386317796508772e95e3747dbea7e4178a24ebba04f33408dd84b6aea44"},
+    {file = "msgspec-0.18.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d814fe2b4641085ed4a2fc917b5f407afe550c3d0c00ab190fc1f6fae1c75dd7"},
+    {file = "msgspec-0.18.0-cp310-cp310-musllinux_1_1_aarch64.whl", hash = "sha256:92c0db3f81bfda2be43ced32b043e68fa95daa5c7403f0ced26e49815efe681e"},
+    {file = "msgspec-0.18.0-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:89070b557ae3f057c9357dc7f2f5fe11000808254e3f079663246ae4b43b2b89"},
+    {file = "msgspec-0.18.0-cp310-cp310-win_amd64.whl", hash = "sha256:7e0d735205bf9abd7755434233b7ff48db66965ca4d50a59a96421c4425b2507"},
+    {file = "msgspec-0.18.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:08c422741e0e1e13404f7497c2b3419999fd1398c095e841f191d78f569361fd"},
+    {file = "msgspec-0.18.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:33950a523536baceed2f252cda32780eb3646a4656ca08c4bea6497d4988e341"},
+    {file = "msgspec-0.18.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:3db21b8e7c71f011c90ba6ed0514cf4a95076ae48e7e85d5fd912f6c8d609990"},
+    {file = "msgspec-0.18.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c9b59fff158e5a576d68afe3aed040717d25d7edd2c0653c46733dfa0fbfa1c6"},
+    {file = "msgspec-0.18.0-cp311-cp311-musllinux_1_1_aarch64.whl", hash = "sha256:ee81a859b16698d2f43fe6bc56b7141f6dd936a6a80f52ec80da45fafa3d56ea"},
+    {file = "msgspec-0.18.0-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:722032d40b721bfb0771c8aeba11373bed84c5ed8721cc81360207d67ecfb9ca"},
+    {file = "msgspec-0.18.0-cp311-cp311-win_amd64.whl", hash = "sha256:2e986f68cbcba50a2198052692f530113507fb566f282f40cfdaafee7ae6a307"},
+    {file = "msgspec-0.18.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:3c3d6147f1368c8ccf0869313c23ffdf874abb7e0033002689edf5bfc048f75d"},
+    {file = "msgspec-0.18.0-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:b44ad06f78a4c05860f80bb533893582727777a8cc760573f41e49cfc5cee60c"},
+    {file = "msgspec-0.18.0-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f754b92340188e6e89c51f3fdfab7de0177bcd08919481072c192782ad9ecee5"},
+    {file = "msgspec-0.18.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:cf10ad5928aecaaeb6b2be82b8aef78df786734020bfc1f281ee78485daa2af7"},
+    {file = "msgspec-0.18.0-cp38-cp38-musllinux_1_1_aarch64.whl", hash = "sha256:047b00a7e148c02e64cbb65c59512f93fb8e96b71fc0358f12062e0359bef878"},
+    {file = "msgspec-0.18.0-cp38-cp38-musllinux_1_1_x86_64.whl", hash = "sha256:719c8b687a0402d2cd1579753e50d903ab53ef0402bbab91bca96d0e3c2b78d5"},
+    {file = "msgspec-0.18.0-cp38-cp38-win_amd64.whl", hash = "sha256:cbd16fae31bb5d2ce06d317e5f2736d58690cad310147c2104ff0a98fa63895c"},
+    {file = "msgspec-0.18.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:e409af3aa63df802fbe9f99fee1bfdb895f2b243c96e1ef9a40793f73625b549"},
+    {file = "msgspec-0.18.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:005f708354371c2a7c3c598f4a67d23f73315e3789dfefd2a274f4a11097866d"},
+    {file = "msgspec-0.18.0-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:5c103a8eb8c01a3594cf3c66fe6d6a4d11e17d52e07bffadff599d87bae4a476"},
+    {file = "msgspec-0.18.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c5f9d154ff486426733726de321d3993f4d8aa7bbea3812a8716dedc6b867592"},
+    {file = "msgspec-0.18.0-cp39-cp39-musllinux_1_1_aarch64.whl", hash = "sha256:5f78c176e072e5d805be618d62e56cb2d2ca68cb93c0d6bbfeb03418247e529f"},
+    {file = "msgspec-0.18.0-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:ef84977a7f8ced0c369a65ffbcd618c341fe4ba0b30bd1348ce8b6e5dc4096b3"},
+    {file = "msgspec-0.18.0-cp39-cp39-win_amd64.whl", hash = "sha256:f907fcc782e5fa6f6bb329004993baa00f068b4e964a971a1421e316b6870012"},
+    {file = "msgspec-0.18.0.tar.gz", hash = "sha256:edcdc1bf397f1b06a3323ac61daaa5de9c9c6e8a2349024bdf0a267d0b4d24b5"},
+]
+
+[package.extras]
+dev = ["attrs", "coverage", "furo", "gcovr", "ipython", "msgpack", "mypy", "pre-commit", "pyright", "pytest", "pyyaml", "sphinx", "sphinx-copybutton", "sphinx-design", "tomli ; python_version < \"3.11\"", "tomli-w"]
+doc = ["furo", "ipython", "sphinx", "sphinx-copybutton", "sphinx-design"]
+test = ["attrs", "msgpack", "mypy", "pyright", "pytest", "pyyaml", "tomli ; python_version < \"3.11\"", "tomli-w"]
+toml = ["tomli ; python_version < \"3.11\"", "tomli-w"]
+yaml = ["pyyaml"]
+
+[[package]]
 name = "mypy"
 version = "1.16.1"
 description = "Optional static typing for Python"
@@ -866,4 +912,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "f0ccb3ff9a4341c01a0bdd52995ebeaadc914bd55340bb37c4d948901023a105"
+content-hash = "09bb50f71fdf313a626db454e41226db61fc96d752383071dbd228da073e4418"

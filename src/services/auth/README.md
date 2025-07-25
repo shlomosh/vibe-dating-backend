@@ -114,13 +114,13 @@ sequenceDiagram
 The service implements deterministic user ID generation using UUID v5:
 
 ```python
-def hash_string_to_id(platform_id_string: str, length: int = 8) -> str:
+def hash_string_to_id(platform_id_string: str) -> str:
     # Platform string: "tg:123456789"
     namespace_uuid = uuid.UUID('<uuid-namespace-secret>')
     user_uuid = uuid.uuid5(namespace_uuid, platform_id_string)
     uuid_bytes = user_uuid.bytes
     base64_string = base64.b64encode(uuid_bytes).decode('utf-8')
-    return base64_string.rstrip('=')[:length]
+    return base64_string.rstrip('=')[:core_settings.record_id_length]
 ```
 
 **Properties:**

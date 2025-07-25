@@ -20,6 +20,7 @@ class UserServiceBuilder(ServiceBuilder):
                         Path("src/common/aws_lambdas/core") / "auth_utils.py",
                         Path("src/common/aws_lambdas/core") / "rest_utils.py",
                         Path("src/common/aws_lambdas/core") / "profile_utils.py",
+                        Path("src/common/aws_lambdas/types") / "profile.py",
                     ],
                     "drop_prefixes": ["src/common/aws_lambdas"],
                 },

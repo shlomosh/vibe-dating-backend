@@ -5,382 +5,398 @@ This module contains all profile-related functions shared across services.
 """
 
 import datetime
+import logging
 import os
 from typing import Any, Dict, List, Optional
 
 import boto3
+import msgspec
 from botocore.exceptions import ClientError
+
+from .auth_utils import validate_id
+from ..types.profile import (
+    SexualPosition, BodyType, SexualityType, HostingType, TravelDistanceType,
+    EggplantSizeType, PeachShapeType, HealthPracticesType, HivStatusType,
+    PreventionPracticesType, MeetingTimeType, ChatStatusType,
+    ProfileImage, ProfileRecord
+)
+
+logger = logging.getLogger(__name__)
 
 dynamodb = boto3.resource("dynamodb")
 
+class ProfileManager:
+    def __init__(self, user_id: str):
+        # Validate user_id format
+        if not validate_id(user_id):
+            raise ValueError("Invalid user-id")
+        
+        self.user_id = user_id
+        self.table = self._get_table()
 
-def get_table():
-    """Get DynamoDB table with lazy initialization"""
-    dynamodb_table = os.environ.get("DYNAMODB_TABLE")
-    if not dynamodb_table:
-        raise ValueError("DYNAMODB_TABLE environment variable not set")
+        self.user_data = self._get_user_record()
+        self.profiles_data = self._get_profiles_records()
 
-    return dynamodb.Table(dynamodb_table)
+        allocated_ids_str = self.user_data.get("allocatedProfileIds", "")
+        # Optimized string parsing
+        self.allocated_profile_ids = [pid for pid in allocated_ids_str.split(",") if (pid := pid.strip())] if allocated_ids_str else []
+        self.active_profile_ids = list(self.profiles_data.keys())
 
+        # Use ProfileRecord fields directly instead of separate enum
+        self.profile_fields = [field for field in ProfileRecord.__struct_fields__]
 
-def validate_profile_ownership(user_id: str, profile_id: str) -> bool:
-    """
-    Validate that a profile belongs to the specified user
+    def _get_table(self):
+        """Get DynamoDB table with lazy initialization"""
+        dynamodb_table = os.environ.get("DYNAMODB_TABLE")
+        if not dynamodb_table:
+            logger.error("DYNAMODB_TABLE environment variable not set")
+            raise ValueError("DYNAMODB_TABLE environment variable not set")
 
-    Args:
-        user_id: The user ID
-        profile_id: The profile ID to validate
+        try:
+            return dynamodb.Table(dynamodb_table)
+        except Exception as e:
+            logger.error(f"Failed to initialize DynamoDB table {dynamodb_table}: {str(e)}")
+            raise
 
-    Returns:
-        bool: True if the profile belongs to the user, False otherwise
-    """
-    table = get_table()
-
-    try:
-        response = table.get_item(
-            Key={"PK": f"USER#{user_id}", "SK": f"PROFILE#{profile_id}"}
-        )
-        return "Item" in response and response["Item"].get("isActive", False)
-    except ClientError:
-        return False
-
-
-def get_user_profile_ids(user_id: str) -> List[str]:
-    """
-    Get all profile IDs for a user
-
-    Args:
-        user_id: The user ID
-
-    Returns:
-        List[str]: List of profile IDs for the user
-    """
-    table = get_table()
-
-    try:
-        response = table.query(
-            KeyConditionExpression="PK = :pk AND begins_with(SK, :sk_prefix)",
-            ExpressionAttributeValues={
-                ":pk": f"USER#{user_id}",
-                ":sk_prefix": "PROFILE#",
-            },
-        )
-
-        return [
-            item["profileId"]
-            for item in response.get("Items", [])
-            if item.get("isActive", False)
-        ]
-    except ClientError:
-        return []
-
-
-def create_profile(
-    user_id: str, profile_id: str, profile_data: Dict[str, Any]
-) -> Dict[str, Any]:
-    """
-    Create a new profile for a user
-
-    Args:
-        user_id: The user ID
-        profile_id: The profile ID
-        profile_data: Profile data dictionary
-
-    Returns:
-        Dict[str, Any]: Created profile data
-
-    Raises:
-        ValueError: If profile creation fails
-    """
-    table = get_table()
-    now = datetime.datetime.utcnow().isoformat() + "Z"
-
-    # Validate profile count limit
-    current_profiles = get_user_profile_ids(user_id)
-    if len(current_profiles) >= 3:  # Max 3 profiles per user
-        raise ValueError("Maximum number of profiles (3) reached")
-
-    # Prepare profile item (excluding location and last-seen)
-    profile_item = {
-        "PK": f"PROFILE#{profile_id}",
-        "SK": "METADATA",
-        "userId": user_id,
-        "name": profile_data.get("name", ""),
-        "age": profile_data.get("age"),
-        "bio": profile_data.get("bio", ""),
-        "interests": profile_data.get("interests", []),
-        "lookingFor": profile_data.get("lookingFor", []),
-        "position": profile_data.get("position"),
-        "body": profile_data.get("body"),
-        "eggplantSize": profile_data.get("eggplantSize"),
-        "peachShape": profile_data.get("peachShape"),
-        "sexuality": profile_data.get("sexuality"),
-        "healthPractices": profile_data.get("healthPractices"),
-        "hivStatus": profile_data.get("hivStatus"),
-        "preventionPractices": profile_data.get("preventionPractices"),
-        "hosting": profile_data.get("hosting"),
-        "travelDistance": profile_data.get("travelDistance"),
-        "meetingTime": profile_data.get("meetingTime"),
-        "media": profile_data.get("media", {}),
-        "isActive": True,
-        "createdAt": now,
-        "updatedAt": now,
-        "TTL": 0,
-    }
-
-    # User-profile lookup item
-    lookup_item = {
-        "PK": f"USER#{user_id}",
-        "SK": f"PROFILE#{profile_id}",
-        "profileId": profile_id,
-        "isActive": True,
-        "createdAt": now,
-    }
-
-    try:
-        # Use transact write to ensure both items are created atomically
-        dynamodb_client = boto3.client("dynamodb")
-
-        # Convert items to DynamoDB format
-        from boto3.dynamodb.types import TypeSerializer
-
-        serializer = TypeSerializer()
-
-        dynamodb_client.transact_write_items(
-            TransactItems=[
-                {
-                    "Put": {
-                        "TableName": table.name,
-                        "Item": {
-                            k: serializer.serialize(v) for k, v in profile_item.items()
-                        },
-                        "ConditionExpression": "attribute_not_exists(PK)",
-                    }
+    def _get_user_record(self) -> Dict[str, Any]:
+        """Get the complete user record from USER entry in DB"""
+        try:
+            response = self.table.get_item(
+                Key={"PK": f"USER#{self.user_id}", "SK": "METADATA"}
+            )
+            user_record = response.get("Item", {})
+            if not user_record:
+                logger.warning(f"No user record found for user_id: {self.user_id}")
+            return user_record
+        except ClientError as e:
+            logger.error(f"Failed to get user record for {self.user_id}: {str(e)}")
+            raise RuntimeError(f"Failed to get user record: {str(e)}")
+    
+    def _get_active_profile_ids(self) -> List[str]:
+        """Get active profile IDs for a user using GSI query"""
+        try:
+            response = self.table.query(
+                KeyConditionExpression="PK = :pk AND begins_with(SK, :sk_prefix)",
+                ExpressionAttributeValues={
+                    ":pk": f"USER#{self.user_id}",
+                    ":sk_prefix": "PROFILE#"
                 },
-                {
-                    "Put": {
-                        "TableName": table.name,
-                        "Item": {
-                            k: serializer.serialize(v) for k, v in lookup_item.items()
-                        },
-                        "ConditionExpression": "attribute_not_exists(PK)",
-                    }
-                },
-            ]
-        )
+                ProjectionExpression="profileId"
+            )
+            return [item.get("profileId") for item in response.get("Items", []) if item.get("profileId")]
+        except ClientError as e:
+            logger.error(f"Failed to get active profile IDs for user {self.user_id}: {str(e)}")
+            return []
+    
+    def _get_profiles_records(self) -> Dict[str, Dict[str, Any]]:
+        """Get all active profiles for a user with batch optimization"""
+        try:
+            profile_ids = self._get_active_profile_ids()
+            if not profile_ids:
+                return {}
 
-        return profile_item
+            # Use batch_get_item for better performance
+            request_items = {
+                self.table.name: {
+                    'Keys': [{
+                        'PK': f'PROFILE#{profile_id}',
+                        'SK': 'METADATA'
+                    } for profile_id in profile_ids]
+                }
+            }
+            
+            response = dynamodb.batch_get_item(RequestItems=request_items)
+            profiles_data = {}
+            
+            # Handle partial failures in batch operations
+            unprocessed_keys = response.get('UnprocessedKeys', {})
+            if unprocessed_keys:
+                logger.warning(f"Unprocessed keys in batch get for user {self.user_id}: {unprocessed_keys}")
+            
+            for item in response.get('Responses', {}).get(self.table.name, []):
+                profile_id = item.get('PK', '').replace('PROFILE#', '')
+                if profile_id:
+                    profiles_data[profile_id] = item
+                    
+            return profiles_data
 
-    except ClientError as e:
-        if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
-            raise ValueError("Profile already exists")
-        else:
-            raise ValueError(f"Failed to create profile: {str(e)}")
+        except ClientError as e:
+            logger.error(f"Failed to get active profiles data for user {self.user_id}: {str(e)}")
+            raise RuntimeError(f"Failed to get active profiles data: {str(e)}")
 
 
-def update_profile(
-    user_id: str, profile_id: str, profile_data: Dict[str, Any]
-) -> Dict[str, Any]:
-    """
-    Update an existing profile
-
-    Args:
-        user_id: The user ID
-        profile_id: The profile ID
-        profile_data: Updated profile data
-
-    Returns:
-        Dict[str, Any]: Updated profile data
-
-    Raises:
-        ValueError: If profile update fails
-    """
-    table = get_table()
-
-    # Validate ownership
-    if not validate_profile_ownership(user_id, profile_id):
-        raise ValueError("Profile not found or access denied")
-
-    now = datetime.datetime.utcnow().isoformat() + "Z"
-
-    # Build update expression dynamically
-    update_expression_parts = ["SET updatedAt = :updated_at"]
-    expression_attribute_values = {":updated_at": now}
-    expression_attribute_names = {}
-
-    # Map of field names to update expression parts
-    field_mappings = {
-        "name": "name = :name",
-        "age": "age = :age",
-        "bio": "bio = :bio",
-        "interests": "interests = :interests",
-        "lookingFor": "lookingFor = :looking_for",
-        "position": "#position = :position",  # position is a reserved word
-        "body": "body = :body",
-        "eggplantSize": "eggplantSize = :eggplant_size",
-        "peachShape": "peachShape = :peach_shape",
-        "sexuality": "sexuality = :sexuality",
-        "healthPractices": "healthPractices = :health_practices",
-        "hivStatus": "hivStatus = :hiv_status",
-        "preventionPractices": "preventionPractices = :prevention_practices",
-        "hosting": "hosting = :hosting",
-        "travelDistance": "travelDistance = :travel_distance",
-        "meetingTime": "meetingTime = :meeting_time",
-        "media": "media = :media",
-    }
-
-    for field, expression in field_mappings.items():
-        if field in profile_data:
-            if field == "position":
-                expression_attribute_names["#position"] = "position"
-                expression_attribute_values[":position"] = profile_data[field]
+    def _serialize_dynamodb_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
+        """Efficiently serialize items for DynamoDB"""
+        serialized = {}
+        for key, value in item.items():
+            if isinstance(value, str):
+                serialized[key] = {'S': value}
+            elif isinstance(value, (int, float)):
+                serialized[key] = {'N': str(value)}
+            elif isinstance(value, bool):
+                serialized[key] = {'BOOL': value}
+            elif isinstance(value, list):
+                serialized[key] = {'L': [self._serialize_dynamodb_item([v])[0] if isinstance(v, dict) else {'S': str(v)} for v in value]}
+            elif isinstance(value, dict):
+                serialized[key] = {'M': self._serialize_dynamodb_item(value)}
             else:
-                attr_value_key = f":{field.lower().replace('_', '_')}"
-                if field == "eggplantSize":
-                    attr_value_key = ":eggplant_size"
-                elif field == "peachShape":
-                    attr_value_key = ":peach_shape"
-                elif field == "lookingFor":
-                    attr_value_key = ":looking_for"
-                elif field == "healthPractices":
-                    attr_value_key = ":health_practices"
-                elif field == "hivStatus":
-                    attr_value_key = ":hiv_status"
-                elif field == "preventionPractices":
-                    attr_value_key = ":prevention_practices"
-                elif field == "travelDistance":
-                    attr_value_key = ":travel_distance"
-                elif field == "meetingTime":
-                    attr_value_key = ":meeting_time"
-                else:
-                    attr_value_key = f":{field}"
+                serialized[key] = {'S': str(value)}
+        return serialized
 
-                expression_attribute_values[attr_value_key] = profile_data[field]
+    def validate_profile_id(self, profile_id: str, is_existing: bool = False) -> bool:
+        """Validate profile ID format"""
+        if not validate_id(profile_id):
+            return False
+        
+        if profile_id not in self.allocated_profile_ids:
+            return False
 
-            update_expression_parts.append(expression)
-
-    update_expression = ", ".join(update_expression_parts)
-
-    try:
-        kwargs = {
-            "Key": {"PK": f"PROFILE#{profile_id}", "SK": "METADATA"},
-            "UpdateExpression": update_expression,
-            "ExpressionAttributeValues": expression_attribute_values,
-            "ReturnValues": "ALL_NEW",
-        }
-
-        if expression_attribute_names:
-            kwargs["ExpressionAttributeNames"] = expression_attribute_names
-
-        response = table.update_item(**kwargs)
-
-        return response["Attributes"]
-
-    except ClientError as e:
-        raise ValueError(f"Failed to update profile: {str(e)}")
-
-
-def delete_profile(user_id: str, profile_id: str) -> bool:
-    """
-    Delete a profile
-
-    Args:
-        user_id: The user ID
-        profile_id: The profile ID
-
-    Returns:
-        bool: True if deletion was successful
-
-    Raises:
-        ValueError: If profile deletion fails
-    """
-    table = get_table()
-
-    # Validate ownership
-    if not validate_profile_ownership(user_id, profile_id):
-        raise ValueError("Profile not found or access denied")
-
-    try:
-        # Use transact write to delete both profile and lookup items
-        dynamodb_client = boto3.client("dynamodb")
-
-        dynamodb_client.transact_write_items(
-            TransactItems=[
-                {
-                    "Delete": {
-                        "TableName": table.name,
-                        "Key": {
-                            "PK": {"S": f"PROFILE#{profile_id}"},
-                            "SK": {"S": "METADATA"},
-                        },
-                    }
-                },
-                {
-                    "Delete": {
-                        "TableName": table.name,
-                        "Key": {
-                            "PK": {"S": f"USER#{user_id}"},
-                            "SK": {"S": f"PROFILE#{profile_id}"},
-                        },
-                    }
-                },
-            ]
-        )
+        if is_existing and profile_id not in self.active_profile_ids:
+            return False
 
         return True
 
-    except ClientError as e:
-        raise ValueError(f"Failed to delete profile: {str(e)}")
+    def validate_profile_record(self, profile_record: Dict[str, Any]) -> ProfileRecord:
+        """Validate profile record data using msgspec"""
+        try:
+            # Convert dict to ProfileRecord struct for validation
+            validated_record = msgspec.convert(profile_record, ProfileRecord)
+            return validated_record
+        except (msgspec.ValidationError, ValueError) as e:
+            logger.warning(f"Profile validation failed for user {self.user_id}: {str(e)}")
+            raise ValueError(f"Invalid profile data: {str(e)}")
 
+    def create(self, profile_id: str, profile_record: Dict[str, Any]) -> bool:
+        """
+        Create a new profile for a user
 
-def get_profile(profile_id: str) -> Optional[Dict[str, Any]]:
-    """
-    Get a profile by ID
+        Args:
+            profile_id: The profile ID
+            profile_record: Profile data dictionary
 
-    Args:
-        profile_id: The profile ID
+        Returns:
+            bool: True if creation was successful
 
-    Returns:
-        Optional[Dict[str, Any]]: Profile data if found, None otherwise
-    """
-    table = get_table()
+        Raises:
+            ValueError: If profile creation fails
+        """
+        if not validate_id(profile_id):
+            raise ValueError("Invalid profile_id format")
+            
+        if profile_id not in self.allocated_profile_ids:
+            raise ValueError("Profile-Id is invalid")
 
-    try:
-        response = table.get_item(Key={"PK": f"PROFILE#{profile_id}", "SK": "METADATA"})
+        if profile_id in self.active_profile_ids:
+            raise ValueError("Profile-Id already created")
 
-        if "Item" in response:
-            return response["Item"]
-        return None
+        validated_record = self.validate_profile_record(profile_record)
+        profile_record = msgspec.to_builtins(validated_record)
+        
+        # Use timezone-aware datetime
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-    except ClientError:
-        return None
+        try:
+            # Use transaction to ensure atomicity
+            profile_item = {
+                "PK": f"PROFILE#{profile_id}",
+                "SK": "METADATA",
+                "userId": self.user_id,
+                **{k: v for k, v in profile_record.items() if k in self.profile_fields and v is not None},
+                "createdAt": now,
+                "updatedAt": now,
+            }
+            
+            lookup_item = {
+                "PK": f"USER#{self.user_id}",
+                "SK": f"PROFILE#{profile_id}",
+                "profileId": profile_id,
+                "createdAt": now,
+            }
+            
+            # Use optimized serialization
+            dynamodb.meta.client.transact_write_items(
+                TransactItems=[
+                    {
+                        'Put': {
+                            'TableName': self.table.name,
+                            'Item': self._serialize_dynamodb_item(profile_item),
+                            'ConditionExpression': 'attribute_not_exists(PK)'
+                        }
+                    },
+                    {
+                        'Put': {
+                            'TableName': self.table.name,
+                            'Item': self._serialize_dynamodb_item(lookup_item)
+                        }
+                    }
+                ]
+            )
+            
+            logger.info(f"Profile {profile_id} created successfully for user {self.user_id}")
+            return True
 
+        except ClientError as e:
+            logger.error(f"Failed to create profile {profile_id} for user {self.user_id}: {str(e)}")
+            if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+                raise ValueError("Profile already exists")
+            raise ValueError(f"Failed to create profile: {str(e)}")
 
-def upsert_profile(
-    user_id: str, profile_id: str, profile_data: Dict[str, Any]
-) -> Dict[str, Any]:
-    """
-    Create or update a profile (upsert operation)
+    def update(self, profile_id: str, profile_record: Dict[str, Any]) -> bool:
+        """
+        Update an existing profile
 
-    Args:
-        user_id: The user ID
-        profile_id: The profile ID
-        profile_data: Profile data dictionary
+        Args:
+            profile_id: The profile ID
+            profile_record: Updated profile data
 
-    Returns:
-        Dict[str, Any]: Result containing profile data and creation status
+        Returns:
+            bool: True if update was successful
 
-    Raises:
-        ValueError: If profile operation fails
-    """
-    # Check if profile already exists
-    existing_profile = get_profile(profile_id)
+        Raises:
+            ValueError: If profile update fails
+        """
+        if not validate_id(profile_id):
+            raise ValueError("Invalid profile_id format")
+            
+        if profile_id not in self.allocated_profile_ids:
+            raise ValueError("Profile-Id is invalid")
 
-    if existing_profile:
-        # Profile exists, update it
-        updated_profile = update_profile(user_id, profile_id, profile_data)
-        return {"profile": updated_profile, "created": False}
-    else:
-        # Profile doesn't exist, create it
-        created_profile = create_profile(user_id, profile_id, profile_data)
-        return {"profile": created_profile, "created": True}
+        if profile_id not in self.active_profile_ids:
+            raise ValueError("Profile-Id not created")
+
+        validated_record = self.validate_profile_record(profile_record)
+        profile_record = msgspec.to_builtins(validated_record)
+        
+        # Use timezone-aware datetime
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        # Optimized update expression building
+        update_fields = []
+        expression_attribute_values = {":updated_at": now}
+        expression_attribute_names = {}
+
+        for field in self.profile_fields:
+            if field in profile_record:
+                update_fields.append(f"#{field} = :{field}")
+                expression_attribute_values[f":{field}"] = profile_record[field]
+                expression_attribute_names[f"#{field}"] = field
+
+        update_expression = f"SET updatedAt = :updated_at{f', ' + ', '.join(update_fields)}' if update_fields else "SET updatedAt = :updated_at"
+
+        try:
+            kwargs = {
+                "Key": {"PK": f"PROFILE#{profile_id}", "SK": "METADATA"},
+                "UpdateExpression": update_expression,
+                "ExpressionAttributeValues": expression_attribute_values,
+                "ReturnValues": "ALL_NEW",
+            }
+
+            if expression_attribute_names:
+                kwargs["ExpressionAttributeNames"] = expression_attribute_names
+
+            self.table.update_item(**kwargs)
+
+            return True
+
+        except ClientError as e:
+            raise ValueError(f"Failed to update profile: {str(e)}")
+
+    def upsert(self, profile_id: str, profile_record: Dict[str, Any]) -> bool:
+        """
+        Upsert a profile
+
+        Args:
+            profile_id: The profile ID
+            profile_record: Upsert profile data
+
+        Returns:
+            bool: True if upsert was successful
+
+        Raises:
+            ValueError: If profile upsert fails
+        """
+        if profile_id not in self.allocated_profile_ids:
+            raise ValueError("Profile-Id is invalid")
+
+        if profile_id in self.active_profile_ids:
+            return self.update(profile_id, profile_record)
+        else:
+            return self.create(profile_id, profile_record)
+
+    def delete(self, profile_id: str) -> bool:
+        """
+        Delete a profile
+
+        Args:
+            profile_id: The profile ID
+
+        Returns:
+            bool: True if deletion was successful
+
+        Raises:
+            ValueError: If profile deletion fails
+        """
+        if not validate_id(profile_id):
+            raise ValueError("Invalid profile_id format")
+            
+        if profile_id not in self.allocated_profile_ids:
+            raise ValueError("Profile-Id is invalid")
+
+        if profile_id not in self.active_profile_ids:
+            raise ValueError("Profile-Id not created")
+
+        try:
+            # Use transaction to ensure atomicity
+            dynamodb.meta.client.transact_write_items(
+                TransactItems=[
+                    {
+                        'Delete': {
+                            'TableName': self.table.name,
+                            'Key': {
+                                'PK': {'S': f'PROFILE#{profile_id}'},
+                                'SK': {'S': 'METADATA'}
+                            }
+                        }
+                    },
+                    {
+                        'Delete': {
+                            'TableName': self.table.name,
+                            'Key': {
+                                'PK': {'S': f'USER#{self.user_id}'},
+                                'SK': {'S': f'PROFILE#{profile_id}'}
+                            }
+                        }
+                    }
+                ]
+            )
+            
+            logger.info(f"Profile {profile_id} deleted successfully for user {self.user_id}")
+            return True
+
+        except ClientError as e:
+            logger.error(f"Failed to delete profile {profile_id} for user {self.user_id}: {str(e)}")
+            raise ValueError(f"Failed to delete profile: {str(e)}")
+
+    def get(self, profile_id: str) -> Dict[str, Any]:
+        """
+        Get a profile by ID
+        
+        Args:
+            profile_id: The profile ID to retrieve
+            
+        Returns:
+            Dict containing profile data
+            
+        Raises:
+            ValueError: If profile ID is invalid or not found
+        """
+        if not validate_id(profile_id):
+            raise ValueError("Invalid profile_id format")
+            
+        if profile_id not in self.allocated_profile_ids:
+            raise ValueError("Profile-Id is invalid")
+        
+        if profile_id not in self.profiles_data:
+            raise ValueError("Profile not found")
+            
+        return self.profiles_data[profile_id]

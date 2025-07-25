@@ -14,6 +14,8 @@ import boto3
 import jwt
 from botocore.exceptions import ClientError
 
+from core.settings import CoreSettings
+
 
 def get_secret_from_aws_secrets_manager(secret_arn: str) -> Optional[str]:
     """
@@ -83,7 +85,7 @@ def verify_jwt_token(token: str) -> Dict[str, Any]:
         raise Exception("Invalid token")
 
 
-def hash_string_to_id(platform_id_string: str, length: int = 8) -> str:
+def hash_string_to_id(platform_id_string: str) -> str:
     """
     Convert platform ID string to Vibe user ID using UUID v5
 
@@ -112,7 +114,40 @@ def hash_string_to_id(platform_id_string: str, length: int = 8) -> str:
     base64_string = base64.b64encode(uuid_bytes).decode("utf-8")
 
     # Remove padding and return first N characters
-    return base64_string.rstrip("=")[:length]
+    return base64_string.rstrip("=")[: CoreSettings().record_id_length]
+
+
+def validate_id(user_id: str) -> bool:
+    """
+    Validate that a user ID has the correct format and length
+
+    Args:
+        user_id: The user ID to validate
+
+    Returns:
+        bool: True if the ID is valid, False otherwise
+    """
+    if not user_id or not isinstance(user_id, str):
+        return False
+
+    # Check if the ID matches the expected length from CoreSettings
+    expected_length = CoreSettings().record_id_length
+    if len(user_id) != expected_length:
+        return False
+
+    # Validate that the ID contains only valid base64 characters (A-Z, a-z, 0-9, +, /)
+    # Note: Since hash_string_to_id removes padding (=), we don't expect padding in valid IDs
+    import re
+
+    base64_pattern = r"^[A-Za-z0-9+/]+$"
+    if not re.match(base64_pattern, user_id):
+        return False
+
+    # Additional validation: ensure the ID is not empty and doesn't contain invalid characters
+    if not user_id.strip():
+        return False
+
+    return True
 
 
 def extract_user_id_from_context(event: Dict[str, Any]) -> str:

@@ -4,6 +4,7 @@ Shared REST utilities for Vibe Lambda Functions
 This module contains common REST response functions used by both auth and user services.
 """
 
+import base64
 import json
 from typing import Any, Dict
 
@@ -29,6 +30,43 @@ def generate_response(status_code: int, body: Any) -> Dict[str, Any]:
         },
         "body": json.dumps(body, default=str),
     }
+
+
+def parse_request_body(event: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Parse request body from Lambda event
+
+    Handles base64 decoding and JSON parsing with proper error handling.
+
+    Args:
+        event: Lambda event object
+
+    Returns:
+        Dict[str, Any]: Parsed JSON body
+
+    Raises:
+        ResponseError: If body is missing, base64 decoding fails, or JSON is invalid
+    """
+    # Parse request body
+    request_body = event.get("body")
+    if not request_body:
+        raise ResponseError(400, {"error": "Missing request body"})
+
+    # Handle base64 encoded body
+    if event.get("isBase64Encoded", False):
+        try:
+            request_body = base64.b64decode(request_body).decode("utf-8")
+        except Exception as e:
+            raise ResponseError(
+                400, {"error": f"Failed to decode base64 body: {str(e)}"}
+            )
+
+    try:
+        body = json.loads(request_body)
+    except json.JSONDecodeError as e:
+        raise ResponseError(400, {"error": f"Invalid JSON in request body: {str(e)}"})
+
+    return body
 
 
 class ResponseError(Exception):
