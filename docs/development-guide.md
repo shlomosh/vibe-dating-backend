@@ -31,7 +31,7 @@
 
 1. **AWS Profile Setup**
    ```bash
-   aws configure --profile vibe-dating
+   aws configure --profile vibe-dev
    # Enter your AWS Access Key ID
    # Enter your AWS Secret Access Key
    # Enter your default region (il-central-1)

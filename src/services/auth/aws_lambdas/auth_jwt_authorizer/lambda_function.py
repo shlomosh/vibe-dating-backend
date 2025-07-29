@@ -4,9 +4,72 @@ Vibe JWT Authorizer Lambda Function
 This function validates JWT tokens for API Gateway authorization.
 """
 
+import os
 from typing import Any, Dict
 
-from core.auth_utils import generate_policy, verify_jwt_token_with_secret_manager
+import jwt
+
+from core.aws import SecretsManagerService
+
+
+def api_verify_jwt_token(token: str) -> Dict[str, Any]:
+    """
+    Verify and decode JWT token using secret from AWS Secrets Manager
+
+    Args:
+        token: JWT token string
+
+    Returns:
+        Dict[str, Any]: Decoded token payload
+
+    Raises:
+        Exception: If token is invalid or expired
+    """
+    try:
+        jwt_secret_arn = os.environ.get("JWT_SECRET_ARN")
+        if not jwt_secret_arn:
+            raise Exception("JWT_SECRET_ARN environment variable not set")
+
+        secret = SecretsManagerService.get_secret(jwt_secret_arn)
+        if not secret:
+            raise Exception("Failed to retrieve JWT secret from Secrets Manager")
+
+        payload = jwt.decode(token, secret, algorithms=["HS256"])
+        return payload
+
+    except jwt.ExpiredSignatureError:
+        raise Exception("Token has expired")
+
+    except jwt.InvalidTokenError:
+        raise Exception("Invalid token")
+
+
+def api_generate_policy(
+    principal_id: str, effect: str, resource: str, context: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Generate IAM policy for API Gateway
+
+    Args:
+        principal_id: User ID for the principal
+        effect: 'Allow' or 'Deny'
+        resource: API Gateway resource ARN
+        context: Additional context to pass to Lambda functions
+
+    Returns:
+        Dict[str, Any]: IAM policy document
+    """
+
+    return {
+        "principalId": principal_id,
+        "policyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {"Action": "execute-api:Invoke", "Effect": effect, "Resource": resource}
+            ],
+        },
+        "context": context,
+    }
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -21,6 +84,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         Dict[str, Any]: IAM policy document
     """
     try:
+        import json
+
+        print(f"JWT Authorizer Event: {json.dumps(event)}")
+
         # Extract token from Authorization header
         auth_header = event.get("authorizationToken", "")
 
@@ -33,11 +100,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         token = auth_header.replace("Bearer ", "")
 
         # Verify JWT token using secret from AWS Secrets Manager
-        payload = verify_jwt_token_with_secret_manager(token)
+        payload = api_verify_jwt_token(token)
         user_id = payload["uid"]
 
         # Generate allow policy
-        policy = generate_policy(
+        policy = api_generate_policy(
             principal_id=user_id,
             effect="Allow",
             resource=event["methodArn"],
@@ -51,7 +118,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     except Exception as ex:
         # Generate deny policy
-        policy = generate_policy(
+        policy = api_generate_policy(
             principal_id="unauthorized",
             effect="Deny",
             resource=event["methodArn"],

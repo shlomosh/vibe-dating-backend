@@ -10,8 +10,8 @@ The Hosting Service provides static hosting infrastructure for the Vibe Dating A
 
 The hosting service consists of three main infrastructure components:
 
-1. **S3 Bucket** (`01-s3.yaml`): Secure storage for frontend assets
-2. **CloudFront Distribution** (`02-cloudfront.yaml`): Global CDN with SSL and security headers
+1. **CloudFront Distribution** (`01-cloudfront.yaml`): Global CDN with SSL and security headers
+2. **S3 Bucket** (`02-s3.yaml`): Secure storage for frontend assets
 3. **Route53 DNS** (`03-route53.yaml`): DNS configuration for the custom domain
 
 ### Infrastructure Stack
@@ -156,16 +156,7 @@ AllowedOrigins: "https://web.telegram.org,https://t.me,https://shlomosh.github.i
 
 ## CloudFormation Templates
 
-### 01-s3.yaml - S3 Bucket
-
-Creates a secure S3 bucket for frontend assets:
-
-- **Bucket Name**: `vibe-dating-frontend-{environment}`
-- **Security**: Private access, encryption, versioning
-- **Lifecycle**: Automatic cleanup of old versions
-- **Policy**: CloudFront-only access
-
-### 02-cloudfront.yaml - CloudFront Distribution
+### 01-cloudfront.yaml - CloudFront Distribution
 
 Sets up global CDN with advanced features:
 
@@ -173,6 +164,15 @@ Sets up global CDN with advanced features:
 - **Caching**: Optimized caching for different file types
 - **Security**: Lambda@Edge for security headers
 - **Performance**: HTTP/2, compression, edge optimization
+
+### 02-s3.yaml - S3 Bucket
+
+Creates a secure S3 bucket for frontend assets:
+
+- **Bucket Name**: `vibe-dating-frontend-{environment}`
+- **Security**: Private access, encryption, versioning
+- **Lifecycle**: Automatic cleanup of old versions
+- **Policy**: CloudFront-only access
 
 ### 03-route53.yaml - DNS Configuration
 

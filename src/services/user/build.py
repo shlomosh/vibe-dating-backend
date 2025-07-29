@@ -11,7 +11,7 @@ from core.build_utils import ServiceBuilder
 class UserServiceBuilder(ServiceBuilder):
     def __init__(self):
         cfg = {
-            "aws_layers": [{"name": "user_layer", "requirements": "requirements.txt"}],
+            "aws_layers": [{"name": "user_layer", "requirements": "requirements.json"}],
             "aws_lambdas": [
                 {
                     "name": "user_profile_mgmt",
@@ -20,7 +20,7 @@ class UserServiceBuilder(ServiceBuilder):
                         Path("src/common/aws_lambdas/core") / "auth_utils.py",
                         Path("src/common/aws_lambdas/core") / "rest_utils.py",
                         Path("src/common/aws_lambdas/core") / "profile_utils.py",
-                        Path("src/common/aws_lambdas/types") / "profile.py",
+                        Path("src/common/aws_lambdas/core_types") / "profile.py",
                     ],
                     "drop_prefixes": ["src/common/aws_lambdas"],
                 },

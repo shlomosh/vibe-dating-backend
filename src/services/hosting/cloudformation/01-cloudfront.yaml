@@ -66,7 +66,7 @@ Resources:
         SecurityHeadersConfig:
           ContentSecurityPolicy:
             Override: true
-            ContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;"
+            ContentSecurityPolicy: "default-src 'self'; connect-src 'self' https://api.vibe-dating.io; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;"
           FrameOptions:
             Override: true
             FrameOption: DENY
@@ -388,4 +388,4 @@ Outputs:
     Description: ARN of the CloudFront distribution
     Value: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
     Export:
-      Name: !Sub '${AWS::StackName}-CloudFrontDistributionArn' 
+      Name: !Sub '${AWS::StackName}-CloudFrontDistributionArn'

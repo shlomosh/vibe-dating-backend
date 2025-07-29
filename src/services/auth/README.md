@@ -373,8 +373,8 @@ See `docs/examples/frontend/auth.js` for a complete frontend integration example
 ## Monitoring
 
 ### CloudWatch Logs
-- **Telegram Auth**: `/aws/lambda/vibe-platform-auth-{env}`
-- **JWT Authorizer**: `/aws/lambda/vibe-user-jwt-authorizer-{env}`
+- **Telegram Auth**: `/aws/lambda/vibe-auth-platform-{env}`
+- **JWT Authorizer**: `/aws/lambda/vibe-auth-jwt-authorizer-{env}`
 
 ### Key Metrics
 - API Gateway request count and latency
@@ -477,7 +477,7 @@ aws cloudformation describe-stack-events \
   --stack-name vibe-dating-auth-service
 
 # Check Lambda logs
-aws logs tail /aws/lambda/vibe-platform-auth-dev --follow
+aws logs tail /aws/lambda/vibe-auth-platform-dev --follow
 
 # Test DynamoDB access
 aws dynamodb scan --table-name vibe-dating-dev --limit 1

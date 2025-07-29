@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 import boto3
 import yaml
 
-from src.core.core_utils import ServiceConstructor
+from core.core_utils import ServiceConstructor
 
 os.environ["AWS_PROFILE"] = "vibe-dev"
 

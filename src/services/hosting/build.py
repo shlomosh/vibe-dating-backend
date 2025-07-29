@@ -10,6 +10,9 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+# Add the src directory to the path so we can import from core
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 from core.build_utils import ServiceBuilder
 
 

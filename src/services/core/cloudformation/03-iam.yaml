@@ -108,7 +108,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: lambda:InvokeFunction
-                Resource: !Sub 'arn:aws:lambda:${Region}:${AWS::AccountId}:function:vibe-user-jwt-authorizer-${Environment}'
+                Resource: !Sub 'arn:aws:lambda:${Region}:${AWS::AccountId}:function:vibe-auth-jwt-authorizer-${Environment}'
       Tags:
         - Key: Environment
           Value: !Ref Environment

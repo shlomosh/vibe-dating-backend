@@ -7,13 +7,12 @@ import sys
 from pathlib import Path
 
 # Add the lambda directories to the path
-project_root = str(Path(__file__).parent.parent.parent.parent.parent.parent)
-service_aws_lambdas_dir = (
-    Path(project_root) / "src" / "services" / "auth" / "aws_lambdas"
-)
+project_root = Path(__file__).parent.parent.parent.parent.parent.parent
+service_aws_lambdas_dir = project_root / "src" / "services" / "auth" / "aws_lambdas"
+common_aws_lambdas_dir = project_root / "src" / "common" / "aws_lambdas"
+
 print(f"Adding {service_aws_lambdas_dir} to sys.path")
 sys.path.insert(0, str(service_aws_lambdas_dir))
-common_aws_lambdas_dir = Path(project_root) / "src" / "common" / "aws_lambdas"
 print(f"Adding {common_aws_lambdas_dir} to sys.path")
 sys.path.insert(0, str(common_aws_lambdas_dir))
 
@@ -43,7 +42,7 @@ def test_auth_platform_import():
     print("\nTesting platform auth import...")
 
     try:
-        sys.path.insert(0, service_aws_lambdas_dir / "auth_platform")
+        sys.path.insert(0, str(service_aws_lambdas_dir / "auth_platform"))
         from auth_platform.lambda_function import (
             lambda_handler as platform_lambda_handler,
         )
@@ -62,7 +61,7 @@ def test_auth_jwt_authorizer_import():
 
     try:
         # Add auth_jwt_authorizer directory to path
-        sys.path.insert(0, service_aws_lambdas_dir / "auth_jwt_authorizer")
+        sys.path.insert(0, str(service_aws_lambdas_dir / "auth_jwt_authorizer"))
         from auth_jwt_authorizer.lambda_function import (
             lambda_handler as auth_jwt_authorizer_lambda_handler,
         )
@@ -81,8 +80,8 @@ def test_telegram_module_import():
 
     try:
         # Add auth_platform directory to path
-        sys.path.insert(0, service_aws_lambdas_dir / "auth_platform")
-        from auth_platform.telegram import authenticate_user, telegram_verify_data
+        sys.path.insert(0, str(service_aws_lambdas_dir / "auth_platform"))
+        from auth_platform.telegram import TelegramPlatform
 
         print("+ Telegram module imported successfully")
         return True
@@ -127,8 +126,8 @@ def test_core_utils_import():
     print("\nTesting core utilities import...")
 
     try:
-        from core.dynamo_utils import db_create_or_update_user_record
         from core.rest_utils import ResponseError, generate_response
+        from core.user_utils import UserManager
 
         print("+ Core utilities imported successfully")
         return True

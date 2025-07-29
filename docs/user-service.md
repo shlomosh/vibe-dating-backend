@@ -86,7 +86,7 @@ The final Vibe user ID is created by taking the first 8 characters of the Base64
 
 ```python
 user_id = hash_string_to_id(platform_id_string)
-# Result: e.g., "aB3cD4eF"
+// Result: e.g., "aB3cD4eF"
 ```
 
 ## Example
@@ -125,5 +125,5 @@ print(user_id)  # 8-character Base64 string
 - The namespace UUID is stored in AWS Secrets Manager and retrieved at runtime
 - The process is deterministic, so the same input will always produce the same output
 - The 8-character limit provides 48 bits of entropy (6 bits per character)
-- Consider increasing the length parameter if higher collision resistance is needed
+- Consider increasing the ID length if higher collision resistance is needed
 - AWS Secrets Manager provides automatic encryption and access control for the namespace UUID 

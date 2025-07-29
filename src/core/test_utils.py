@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from src.core.core_utils import ServiceConstructor
+from core.core_utils import ServiceConstructor
 
 os.environ["AWS_PROFILE"] = "vibe-dev"
 

@@ -8,146 +8,11 @@ import base64
 import datetime
 import os
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-import boto3
 import jwt
-from botocore.exceptions import ClientError
 
-from core.settings import CoreSettings
-
-
-def get_secret_from_aws_secrets_manager(secret_arn: str) -> Optional[str]:
-    """
-    Retrieve a secret value from AWS Secrets Manager
-
-    Args:
-        secret_arn: ARN of the secret in AWS Secrets Manager
-
-    Returns:
-        Optional[str]: Secret value if found, None otherwise
-
-    Raises:
-        Exception: If there's an error retrieving the secret
-    """
-    try:
-        secrets_client = boto3.client("secretsmanager")
-        print("secret_arn", secret_arn)
-        response = secrets_client.get_secret_value(SecretId=secret_arn)
-
-        if "SecretString" in response:
-            return response["SecretString"]
-        else:
-            # Handle binary secrets
-            return base64.b64decode(response["SecretBinary"]).decode("utf-8")
-
-    except ClientError as e:
-        error_code = e.response["Error"]["Code"]
-        if error_code == "ResourceNotFoundException":
-            raise Exception(f"Secret not found: {secret_arn}")
-        elif error_code == "InvalidRequestException":
-            raise Exception(f"Invalid request for secret: {secret_arn}")
-        elif error_code == "InvalidParameterException":
-            raise Exception(f"Invalid parameter for secret: {secret_arn}")
-        else:
-            raise Exception(f"Error retrieving secret {secret_arn}: {str(e)}")
-
-
-def verify_jwt_token(token: str) -> Dict[str, Any]:
-    """
-    Verify and decode JWT token using secret from AWS Secrets Manager
-
-    Args:
-        token: JWT token string
-
-    Returns:
-        Dict[str, Any]: Decoded token payload
-
-    Raises:
-        Exception: If token is invalid or expired
-    """
-    try:
-        jwt_secret_arn = os.environ.get("JWT_SECRET_ARN")
-        if not jwt_secret_arn:
-            raise Exception("JWT_SECRET_ARN environment variable not set")
-
-        secret = get_secret_from_aws_secrets_manager(jwt_secret_arn)
-        if not secret:
-            raise Exception("Failed to retrieve JWT secret from Secrets Manager")
-
-        payload = jwt.decode(token, secret, algorithms=["HS256"])
-        return payload
-
-    except jwt.ExpiredSignatureError:
-        raise Exception("Token has expired")
-
-    except jwt.InvalidTokenError:
-        raise Exception("Invalid token")
-
-
-def hash_string_to_id(platform_id_string: str) -> str:
-    """
-    Convert platform ID string to Vibe user ID using UUID v5
-
-    Args:
-        platform_id_string: String in format "tg:123456789" or "userId:profileIndex"
-        length: Length of the final user ID (default: 8)
-
-    Returns:
-        str: Base64 encoded user ID
-    """
-    # Get UUID namespace from AWS Secrets Manager
-    uuid_namespace_arn = os.environ.get("UUID_NAMESPACE_SECRET_ARN")
-    if not uuid_namespace_arn:
-        raise Exception("UUID_NAMESPACE_SECRET_ARN environment variable not set")
-
-    uuid_namespace = get_secret_from_aws_secrets_manager(uuid_namespace_arn)
-    if not uuid_namespace:
-        raise Exception("Failed to retrieve UUID namespace from Secrets Manager")
-
-    # Create UUID v5 with namespace from Secrets Manager
-    namespace_uuid = uuid.UUID(uuid_namespace)
-    user_uuid = uuid.uuid5(namespace_uuid, platform_id_string)
-
-    # Convert UUID to base64
-    uuid_bytes = user_uuid.bytes
-    base64_string = base64.b64encode(uuid_bytes).decode("utf-8")
-
-    # Remove padding and return first N characters
-    return base64_string.rstrip("=")[: CoreSettings().record_id_length]
-
-
-def validate_id(user_id: str) -> bool:
-    """
-    Validate that a user ID has the correct format and length
-
-    Args:
-        user_id: The user ID to validate
-
-    Returns:
-        bool: True if the ID is valid, False otherwise
-    """
-    if not user_id or not isinstance(user_id, str):
-        return False
-
-    # Check if the ID matches the expected length from CoreSettings
-    expected_length = CoreSettings().record_id_length
-    if len(user_id) != expected_length:
-        return False
-
-    # Validate that the ID contains only valid base64 characters (A-Z, a-z, 0-9, +, /)
-    # Note: Since hash_string_to_id removes padding (=), we don't expect padding in valid IDs
-    import re
-
-    base64_pattern = r"^[A-Za-z0-9+/]+$"
-    if not re.match(base64_pattern, user_id):
-        return False
-
-    # Additional validation: ensure the ID is not empty and doesn't contain invalid characters
-    if not user_id.strip():
-        return False
-
-    return True
+from core.aws import SecretsManagerService
 
 
 def extract_user_id_from_context(event: Dict[str, Any]) -> str:
@@ -196,11 +61,43 @@ def generate_jwt_token(signed_data: Dict[str, Any], expires_in: int = 7) -> str:
     if not jwt_secret_arn:
         raise Exception("JWT_SECRET_ARN environment variable not set")
 
-    secret = get_secret_from_aws_secrets_manager(jwt_secret_arn)
+    secret = SecretsManagerService.get_secret(jwt_secret_arn)
     if not secret:
         raise Exception("Failed to retrieve JWT secret from Secrets Manager")
 
     return jwt.encode(payload, secret, algorithm="HS256")
+
+
+def verify_jwt_token_with_secret_manager(token: str) -> Dict[str, Any]:
+    """
+    Verify and decode JWT token using secret from AWS Secrets Manager
+
+    Args:
+        token: JWT token string
+
+    Returns:
+        Dict[str, Any]: Decoded token payload
+
+    Raises:
+        Exception: If token is invalid or expired
+    """
+    try:
+        jwt_secret_arn = os.environ.get("JWT_SECRET_ARN")
+        if not jwt_secret_arn:
+            raise Exception("JWT_SECRET_ARN environment variable not set")
+
+        secret = SecretsManagerService.get_secret(jwt_secret_arn)
+        if not secret:
+            raise Exception("Failed to retrieve JWT secret from Secrets Manager")
+
+        payload = jwt.decode(token, secret, algorithms=["HS256"])
+        return payload
+
+    except jwt.ExpiredSignatureError:
+        raise Exception("Token has expired")
+
+    except jwt.InvalidTokenError:
+        raise Exception("Invalid token")
 
 
 def generate_policy(
@@ -218,7 +115,6 @@ def generate_policy(
     Returns:
         Dict[str, Any]: IAM policy document
     """
-
     return {
         "principalId": principal_id,
         "policyDocument": {
@@ -231,38 +127,47 @@ def generate_policy(
     }
 
 
-def verify_jwt_token_with_secret_manager(token: str) -> Dict[str, Any]:
+def hash_string_to_id(platform_id_string: str) -> str:
     """
-    Verify and decode JWT token using secret from AWS Secrets Manager
-    (Alias for verify_jwt_token for backward compatibility)
+    Convert platform ID string to Vibe user ID using UUID v5
 
     Args:
-        token: JWT token string
+        platform_id_string: String in format "tg:123456789" or "userId:profileIndex"
 
     Returns:
-        Dict[str, Any]: Decoded token payload
-
-    Raises:
-        Exception: If token is invalid or expired
+        str: Base64 encoded user ID
     """
-    return verify_jwt_token(token)
+    from core.settings import CoreSettings
+
+    # Get UUID namespace from AWS Secrets Manager
+    uuid_namespace_arn = os.environ.get("UUID_NAMESPACE_SECRET_ARN")
+    if not uuid_namespace_arn:
+        raise Exception("UUID_NAMESPACE_SECRET_ARN environment variable not set")
+
+    uuid_namespace = SecretsManagerService.get_secret(uuid_namespace_arn)
+    if not uuid_namespace:
+        raise Exception("Failed to retrieve UUID namespace from Secrets Manager")
+
+    # Create UUID v5 with namespace from Secrets Manager
+    namespace_uuid = uuid.UUID(uuid_namespace)
+    user_uuid = uuid.uuid5(namespace_uuid, platform_id_string)
+
+    # Convert UUID to base64
+    uuid_bytes = user_uuid.bytes
+    base64_string = base64.b64encode(uuid_bytes).decode("utf-8")
+
+    # Remove padding and return first N characters
+    return base64_string.rstrip("=")[: CoreSettings().record_id_length]
 
 
-def get_allocated_profile_ids(user_id: str) -> list:
+def get_secret_from_aws_secrets_manager(secret_arn: str) -> str:
     """
-    Get allocated profile IDs for a user
+    Get secret from AWS Secrets Manager
 
     Args:
-        user_id: The user ID
+        secret_arn: ARN of the secret
 
     Returns:
-        list: List of allocated profile IDs for the user
+        str: Secret value
     """
-    from .settings import CoreSettings
-
-    core_settings = CoreSettings()
-
-    return [
-        hash_string_to_id(f"{user_id}:{profile_idx}")
-        for profile_idx in range(0, core_settings.max_profile_count)
-    ]
+    return SecretsManagerService.get_secret(secret_arn)

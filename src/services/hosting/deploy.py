@@ -6,6 +6,10 @@ Deploys hosting infrastructure stacks (S3, CloudFront, Route53) in the correct o
 
 import argparse
 import sys
+from pathlib import Path
+
+# Add the src directory to the path so we can import from core
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from core.config_utils import ServiceConfigUtils
 from core.deploy_utils import ServiceDeployer

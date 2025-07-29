@@ -9,6 +9,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Add the src directory to the path so we can import from core
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 from core.test_utils import ServiceTester
 
 
@@ -59,8 +62,8 @@ class HostingServiceTester(ServiceTester):
             self.service_dir / "build.py",
             self.service_dir / "deploy.py",
             self.service_dir / "test.py",
-            self.service_dir / "cloudformation" / "01-s3.yaml",
-            self.service_dir / "cloudformation" / "02-cloudfront.yaml",
+            self.service_dir / "cloudformation" / "01-cloudfront.yaml",
+            self.service_dir / "cloudformation" / "02-s3.yaml",
             self.service_dir / "cloudformation" / "03-route53.yaml",
         ]
 
@@ -77,8 +80,8 @@ class HostingServiceTester(ServiceTester):
         print("• Testing CloudFormation templates...")
 
         template_files = [
-            "01-s3.yaml",
-            "02-cloudfront.yaml",
+            "01-cloudfront.yaml",
+            "02-s3.yaml",
             "03-route53.yaml",
         ]
 
@@ -174,7 +177,7 @@ class HostingServiceTester(ServiceTester):
             "DeploymentUUID",
             "AppRegion",
             "AppDomainName",
-            "AllowedOrigins",
+            "AppAllowedOrigins",
         ]
 
         for param in required_params:

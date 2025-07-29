@@ -4,15 +4,45 @@ Vibe Platform Authentication Lambda Function
 This function handles platform authentication and user creation.
 """
 
-import base64
-import json
+import datetime
 import os
 from typing import Any, Dict
 
-from core.auth_utils import generate_jwt_token, hash_string_to_id
-from core.dynamo_utils import db_create_or_update_user_record
+import jwt
+
+from core.aws import SecretsManagerService
 from core.rest_utils import ResponseError, generate_response, parse_request_body
-from core.settings import CoreSettings
+from core.user_utils import UserManager
+
+
+def _api_generate_jwt_token(signed_data: Dict[str, Any], expires_in: int = 7) -> str:
+    """
+    Generate JWT token for authenticated user
+
+    Args:
+        signed_data: Data to include in the JWT token
+        expires_in: Number of days until token expires (default: 7)
+
+    Returns:
+        str: JWT token string
+    """
+    payload = {
+        **signed_data,
+        "iat": datetime.datetime.utcnow(),
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(days=expires_in),
+        "iss": "vibe-app",
+    }
+
+    # Get JWT secret from AWS Secrets Manager
+    jwt_secret_arn = os.environ.get("JWT_SECRET_ARN")
+    if not jwt_secret_arn:
+        raise Exception("JWT_SECRET_ARN environment variable not set")
+
+    secret = SecretsManagerService.get_secret(jwt_secret_arn)
+    if not secret:
+        raise Exception("Failed to retrieve JWT secret from Secrets Manager")
+
+    return jwt.encode(payload, secret, algorithm="HS256")
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -27,7 +57,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         Dict[str, Any]: API Gateway response
     """
     try:
-        print(f"Event: {event}")
+        import json
+
+        print(f"Auth Platform Event: {json.dumps(event)}")
 
         # Parse request body
         body = parse_request_body(event)
@@ -40,9 +72,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             raise ResponseError(400, {"error": "Missing required fields"})
 
         if platform == "telegram":
-            from telegram import authenticate_user
+            from telegram import TelegramPlatform
 
-            platform_user_data = authenticate_user(platform_token)
+            platform_user_data = TelegramPlatform(
+                platform_token=platform_token,
+                get_secret_f=SecretsManagerService.get_secret,
+            ).authenticate()
             if not platform_user_data:
                 raise ResponseError(400, {"error": "Failed to authenticate user"})
 
@@ -50,40 +85,30 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         else:
             raise ResponseError(400, {"error": "Invalid platform"})
 
-        # Generate user ID
-        platform_id_string = f"{platform}:{platform_user_id}"
-        vibe_user_id = hash_string_to_id(platform_id_string)
+        user_mgmt = UserManager(platform=platform, platform_user_id=platform_user_id)
 
-        # Create or update user in DynamoDB
-        db_create_or_update_user_record(
-            vibe_user_id,
-            platform_user_id,
-            dict(platform_metadata, **platform_user_data),
-        )
+        # create / update user record
+        user_mgmt.upsert(platform, platform_user_id, platform_metadata)
+
+        if user_mgmt.is_banned():
+            raise ResponseError(403, {"error": "Account is banned"})
 
         # Generate JWT token
-        token = generate_jwt_token(signed_data={"uid": vibe_user_id})
-
-        # Core settings
-        core_settings = CoreSettings()
-
-        # Generate profile IDs
-        vibe_user_profile_ids = [
-            hash_string_to_id(f"{vibe_user_id}:{profile_idx}")
-            for profile_idx in range(0, core_settings.max_profile_count)
-        ]
+        token = _api_generate_jwt_token(signed_data={"uid": user_mgmt.user_id})
 
         return generate_response(
             200,
             {
                 "token": token,
-                "userId": vibe_user_id,
-                "profileIds": vibe_user_profile_ids,
+                "userId": user_mgmt.user_id,
+                "profileIds": user_mgmt.allocated_profile_ids,
             },
         )
 
     except ResponseError as e:
         return e.to_dict()
 
-    except Exception as e:
-        raise ResponseError(500, {"error": f"Internal server error: {str(e)}"})
+    except Exception as ex:
+        return ResponseError(
+            500, {"error": f"Internal server error: {str(ex)}"}
+        ).to_dict()

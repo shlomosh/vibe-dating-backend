@@ -7,10 +7,9 @@ A comprehensive AWS Secrets Manager integration has been added to the Vibe Datin
 ## New Files Added
 
 ### Core Script
-- **`scripts/secretsmanager_mgmt.py`**: Main secrets management script with full CLI interface
+- **`scripts/manage_secrets.py`**: Main secrets management script with full CLI interface
 
 ### Documentation Updates
-- **`docs/context.md`**: Added comprehensive secrets management section
 - **`README.md`**: Added secrets management section to main documentation
 
 ## Features
@@ -46,37 +45,35 @@ A comprehensive AWS Secrets Manager integration has been added to the Vibe Datin
 pip install -r scripts/requirements-secrets.txt
 
 # Setup core secrets interactively
-python scripts/secretsmanager_mgmt.py setup
+python scripts/manage_secrets.py setup
 
-# Setup core secrets
-python scripts/secretsmanager_mgmt.py setup
 ```
 
 ### Daily Operations
 ```bash
 # List all secrets
-python scripts/secretsmanager_mgmt.py list
+python scripts/manage_secrets.py list
 
 # Validate all secrets
-python scripts/secretsmanager_mgmt.py validate
+python scripts/manage_secrets.py validate
 
 # Export secrets to environment file
-python scripts/secretsmanager_mgmt.py export --output .env
+python scripts/manage_secrets.py export --output .env
 
 # Get a specific secret value
-python scripts/secretsmanager_mgmt.py get --secret telegram_bot_token
+python scripts/manage_secrets.py get --secret telegram_bot_token
 ```
 
 ### Security Operations
 ```bash
 # Rotate JWT secret
-python scripts/secretsmanager_mgmt.py rotate --secret jwt_secret
+python scripts/manage_secrets.py rotate --secret jwt_secret
 
 # Delete a secret (with recovery window)
-python scripts/secretsmanager_mgmt.py delete --secret old_api_key
+python scripts/manage_secrets.py delete --secret old_api_key
 
 # Force delete a secret (immediate)
-python scripts/secretsmanager_mgmt.py delete --secret old_api_key --force
+python scripts/manage_secrets.py delete --secret old_api_key --force
 ```
 
 ## Environment Configuration
@@ -106,10 +103,10 @@ The secrets management script works alongside the existing Poetry-based deployme
 ### Deployment Workflow
 ```bash
 # 1. Setup secrets
-python scripts/secretsmanager_mgmt.py setup
+python scripts/manage_secrets.py setup
 
 # 2. Validate secrets
-python scripts/secretsmanager_mgmt.py validate
+python scripts/manage_secrets.py validate
 
 # 3. Deploy infrastructure
 poetry run service-deploy auth
@@ -153,8 +150,8 @@ poetry run service-deploy auth
 ## Next Steps
 
 ### Immediate Actions
-1. **Setup Core Secrets**: Run `python scripts/secretsmanager_mgmt.py setup`
-2. **Validate Configuration**: Run `python scripts/secretsmanager_mgmt.py validate`
+1. **Setup Core Secrets**: Run `python scripts/manage_secrets.py setup`
+2. **Validate Configuration**: Run `python scripts/manage_secrets.py validate`
 3. **Update Documentation**: Review and update team documentation
 
 ### Future Enhancements
@@ -166,7 +163,6 @@ poetry run service-deploy auth
 ## Support
 
 For questions or issues with the secrets management system:
-1. Check the script help: `python scripts/secretsmanager_mgmt.py --help`
-2. Review the technical documentation in `docs/context.md`
+1. Check the script help: `python scripts/manage_secrets.py --help`
 3. Validate AWS credentials and permissions
 4. Check CloudTrail logs for detailed operation history 

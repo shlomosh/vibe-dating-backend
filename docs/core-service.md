@@ -163,4 +163,4 @@ aws cloudformation delete-stack --stack-name vibe-dating-core-s3-dev
 - DynamoDB uses KMS encryption
 - S3 bucket blocks public access
 - IAM roles follow least privilege principle
-- KMS key policies restrict access appropriately
+- KMS key policies restrict access appropriately.

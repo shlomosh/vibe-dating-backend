@@ -1,0 +1,10 @@
+{
+    "pyjwt>=2.8.0": [],
+    "msgspec>=0.19.0": [
+        "--platform=manylinux2014_x86_64",
+        "--implementation=cp",
+        "--python-version=3.11",
+        "--only-binary=:all:",
+        "--no-deps"
+    ]
+}

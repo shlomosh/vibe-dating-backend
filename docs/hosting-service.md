@@ -12,8 +12,8 @@ The hosting service should follow the existing service architecture pattern esta
 ```
 src/services/hosting/
 ├── cloudformation/
-│   ├── 01-s3.yaml              # S3 bucket for frontend assets
-│   ├── 02-cloudfront.yaml      # CloudFront distribution
+│   ├── 01-cloudfront.yaml      # CloudFront distribution
+│   ├── 02-s3.yaml              # S3 bucket for frontend assets
 │   └── 03-route53.yaml         # Route53 DNS configuration
 ├── build.py                    # Service build script
 ├── deploy.py                   # Service deployment script

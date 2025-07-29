@@ -48,7 +48,7 @@ Resources:
   AuthPlatformFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub 'vibe-platform-auth-${Environment}'
+      FunctionName: !Sub 'vibe-auth-platform-${Environment}'
       Runtime: python3.11
       Handler: lambda_function.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
@@ -100,7 +100,7 @@ Resources:
   AuthPlatformLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/vibe-platform-auth-${Environment}'
+      LogGroupName: !Sub '/aws/lambda/vibe-auth-platform-${Environment}'
       RetentionInDays: 14
 
   AuthJWTAuthorizerLogGroup:

@@ -14,13 +14,12 @@ from unittest.mock import MagicMock, patch
 import boto3
 
 # Add the lambda directories to the path
-project_root = str(Path(__file__).parent.parent.parent.parent.parent.parent)
-service_aws_lambdas_dir = (
-    Path(project_root) / "src" / "services" / "auth" / "aws_lambdas"
-)
+project_root = Path(__file__).parent.parent.parent.parent.parent.parent
+service_aws_lambdas_dir = project_root / "src" / "services" / "auth" / "aws_lambdas"
+common_aws_lambdas_dir = project_root / "src" / "common" / "aws_lambdas"
+
 print(f"Adding {service_aws_lambdas_dir} to sys.path")
 sys.path.insert(0, str(service_aws_lambdas_dir))
-common_aws_lambdas_dir = Path(project_root) / "src" / "common" / "aws_lambdas"
 print(f"Adding {common_aws_lambdas_dir} to sys.path")
 sys.path.insert(0, str(common_aws_lambdas_dir))
 
@@ -47,9 +46,7 @@ def test_auth_platform():
     os.environ["DYNAMODB_TABLE"] = "vibe-dating-dev"
 
     # Mock AWS Secrets Manager calls
-    with patch(
-        "core.auth_utils.get_secret_from_aws_secrets_manager"
-    ) as mock_get_secret:
+    with patch("core.aws.SecretsManagerService.get_secret") as mock_get_secret:
         mock_get_secret.side_effect = lambda arn: {
             f"arn:aws:secretsmanager:{_aws_region}:{_aws_account}:secret:vibe-dating/telegram-bot-token/dev": "test_bot_token",
             f"arn:aws:secretsmanager:{_aws_region}:{_aws_account}:secret:vibe-dating/jwt-secret/dev": "test_jwt_secret",
@@ -57,9 +54,9 @@ def test_auth_platform():
         }.get(arn, "test_secret")
 
         # Mock DynamoDB
-        with patch("core.dynamo_utils.dynamodb") as mock_dynamodb:
+        with patch("core.aws.DynamoDBService.get_table") as mock_get_table:
             mock_table = MagicMock()
-            mock_dynamodb.Table.return_value = mock_table
+            mock_get_table.return_value = mock_table
 
             # Test event
             test_event = {
@@ -152,8 +149,10 @@ def test_auth_platform():
             }
 
             # Mock the telegram verification to return valid user data
-            with patch("auth_platform.telegram.telegram_verify_data") as mock_verify:
-                mock_verify.return_value = {
+            with patch(
+                "auth_platform.telegram.TelegramPlatform.authenticate"
+            ) as mock_authenticate:
+                mock_authenticate.return_value = {
                     "id": 485233267,
                     "username": "XomoGo",
                     "first_name": "Shlomo",
@@ -202,7 +201,7 @@ def test_auth_jwt_authorizer():
     }
 
     with patch(
-        "core.auth_utils.get_secret_from_aws_secrets_manager",
+        "core.aws.SecretsManagerService.get_secret",
         return_value="test_jwt_secret",
     ):
         with patch("core.auth_utils.jwt.decode", return_value=mock_payload):
@@ -230,7 +229,7 @@ def test_user_id_generation():
     ] = f"arn:aws:secretsmanager:{_aws_region}:{_aws_account}:secret:vibe-dating/uuid-namespace/dev"
 
     with patch(
-        "core.auth_utils.get_secret_from_aws_secrets_manager",
+        "core.aws.SecretsManagerService.get_secret",
         return_value="123e4567-e89b-12d3-a456-426614174000",
     ):
         from core.settings import CoreSettings
@@ -265,7 +264,7 @@ def test_user_id_generation():
 def test_telegram_verification():
     """Test Telegram data verification"""
     sys.path.insert(0, str(service_aws_lambdas_dir / "auth_platform"))
-    from auth_platform.telegram import telegram_verify_data
+    from auth_platform.telegram import TelegramPlatform
 
     # Mock environment variables
     os.environ[
@@ -273,18 +272,29 @@ def test_telegram_verification():
     ] = f"arn:aws:secretsmanager:{_aws_region}:{_aws_account}:secret:vibe-dating/telegram-bot-token/dev"
 
     with patch(
-        "core.auth_utils.get_secret_from_aws_secrets_manager",
+        "core.aws.SecretsManagerService.get_secret",
         return_value="test_bot_token",
     ):
         # Test with valid Telegram data
         test_init_data = "query_id=AAFzEuwcAAAAAHMS7ByppBvu&user=%7B%22id%22%3A485233267%2C%22first_name%22%3A%22Shlomo%22%2C%22last_name%22%3A%22Shachar%22%2C%22username%22%3A%22XomoGo%22%2C%22language_code%22%3A%22en%22%2C%22allows_write_to_pm%22%3Atrue%2C%22photo_url%22%3A%22https%3A%5C%2F%5C%2Ft.me%5C%2Fi%5C%2Fuserpic%5C%2F320%5C%2Fhz_lBwqKghtC8Whuyd_JUoVykTP1XG2D_HPURCnfEKc.svg%22%7D&auth_date=1752397621&signature=ZSyEY43VghqD2A3CXUQBl40FzqcKsJ9AXQGfClQpucIQV1-W2mH9X9CaIX7t7W-lUtNgCW5YXcSyk6BQesm_CA&hash=fe0c5ad37042b6e0df60acc4da3bce2f73571954119c8e1c6ccabc732ef54e67"
 
         # Mock the verification to return valid user data
-        with patch("auth_platform.telegram.hmac.new") as mock_hmac:
-            mock_hmac.return_value.hexdigest.return_value = "test_hash"
+        with patch(
+            "auth_platform.telegram.TelegramPlatform._telegram_verify_data"
+        ) as mock_verify:
+            mock_verify.return_value = {
+                "id": 485233267,
+                "username": "XomoGo",
+                "first_name": "Shlomo",
+                "last_name": "Shachar",
+            }
 
             try:
-                user_data = telegram_verify_data(test_init_data, "test_bot_token")
+                platform = TelegramPlatform(
+                    platform_token=test_init_data,
+                    get_secret_f=lambda x: "test_bot_token",
+                )
+                user_data = platform.authenticate()
                 print("[PASS] Telegram verification test passed!")
             except Exception as e:
                 print(f"[FAIL] Telegram verification test failed: {e}")
@@ -318,12 +328,12 @@ def test_error_handling():
     }
 
     with patch(
-        "core.auth_utils.get_secret_from_aws_secrets_manager",
+        "core.aws.SecretsManagerService.get_secret",
         return_value="test_secret",
     ):
-        with patch("core.dynamo_utils.dynamodb") as mock_dynamodb:
+        with patch("core.aws.DynamoDBService.get_table") as mock_get_table:
             mock_table = MagicMock()
-            mock_dynamodb.Table.return_value = mock_table
+            mock_get_table.return_value = mock_table
 
             response = platform_lambda_handler(test_event_missing_fields, None)
 
@@ -347,7 +357,7 @@ def test_jwt_token_generation():
     ] = f"arn:aws:secretsmanager:{_aws_region}:{_aws_account}:secret:vibe-dating/jwt-secret/dev"
 
     with patch(
-        "core.auth_utils.get_secret_from_aws_secrets_manager",
+        "core.aws.SecretsManagerService.get_secret",
         return_value="test_jwt_secret",
     ):
         # Test JWT token generation

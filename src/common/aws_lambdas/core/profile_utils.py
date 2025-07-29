@@ -6,72 +6,35 @@ This module contains all profile-related functions shared across services.
 
 import datetime
 import logging
-import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import boto3
 import msgspec
 from botocore.exceptions import ClientError
+from core_types.profile import *
 
-from .auth_utils import validate_id
-from ..types.profile import (
-    SexualPosition, BodyType, SexualityType, HostingType, TravelDistanceType,
-    EggplantSizeType, PeachShapeType, HealthPracticesType, HivStatusType,
-    PreventionPracticesType, MeetingTimeType, ChatStatusType,
-    ProfileImage, ProfileRecord
-)
+from core.aws import DynamoDBService
+from core.manager import CommonManager
 
 logger = logging.getLogger(__name__)
 
-dynamodb = boto3.resource("dynamodb")
 
-class ProfileManager:
+class ProfileManager(CommonManager):
     def __init__(self, user_id: str):
-        # Validate user_id format
-        if not validate_id(user_id):
-            raise ValueError("Invalid user-id")
-        
-        self.user_id = user_id
-        self.table = self._get_table()
+        super().__init__(user_id)
 
-        self.user_data = self._get_user_record()
+        self.table = DynamoDBService.get_table()
+
         self.profiles_data = self._get_profiles_records()
 
-        allocated_ids_str = self.user_data.get("allocatedProfileIds", "")
-        # Optimized string parsing
-        self.allocated_profile_ids = [pid for pid in allocated_ids_str.split(",") if (pid := pid.strip())] if allocated_ids_str else []
+        self.allocated_profile_ids = (
+            self.user_data.get("profileIds", []) if self.user_data else []
+        )
         self.active_profile_ids = list(self.profiles_data.keys())
 
         # Use ProfileRecord fields directly instead of separate enum
         self.profile_fields = [field for field in ProfileRecord.__struct_fields__]
 
-    def _get_table(self):
-        """Get DynamoDB table with lazy initialization"""
-        dynamodb_table = os.environ.get("DYNAMODB_TABLE")
-        if not dynamodb_table:
-            logger.error("DYNAMODB_TABLE environment variable not set")
-            raise ValueError("DYNAMODB_TABLE environment variable not set")
-
-        try:
-            return dynamodb.Table(dynamodb_table)
-        except Exception as e:
-            logger.error(f"Failed to initialize DynamoDB table {dynamodb_table}: {str(e)}")
-            raise
-
-    def _get_user_record(self) -> Dict[str, Any]:
-        """Get the complete user record from USER entry in DB"""
-        try:
-            response = self.table.get_item(
-                Key={"PK": f"USER#{self.user_id}", "SK": "METADATA"}
-            )
-            user_record = response.get("Item", {})
-            if not user_record:
-                logger.warning(f"No user record found for user_id: {self.user_id}")
-            return user_record
-        except ClientError as e:
-            logger.error(f"Failed to get user record for {self.user_id}: {str(e)}")
-            raise RuntimeError(f"Failed to get user record: {str(e)}")
-    
     def _get_active_profile_ids(self) -> List[str]:
         """Get active profile IDs for a user using GSI query"""
         try:
@@ -79,15 +42,21 @@ class ProfileManager:
                 KeyConditionExpression="PK = :pk AND begins_with(SK, :sk_prefix)",
                 ExpressionAttributeValues={
                     ":pk": f"USER#{self.user_id}",
-                    ":sk_prefix": "PROFILE#"
+                    ":sk_prefix": "PROFILE#",
                 },
-                ProjectionExpression="profileId"
+                ProjectionExpression="profileId",
             )
-            return [item.get("profileId") for item in response.get("Items", []) if item.get("profileId")]
+            return [
+                item.get("profileId")
+                for item in response.get("Items", [])
+                if item.get("profileId")
+            ]
         except ClientError as e:
-            logger.error(f"Failed to get active profile IDs for user {self.user_id}: {str(e)}")
+            logger.error(
+                f"Failed to get active profile IDs for user {self.user_id}: {str(e)}"
+            )
             return []
-    
+
     def _get_profiles_records(self) -> Dict[str, Dict[str, Any]]:
         """Get all active profiles for a user with batch optimization"""
         try:
@@ -98,56 +67,41 @@ class ProfileManager:
             # Use batch_get_item for better performance
             request_items = {
                 self.table.name: {
-                    'Keys': [{
-                        'PK': f'PROFILE#{profile_id}',
-                        'SK': 'METADATA'
-                    } for profile_id in profile_ids]
+                    "Keys": [
+                        {"PK": f"PROFILE#{profile_id}", "SK": "METADATA"}
+                        for profile_id in profile_ids
+                    ]
                 }
             }
-            
+
             response = dynamodb.batch_get_item(RequestItems=request_items)
             profiles_data = {}
-            
+
             # Handle partial failures in batch operations
-            unprocessed_keys = response.get('UnprocessedKeys', {})
+            unprocessed_keys = response.get("UnprocessedKeys", {})
             if unprocessed_keys:
-                logger.warning(f"Unprocessed keys in batch get for user {self.user_id}: {unprocessed_keys}")
-            
-            for item in response.get('Responses', {}).get(self.table.name, []):
-                profile_id = item.get('PK', '').replace('PROFILE#', '')
+                logger.warning(
+                    f"Unprocessed keys in batch get for user {self.user_id}: {unprocessed_keys}"
+                )
+
+            for item in response.get("Responses", {}).get(self.table.name, []):
+                profile_id = item.get("PK", "").replace("PROFILE#", "")
                 if profile_id:
                     profiles_data[profile_id] = item
-                    
+
             return profiles_data
 
         except ClientError as e:
-            logger.error(f"Failed to get active profiles data for user {self.user_id}: {str(e)}")
+            logger.error(
+                f"Failed to get active profiles data for user {self.user_id}: {str(e)}"
+            )
             raise RuntimeError(f"Failed to get active profiles data: {str(e)}")
-
-
-    def _serialize_dynamodb_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
-        """Efficiently serialize items for DynamoDB"""
-        serialized = {}
-        for key, value in item.items():
-            if isinstance(value, str):
-                serialized[key] = {'S': value}
-            elif isinstance(value, (int, float)):
-                serialized[key] = {'N': str(value)}
-            elif isinstance(value, bool):
-                serialized[key] = {'BOOL': value}
-            elif isinstance(value, list):
-                serialized[key] = {'L': [self._serialize_dynamodb_item([v])[0] if isinstance(v, dict) else {'S': str(v)} for v in value]}
-            elif isinstance(value, dict):
-                serialized[key] = {'M': self._serialize_dynamodb_item(value)}
-            else:
-                serialized[key] = {'S': str(value)}
-        return serialized
 
     def validate_profile_id(self, profile_id: str, is_existing: bool = False) -> bool:
         """Validate profile ID format"""
-        if not validate_id(profile_id):
+        if not self.validate_id(profile_id):
             return False
-        
+
         if profile_id not in self.allocated_profile_ids:
             return False
 
@@ -163,7 +117,9 @@ class ProfileManager:
             validated_record = msgspec.convert(profile_record, ProfileRecord)
             return validated_record
         except (msgspec.ValidationError, ValueError) as e:
-            logger.warning(f"Profile validation failed for user {self.user_id}: {str(e)}")
+            logger.warning(
+                f"Profile validation failed for user {self.user_id}: {str(e)}"
+            )
             raise ValueError(f"Invalid profile data: {str(e)}")
 
     def create(self, profile_id: str, profile_record: Dict[str, Any]) -> bool:
@@ -180,9 +136,9 @@ class ProfileManager:
         Raises:
             ValueError: If profile creation fails
         """
-        if not validate_id(profile_id):
+        if not self.validate_id(profile_id):
             raise ValueError("Invalid profile_id format")
-            
+
         if profile_id not in self.allocated_profile_ids:
             raise ValueError("Profile-Id is invalid")
 
@@ -191,7 +147,7 @@ class ProfileManager:
 
         validated_record = self.validate_profile_record(profile_record)
         profile_record = msgspec.to_builtins(validated_record)
-        
+
         # Use timezone-aware datetime
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
@@ -201,43 +157,55 @@ class ProfileManager:
                 "PK": f"PROFILE#{profile_id}",
                 "SK": "METADATA",
                 "userId": self.user_id,
-                **{k: v for k, v in profile_record.items() if k in self.profile_fields and v is not None},
+                **{
+                    k: v
+                    for k, v in profile_record.items()
+                    if k in self.profile_fields and v is not None
+                },
                 "createdAt": now,
                 "updatedAt": now,
             }
-            
+
             lookup_item = {
                 "PK": f"USER#{self.user_id}",
                 "SK": f"PROFILE#{profile_id}",
                 "profileId": profile_id,
                 "createdAt": now,
             }
-            
+
             # Use optimized serialization
             dynamodb.meta.client.transact_write_items(
                 TransactItems=[
                     {
-                        'Put': {
-                            'TableName': self.table.name,
-                            'Item': self._serialize_dynamodb_item(profile_item),
-                            'ConditionExpression': 'attribute_not_exists(PK)'
+                        "Put": {
+                            "TableName": self.table.name,
+                            "Item": DynamoDBService.serialize_dynamodb_item(
+                                profile_item
+                            ),
+                            "ConditionExpression": "attribute_not_exists(PK)",
                         }
                     },
                     {
-                        'Put': {
-                            'TableName': self.table.name,
-                            'Item': self._serialize_dynamodb_item(lookup_item)
+                        "Put": {
+                            "TableName": self.table.name,
+                            "Item": DynamoDBService.serialize_dynamodb_item(
+                                lookup_item
+                            ),
                         }
-                    }
+                    },
                 ]
             )
-            
-            logger.info(f"Profile {profile_id} created successfully for user {self.user_id}")
+
+            logger.info(
+                f"Profile {profile_id} created successfully for user {self.user_id}"
+            )
             return True
 
         except ClientError as e:
-            logger.error(f"Failed to create profile {profile_id} for user {self.user_id}: {str(e)}")
-            if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            logger.error(
+                f"Failed to create profile {profile_id} for user {self.user_id}: {str(e)}"
+            )
+            if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
                 raise ValueError("Profile already exists")
             raise ValueError(f"Failed to create profile: {str(e)}")
 
@@ -255,9 +223,9 @@ class ProfileManager:
         Raises:
             ValueError: If profile update fails
         """
-        if not validate_id(profile_id):
+        if not self.validate_id(profile_id):
             raise ValueError("Invalid profile_id format")
-            
+
         if profile_id not in self.allocated_profile_ids:
             raise ValueError("Profile-Id is invalid")
 
@@ -266,7 +234,7 @@ class ProfileManager:
 
         validated_record = self.validate_profile_record(profile_record)
         profile_record = msgspec.to_builtins(validated_record)
-        
+
         # Use timezone-aware datetime
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
@@ -281,7 +249,7 @@ class ProfileManager:
                 expression_attribute_values[f":{field}"] = profile_record[field]
                 expression_attribute_names[f"#{field}"] = field
 
-        update_expression = f"SET updatedAt = :updated_at{f', ' + ', '.join(update_fields)}' if update_fields else "SET updatedAt = :updated_at"
+        update_expression = f"SET updatedAt = :updated_at{', ' + ', '.join(update_fields) if update_fields else ''}"
 
         try:
             kwargs = {
@@ -336,9 +304,9 @@ class ProfileManager:
         Raises:
             ValueError: If profile deletion fails
         """
-        if not validate_id(profile_id):
+        if not self.validate_id(profile_id):
             raise ValueError("Invalid profile_id format")
-            
+
         if profile_id not in self.allocated_profile_ids:
             raise ValueError("Profile-Id is invalid")
 
@@ -350,53 +318,57 @@ class ProfileManager:
             dynamodb.meta.client.transact_write_items(
                 TransactItems=[
                     {
-                        'Delete': {
-                            'TableName': self.table.name,
-                            'Key': {
-                                'PK': {'S': f'PROFILE#{profile_id}'},
-                                'SK': {'S': 'METADATA'}
-                            }
+                        "Delete": {
+                            "TableName": self.table.name,
+                            "Key": {
+                                "PK": {"S": f"PROFILE#{profile_id}"},
+                                "SK": {"S": "METADATA"},
+                            },
                         }
                     },
                     {
-                        'Delete': {
-                            'TableName': self.table.name,
-                            'Key': {
-                                'PK': {'S': f'USER#{self.user_id}'},
-                                'SK': {'S': f'PROFILE#{profile_id}'}
-                            }
+                        "Delete": {
+                            "TableName": self.table.name,
+                            "Key": {
+                                "PK": {"S": f"USER#{self.user_id}"},
+                                "SK": {"S": f"PROFILE#{profile_id}"},
+                            },
                         }
-                    }
+                    },
                 ]
             )
-            
-            logger.info(f"Profile {profile_id} deleted successfully for user {self.user_id}")
+
+            logger.info(
+                f"Profile {profile_id} deleted successfully for user {self.user_id}"
+            )
             return True
 
         except ClientError as e:
-            logger.error(f"Failed to delete profile {profile_id} for user {self.user_id}: {str(e)}")
+            logger.error(
+                f"Failed to delete profile {profile_id} for user {self.user_id}: {str(e)}"
+            )
             raise ValueError(f"Failed to delete profile: {str(e)}")
 
     def get(self, profile_id: str) -> Dict[str, Any]:
         """
         Get a profile by ID
-        
+
         Args:
             profile_id: The profile ID to retrieve
-            
+
         Returns:
             Dict containing profile data
-            
+
         Raises:
             ValueError: If profile ID is invalid or not found
         """
-        if not validate_id(profile_id):
+        if not self.validate_id(profile_id):
             raise ValueError("Invalid profile_id format")
-            
+
         if profile_id not in self.allocated_profile_ids:
             raise ValueError("Profile-Id is invalid")
-        
+
         if profile_id not in self.profiles_data:
             raise ValueError("Profile not found")
-            
+
         return self.profiles_data[profile_id]

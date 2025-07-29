@@ -6,6 +6,7 @@ This module provides shared functionality for building Lambda layers and functio
 across different services in the Vibe Dating Backend.
 """
 
+import json
 import os
 import shutil
 import subprocess
@@ -13,7 +14,7 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.core.core_utils import ServiceConstructor
+from core.core_utils import ServiceConstructor
 
 os.environ["AWS_PROFILE"] = "vibe-dev"
 
@@ -40,11 +41,85 @@ class ServiceBuilder(ServiceConstructor):
         pkg_dir = self.build_dir / f"{aws_layer_name}" / "python"
         pkg_dir.mkdir(parents=True, exist_ok=True)
 
+        # Check if requirements.json exists, otherwise fall back to requirements.txt
+        requirements_json_file = requirements_file.parent / "requirements.json"
+        if requirements_json_file.exists():
+            print(f"• Using requirements.json: {requirements_json_file}")
+            return self._install_from_requirements_json(requirements_json_file, pkg_dir)
+        else:
+            print(f"• Using requirements.txt: {requirements_file}")
+            return self._install_from_requirements_txt(requirements_file, pkg_dir)
+
+    def _install_from_requirements_json(self, requirements_json_file: Path, pkg_dir: Path) -> Path:
+        """Install dependencies from requirements.json format"""
+        if not requirements_json_file.exists():
+            raise FileNotFoundError(f"Requirements JSON file not found: {requirements_json_file}")
+
+        try:
+            with open(requirements_json_file, 'r') as f:
+                requirements_data = json.load(f)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in {requirements_json_file}: {e}")
+
+        print(f"• Loaded requirements for packages: {list(requirements_data.keys())}")
+
+        # Install each package with its specific pip parameters
+        for package_spec, pip_params in requirements_data.items():
+            cmd = ["pip", "install", package_spec, "-t", str(pkg_dir)]
+            
+            if isinstance(pip_params, list) and pip_params:
+                print(f"• Installing {package_spec} with parameters: {pip_params}")
+                cmd.extend(pip_params)
+            else:
+                print(f"• Installing {package_spec}")
+            
+            subprocess.run(cmd, check=True)
+
+        return pkg_dir
+
+    def _install_from_requirements_txt(self, requirements_file: Path, pkg_dir: Path) -> Path:
+        """Install dependencies from traditional requirements.txt format with pip parameters"""
         if not requirements_file.exists():
             raise FileNotFoundError(f"Requirements file not found: {requirements_file}")
 
+        # Check for pip parameters file
+        pip_params_file = requirements_file.parent / "requirements_pip_params.json"
+        pip_params = {}
+        if pip_params_file.exists():
+            print(f"• Found pip parameters file: {pip_params_file}")
+            try:
+                with open(pip_params_file, 'r') as f:
+                    pip_params = json.load(f)
+                print(f"• Loaded pip parameters for packages: {list(pip_params.keys())}")
+            except json.JSONDecodeError as e:
+                print(f"⚠️  Warning: Invalid JSON in {pip_params_file}: {e}")
+                pip_params = {}
+
+        # Read requirements file to get package names
+        package_names = []
+        try:
+            with open(requirements_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        # Extract package name (remove version specifiers)
+                        package_name = line.split('==')[0].split('>=')[0].split('<=')[0].split('~=')[0].split('!=')[0].split('>')[0].split('<')[0].strip()
+                        package_names.append(package_name)
+        except Exception as e:
+            print(f"⚠️  Warning: Could not parse requirements file: {e}")
+
         # Install dependencies to the layer directory
         cmd = ["pip", "install", "-r", str(requirements_file), "-t", str(pkg_dir)]
+
+        # Add pip parameters for specific packages if specified
+        for package_name in package_names:
+            if package_name in pip_params:
+                package_params = pip_params[package_name]
+                if isinstance(package_params, list):
+                    print(f"• Adding pip parameters for {package_name}: {package_params}")
+                    cmd.extend(package_params)
+                else:
+                    print(f"⚠️  Warning: Invalid pip parameters for {package_name}, expected list")
 
         subprocess.run(cmd, check=True)
         return pkg_dir

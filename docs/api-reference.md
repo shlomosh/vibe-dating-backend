@@ -61,7 +61,7 @@ Authenticate user with Telegram WebApp data.
     "telegram_username": "username",
     "is_banned": false,
     "preferences": {},
-    "created_at": "2024-01-01T00:00:00Z"
+    "createdAt": "2024-01-01T00:00:00Z"
   },
   "expires_at": "2024-01-08T00:00:00Z"
 }
@@ -99,7 +99,7 @@ Authorization: Bearer <jwt_token>
     "theme": "auto"
   },
   "last_active_at": "2024-01-01T12:00:00Z",
-  "created_at": "2024-01-01T00:00:00Z"
+  "createdAt": "2024-01-01T00:00:00Z"
 }
 ```
 
@@ -161,20 +161,20 @@ Authorization: Bearer <jwt_token>
   "age": 25,
   "bio": "Profile description",
   "interests": ["music", "travel"],
-  "looking_for": ["friendship", "relationship"],
+  "lookingFor": ["friendship", "relationship"],
   "location": {
     "latitude": 40.7128,
     "longitude": -74.0060,
     "geohash": "dr5ru",
     "precision": 5,
-    "last_updated": "2024-01-01T12:00:00Z"
+    "lastUpdated": "2024-01-01T12:00:00Z"
   },
   "media": [
     {
-      "media_id": "media_id",
+      "mediaId": "media_id",
       "type": "image",
       "url": "https://media.vibe-dating.io/original/media_id.jpg",
-      "thumbnail_url": "https://media.vibe-dating.io/thumb/media_id.jpg",
+      "thumbnailUrl": "https://media.vibe-dating.io/thumb/media_id.jpg",
       "order": 1,
       "metadata": {
         "width": 1920,
@@ -184,9 +184,9 @@ Authorization: Bearer <jwt_token>
       }
     }
   ],
-  "is_active": true,
-  "created_at": "2024-01-01T00:00:00Z",
-  "updated_at": "2024-01-01T12:00:00Z"
+  "isActive": true,
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T12:00:00Z"
 }
 ```
 
@@ -205,7 +205,7 @@ Authorization: Bearer <jwt_token>
   "age": 25,
   "bio": "Profile description",
   "interests": ["music", "travel"],
-  "looking_for": ["friendship", "relationship"]
+  "lookingFor": ["friendship", "relationship"]
 }
 ```
 
@@ -218,9 +218,9 @@ Authorization: Bearer <jwt_token>
   "age": 25,
   "bio": "Profile description",
   "interests": ["music", "travel"],
-  "looking_for": ["friendship", "relationship"],
-  "created_at": "2024-01-01T00:00:00Z",
-  "updated_at": "2024-01-01T12:00:00Z"
+  "lookingFor": ["friendship", "relationship"],
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T12:00:00Z"
 }
 ```
 
@@ -241,7 +241,7 @@ Authorization: Bearer <jwt_token>
 
 ### Location Services
 
-#### PUT /profiles/{profile_id}/location
+#### PUT /profile/{profileId}/location
 Update profile location.
 
 **Headers:**
@@ -269,7 +269,7 @@ Authorization: Bearer <jwt_token>
 **Query Parameters:**
 - `latitude` (required): Current latitude
 - `longitude` (required): Current longitude
-- `radius_km` (optional): Search radius in kilometers (default: 50)
+- `radiusKm` (optional): Search radius in kilometers (default: 50)
 - `limit` (optional): Maximum number of results (default: 20)
 - `offset` (optional): Pagination offset (default: 0)
 
@@ -279,24 +279,24 @@ Authorization: Bearer <jwt_token>
   "items": [
     {
       "profile": {
-        "profile_id": "profile_id",
-        "user_id": "user_id",
+        "profileId": "profile_id",
+        "userId": "user_id",
         "name": "Profile Name",
         "age": 25,
         "bio": "Profile description",
         "interests": ["music", "travel"],
-        "looking_for": ["friendship", "relationship"],
+        "lookingFor": ["friendship", "relationship"],
         "location": {
           "latitude": 40.7128,
           "longitude": -74.0060,
           "geohash": "dr5ru",
           "precision": 5,
-          "last_updated": "2024-01-01T12:00:00Z"
+          "lastUpdated": "2024-01-01T12:00:00Z"
         },
         "media": [],
-        "is_active": true,
-        "created_at": "2024-01-01T00:00:00Z",
-        "updated_at": "2024-01-01T12:00:00Z"
+        "isActive": true,
+        "createdAt": "2024-01-01T00:00:00Z",
+        "updatedAt": "2024-01-01T12:00:00Z"
       },
       "distance_km": 2.5,
       "geohash_match": "dr5ru"

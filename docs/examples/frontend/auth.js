@@ -13,7 +13,7 @@ const API_BASE_URL = 'https://your-api-gateway-url.execute-api.il-central-1.amaz
  */
 class VibeAuthService {
     constructor() {
-        this.token = localStorage.getItem('user_auth_token');
+        this.token = localStorage.getItem('vibe_auth_token');
         this.userId = localStorage.getItem('user_id');
         this.isAuthenticated = !!this.token;
     }
@@ -58,7 +58,7 @@ class VibeAuthService {
      */
     async authenticateWithTelegram(initData, telegramUser) {
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/platform`, {
+            const response = await fetch(`${API_BASE_URL}/auth/telegram`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -129,7 +129,7 @@ class VibeAuthService {
         this.userId = null;
         this.isAuthenticated = false;
         
-        localStorage.removeItem('user_auth_token');
+        localStorage.removeItem('vibe_auth_token');
         localStorage.removeItem('user_id');
     }
 

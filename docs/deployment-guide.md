@@ -61,7 +61,7 @@ vibe-dating-backend/
 
 1. **AWS Profile Setup**
    ```bash
-   aws configure --profile vibe-dating
+   aws configure --profile vibe-dev
    # Enter your AWS Access Key ID
    # Enter your AWS Secret Access Key
    # Enter your default region (il-central-1)
@@ -266,7 +266,7 @@ aws cloudformation describe-stack-events \
 aws cloudwatch get-metric-statistics \
   --namespace AWS/Lambda \
   --metric-name Duration \
-  --dimensions Name=FunctionName,Value=platform-auth-function \
+  --dimensions Name=FunctionName,Value=auth-platform-function \
   --start-time 2024-01-01T00:00:00Z \
   --end-time 2024-01-01T23:59:59Z \
   --period 3600 \

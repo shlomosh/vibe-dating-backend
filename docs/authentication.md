@@ -65,7 +65,7 @@ const AuthProvider = ({ children }) => {
   const authenticate = async () => {
     try {
       // Send Telegram init data to backend for verification
-      const response = await fetch('/api/v1/auth/telegram', {
+      const response = await fetch('/auth/telegram', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -77,7 +77,7 @@ const AuthProvider = ({ children }) => {
       const { token, userId } = await response.json();
       
       // Store token securely
-      localStorage.setItem('authToken', token);
+      localStorage.setItem('vibe_auth_token', token);
       
       setAuthState({
         isAuthenticated: true,
@@ -106,7 +106,7 @@ class ApiClient {
   private baseURL = process.env.REACT_APP_API_BASE_URL;
   
   private async request(endpoint: string, options: RequestInit = {}) {
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('vibe_auth_token');
     
     const config: RequestInit = {
       ...options,
@@ -121,7 +121,7 @@ class ApiClient {
     
     // Handle token expiration
     if (response.status === 401) {
-      localStorage.removeItem('authToken');
+      localStorage.removeItem('vibe_auth_token');
       // Redirect to re-authentication
       window.location.reload();
     }
@@ -443,7 +443,7 @@ sequenceDiagram
 ## 8. References
 
 - [Telegram Mini-Apps Auth](https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app)
-- [AWS API Gateway JWT Authorizer](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-user-jwt-authorizer.html)
+- [AWS API Gateway JWT Authorizer](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-auth-jwt-authorizer.html)
 - [OWASP REST Security](https://owasp.org/www-project-api-security/)
 - [JWT.io](https://jwt.io/) - JWT token debugging and validation
 - [AWS Lambda Authorizers](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-use-lambda-authorizer.html) 

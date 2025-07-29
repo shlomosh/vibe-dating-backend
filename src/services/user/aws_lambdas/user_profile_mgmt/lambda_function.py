@@ -5,11 +5,9 @@ Handles all profile-related operations for authenticated users.
 Supports GET, PUT, and DELETE operations for profile management.
 """
 
-import base64
-import json
 from typing import Any, Dict
 
-from core.auth_utils import extract_user_id_from_context, get_allocated_profile_ids
+from core.auth_utils import extract_user_id_from_context
 from core.profile_utils import ProfileManager
 from core.rest_utils import ResponseError, generate_response, parse_request_body
 
@@ -26,7 +24,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         Dict[str, Any]: API Gateway response
     """
     try:
-        print(f"Event: {event}")
+        import json
+
+        print(f"User Profile Management Event: {json.dumps(event)}")
 
         # Extract user ID from JWT token context
         user_id = extract_user_id_from_context(event)
