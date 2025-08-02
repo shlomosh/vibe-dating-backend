@@ -67,46 +67,33 @@ SK: MetadataType#{Timestamp/ID}
   "PK": "PROFILE#{profileId}",
   "SK": "METADATA",
   "userId": "userId",
-  "name": "Profile Name",
-  "age": 25,
-  "bio": "Profile description",
-  "interests": ["music", "travel", "sports"],
-  "lookingFor": ["friendship", "relationship"],
-  "location": {
-    "latitude": 40.7128,
-    "longitude": -74.0060,
-    "geohash": "dr5ru",
-    "precision": 5,
-    "lastUpdated": "2024-01-01T12:00:00Z"
-  },
-  "media": {
-    "mediaId1": {
-      "type": "image",
-      "url": "https://cdn.example.com/original/mediaId1.jpg",
-      "thumbnailUrl": "https://cdn.example.com/thumb/mediaId1.jpg",
-      "order": 1,
-      "metadata": {
+  "nickName": "Display Name",
+  "aboutMe": "Profile description or bio text",
+  "age": "25",
+  "sexualPosition": "top",
+  "bodyType": "athletic",
+  "sexualityType": "gay",
+  "eggplantSize": "medium",
+  "peachShape": "round",
+  "healthPractices": ["regular_testing", "safe_practices"],
+  "hivStatus": "negative",
+  "preventionPractices": ["prep", "condoms"],
+  "hostingType": "can_host",
+  "travelDistance": "within_10km",
+  "profileImages": [
+    {
+      "imageId": "imageId1",
+      "imageUrl": "https://cdn.example.com/original/imageId1.jpg",
+      "imageThumbnailUrl": "https://cdn.example.com/thumb/imageId1.jpg",
+      "imageAttributes": {
         "width": 1920,
         "height": 1080,
         "size": 2048576,
-        "format": "jpeg"
-      }
-    },
-    "mediaId2": {
-      "type": "video",
-      "url": "https://cdn.example.com/original/mediaId2.mp4",
-      "thumbnailUrl": "https://cdn.example.com/thumb/mediaId2.jpg",
-      "previewUrl": "https://cdn.example.com/preview/mediaId2.mp4",
-      "order": 2,
-      "metadata": {
-        "width": 1920,
-        "height": 1080,
-        "size": 10485760,
-        "format": "mp4",
-        "duration": 15.5
+        "format": "jpeg",
+        "aspectRatio": "3:4"
       }
     }
-  },
+  ],
   "isActive": true,
   "createdAt": "2024-01-01T00:00:00Z",
   "updatedAt": "2024-01-01T12:00:00Z",
@@ -217,26 +204,36 @@ SK: MetadataType#{Timestamp/ID}
 }
 ```
 
-**9. Media Entity (for room attachments)**
+**9. Profile Media Record (for media processing pipeline)**
 ```json
 {
-  "PK": "MEDIA#{mediaId}",
-  "SK": "METADATA",
-  "type": "image|video",
-  "originalUrl": "https://cdn.example.com/original/mediaId.jpg",
-  "thumbnailUrl": "https://cdn.example.com/thumb/mediaId.jpg",
-  "previewUrl": "https://cdn.example.com/preview/mediaId.mp4",  // for videos
+  "PK": "PROFILE#{profileId}",
+  "SK": "MEDIA#{imageId}",
+  "imageId": "imageId",
+  "type": "image",
+  "status": "completed",
+  "order": 1,
+  "originalUrl": "https://cdn.example.com/original/imageId.jpg",
+  "thumbnailUrl": "https://cdn.example.com/thumb/imageId.jpg",
   "metadata": {
     "width": 1920,
     "height": 1080,
     "size": 2048576,
-    "format": "jpeg|mp4",
-    "duration": 15.5  // for videos
+    "format": "jpeg",
+    "aspectRatio": "3:4",
+    "camera": "iPhone 12 Pro",
+    "software": "iOS 17.0",
+    "timestamp": "2024-01-01T12:00:00Z",
+    "location": null,
+    "flags": ""
   },
-  "uploadedBy": "userId",
+  "s3Key": "profile-images/imageId.jpg",
+  "s3Bucket": "vibe-dating-media-prod",
   "uploadedAt": "2024-01-01T12:00:00Z",
-  "isOrphaned": false,
-  "TTL": 7776000  // 90 days for orphaned media
+  "processedAt": "2024-01-01T12:05:00Z",
+  "createdAt": "2024-01-01T12:00:00Z",
+  "updatedAt": "2024-01-01T12:05:00Z",
+  "TTL": 0
 }
 ```
 
@@ -270,24 +267,39 @@ SK: MetadataType#{Timestamp/ID}
 
 ### Profile System
 ```typescript
-interface ProfileInfo {
-  nickName: string;
-  aboutMe: string;
-  age: AgeType;
-  position: PositionType;
-  body: BodyType;
-  eggplantSize: EggplantSizeType;
-  peachShape: PeachShapeType;
-  healthPractices: HealthPracticesType;
-  hivStatus: HivStatusType;
-  preventionPractices: PreventionPracticesType;
-  hosting: HostingType;
-  travelDistance: TravelDistanceType;
+interface ProfileImage {
+  imageId: string;
+  imageUrl: string;
+  imageThumbnailUrl: string;
+  imageAttributes: {
+    width: number;
+    height: number;
+    size: number;
+    format: string;
+    aspectRatio: string;
+  };
+}
+
+interface ProfileRecord {
+  nickName?: string;        // max 32 chars
+  aboutMe?: string;         // max 512 chars
+  age?: string;             // max 8 chars
+  sexualPosition?: SexualPositionType;
+  bodyType?: BodyType;
+  sexualityType?: SexualityType;
+  eggplantSize?: EggplantSizeType;
+  peachShape?: PeachShapeType;
+  healthPractices?: HealthPracticesType[];
+  hivStatus?: HivStatusType;
+  preventionPractices?: PreventionPracticesType[];
+  hostingType?: HostingType;
+  travelDistance?: TravelDistanceType;
+  profileImages?: ProfileImage[];  // max 10 images
 }
 
 interface ProfileDB {
   id: ProfileId;
-  db: Record<ProfileId, MyProfileInfo>;
+  db: Record<ProfileId, ProfileRecord>;
 }
 ```
 

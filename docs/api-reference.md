@@ -157,41 +157,37 @@ Authorization: Bearer <jwt_token>
 {
   "profileId": "profile_id",
   "userId": "user_id",
-  "name": "Profile Name",
-  "age": 25,
-  "bio": "Profile description",
-  "interests": ["music", "travel"],
-  "lookingFor": ["friendship", "relationship"],
-  "location": {
-    "latitude": 40.7128,
-    "longitude": -74.0060,
-    "geohash": "dr5ru",
-    "precision": 5,
-    "lastUpdated": "2024-01-01T12:00:00Z"
-  },
-  "media": [
+  "nickName": "Display Name",
+  "aboutMe": "Profile description",
+  "age": "25",
+  "sexualPosition": "vers",
+  "bodyType": "fit",
+  "eggplantSize": "average",
+  "peachShape": "average",
+  "healthPractices": "regular_exercise",
+  "hivStatus": "negative",
+  "preventionPractices": "prep",
+  "hosting": "hostAndTravel",
+  "travelDistance": "city",
+  "profileImages": [
     {
-      "mediaId": "media_id",
-      "type": "image",
-      "url": "https://media.vibe-dating.io/original/media_id.jpg",
-      "thumbnailUrl": "https://media.vibe-dating.io/thumb/media_id.jpg",
-      "order": 1,
-      "metadata": {
-        "width": 1920,
-        "height": 1080,
-        "size": 2048576,
+      "imageId": "image_id",
+      "imageUrl": "https://media.vibe-dating.io/original/image_id.jpg",
+      "imageThumbnailUrl": "https://media.vibe-dating.io/thumb/image_id.jpg",
+      "imageAttributes": {
+        "width": "1920",
+        "height": "1080",
         "format": "jpeg"
       }
     }
   ],
-  "isActive": true,
   "createdAt": "2024-01-01T00:00:00Z",
   "updatedAt": "2024-01-01T12:00:00Z"
 }
 ```
 
 #### PUT /profile/{profileId}
-Create or update a profile.
+Create or update a profile (upsert operation).
 
 **Headers:**
 ```
@@ -201,11 +197,30 @@ Authorization: Bearer <jwt_token>
 **Request Body:**
 ```json
 {
-  "name": "Profile Name",
-  "age": 25,
-  "bio": "Profile description",
-  "interests": ["music", "travel"],
-  "lookingFor": ["friendship", "relationship"]
+  "nickName": "Display Name",
+  "aboutMe": "Profile description",
+  "age": "25",
+  "sexualPosition": "vers",
+  "bodyType": "fit",
+  "eggplantSize": "average",
+  "peachShape": "average",
+  "healthPractices": "regular_exercise",
+  "hivStatus": "negative",
+  "preventionPractices": "prep",
+  "hosting": "hostAndTravel",
+  "travelDistance": "city",
+  "profileImages": [
+    {
+      "imageId": "image_id",
+      "imageUrl": "https://media.vibe-dating.io/original/image_id.jpg",
+      "imageThumbnailUrl": "https://media.vibe-dating.io/thumb/image_id.jpg",
+      "imageAttributes": {
+        "width": "1920",
+        "height": "1080",
+        "format": "jpeg"
+      }
+    }
+  ]
 }
 ```
 
@@ -213,19 +228,13 @@ Authorization: Bearer <jwt_token>
 ```json
 {
   "profileId": "profile_id",
-  "userId": "user_id",
-  "name": "Profile Name",
-  "age": 25,
-  "bio": "Profile description",
-  "interests": ["music", "travel"],
-  "lookingFor": ["friendship", "relationship"],
-  "createdAt": "2024-01-01T00:00:00Z",
-  "updatedAt": "2024-01-01T12:00:00Z"
+  "success": true,
+  "message": "Profile updated successfully"
 }
 ```
 
 #### DELETE /profile/{profileId}
-Delete a profile.
+Delete a profile and associated media.
 
 **Headers:**
 ```
@@ -235,6 +244,8 @@ Authorization: Bearer <jwt_token>
 **Response:**
 ```json
 {
+  "profileId": "profile_id",
+  "success": true,
   "message": "Profile deleted successfully"
 }
 ```
@@ -311,22 +322,10 @@ Authorization: Bearer <jwt_token>
 
 ### Media Management
 
-#### POST /profiles/{profile_id}/media
-Upload media to profile.
+**Note**: Media management is currently in development. The endpoints below are planned but not yet implemented.
 
-**Headers:**
-```
-Authorization: Bearer <jwt_token>
-Content-Type: multipart/form-data
-```
-
-**Form Data:**
-- `file`: Media file (image or video)
-- `type`: Media type ("image" or "video")
-- `order`: Display order (optional)
-
-#### PUT /profiles/{profile_id}/media/order
-Reorder profile media.
+#### POST /profiles/{profile_id}/media/request-upload
+Request upload URL for media (planned).
 
 **Headers:**
 ```
@@ -336,16 +335,112 @@ Authorization: Bearer <jwt_token>
 **Request Body:**
 ```json
 {
-  "media_order": ["media_id_1", "media_id_2", "media_id_3"]
+  "type": "image",
+  "metadata": {
+    "width": 1440,
+    "height": 1920,
+    "size": 2048576,
+    "format": "jpeg",
+    "aspect": "3:4",
+    "camera": "iPhone 12 Pro",
+    "software": "iOS 17.0",
+    "timestamp": "2024-01-01T12:00:00Z",
+    "location": null,
+    "flags": "",
+  },
+  "order": 1
 }
 ```
 
-#### DELETE /media/{media_id}
-Delete media file.
+**Response:**
+```json
+{
+  "mediaId": "aB3cD4eF",
+  "uploadUrl": "https://s3.amazonaws.com/vibe-dating-media-prod/uploads/profile-images/aB3cD4eF.jpg?X-Amz-Algorithm=...",
+  "uploadMethod": "PUT",
+  "uploadHeaders": {
+    "Content-Type": "image/jpeg"
+  },
+  "expiresAt": "2024-01-01T13:00:00Z"
+}
+
+#### POST /profiles/{profile_id}/media/{media_id}/complete
+Complete media upload and trigger processing (planned).
 
 **Headers:**
 ```
 Authorization: Bearer <jwt_token>
+```
+
+**Request Body:**
+```json
+{
+  "uploadSuccess": true,
+  "s3ETag": "\"d41d8cd98f00b204e9800998ecf8427e\"",
+  "actualSize": 2048576
+}
+```
+
+**Response:**
+```json
+{
+  "mediaId": "aB3cD4eF",
+  "status": "processing",
+  "estimatedProcessingTime": 30
+}
+```
+
+#### GET /profiles/{profile_id}/media/{media_id}/status
+Get media processing status (planned).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:**
+```json
+{
+  "mediaId": "aB3cD4eF",
+  "status": "completed",
+  "urls": {
+    "original": "https://cdn.vibe-dating.io/original/aB3cD4eF.jpg",
+    "thumbnail": "https://cdn.vibe-dating.io/thumb/aB3cD4eF.jpg"
+  },
+  "processedAt": "2024-01-01T12:05:00Z"
+}
+```
+
+#### PUT /profiles/{profile_id}/media/order
+Reorder profile media (planned).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Request Body:**
+```json
+{
+  "imageOrder": ["image_id_1", "image_id_2", "image_id_3"]
+}
+```
+
+#### DELETE /profiles/{profile_id}/media/{media_id}
+Delete media file (planned).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:**
+```json
+{
+  "mediaId": "aB3cD4eF",
+  "deleted": true,
+  "deletedAt": "2024-01-01T12:10:00Z"
+}
 ```
 
 ### Agora Integration

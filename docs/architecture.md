@@ -70,8 +70,8 @@ Vibe is a location-based dating application designed as a Telegram Mini-App for 
 - **User Banning**: Community moderation with temporary/permanent bans
 
 ### 4. Media Management
-- **Frontend Processing**: Crop, zoom, rotate, EXIF removal for images; compression for videos
-- **Upload Flow**: Processed media -> Backend -> S3 -> CloudFront
+- **Frontend Processing**: User uploads image and sets zoom/cropping to 3:4 ratio; frontend crops original image and extracts EXIF metadata (selective fields); EXIF removed from cropped image
+- **Upload Flow**: Frontend requests backend to upload image with EXIF metadata -> Backend allocates image-id and provides upload path -> Image uploaded to S3 -> CloudFront
 - **Backend Processing**: Thumbnail generation, video transcoding, metadata extraction/storage
 - **Delivery**: CloudFront CDN URLs for originals, thumbnails, and video previews
 - **Cleanup**: TTL-based removal of orphaned media
