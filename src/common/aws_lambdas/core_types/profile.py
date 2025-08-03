@@ -115,9 +115,9 @@ class ProfileImage(msgspec.Struct):
 class ProfileRecord(msgspec.Struct):
     """Profile record validation using msgspec - matches frontend interface"""
 
-    nickName: Optional[str] = msgspec.field(max_length=32, default=None)
-    aboutMe: Optional[str] = msgspec.field(max_length=512, default=None)
-    age: Optional[str] = msgspec.field(max_length=8, default=None)
+    nickName: Optional[str] = None
+    aboutMe: Optional[str] = None
+    age: Optional[str] = None
     sexualPosition: Optional[SexualPosition] = None
     bodyType: Optional[BodyType] = None
     eggplantSize: Optional[EggplantSizeType] = None
@@ -127,9 +127,7 @@ class ProfileRecord(msgspec.Struct):
     preventionPractices: Optional[PreventionPracticesType] = None
     hosting: Optional[HostingType] = None
     travelDistance: Optional[TravelDistanceType] = None
-    profileImages: List[ProfileImage] = msgspec.field(
-        default_factory=list, max_length=10
-    )
+    profileImages: List[ProfileImage] = msgspec.field(default_factory=list)
 
     def __post_init__(self):
         """Additional validation after struct creation"""
