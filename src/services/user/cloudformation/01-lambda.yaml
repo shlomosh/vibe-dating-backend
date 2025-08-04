@@ -8,7 +8,7 @@ Parameters:
     AllowedValues: [dev, staging, prod]
     Description: Environment name
 
-  ApiRegion:
+  Region:
     Type: String
     Description: Region for the application (e.g., il-central-1)
 
@@ -24,25 +24,11 @@ Parameters:
     Type: String
     Description: DynamoDB Table Name (imported from dynamodb stack)
 
-  AuthLayerArn:
+  CoreLayerArn:
     Type: String
-    Description: Auth Layer ARN (imported from auth stack)
+    Description: Core Layer ARN (imported from core service)
 
 Resources:
-  # Lambda Layer for user service dependencies
-  UserLayer:
-    Type: AWS::Lambda::LayerVersion
-    Properties:
-      LayerName: !Sub 'vibe-user-layer-${Environment}'
-      Description: 'Vibe Dating App user service layer with dependencies'
-      Content:
-        S3Bucket: !Ref LambdaCodeBucketName
-        S3Key: lambda/user_layer.zip
-      CompatibleRuntimes:
-        - python3.11
-      CompatibleArchitectures:
-        - x86_64
-
   # Single Lambda function for all user profile operations
   UserProfileMgmtFunction:
     Type: AWS::Lambda::Function
@@ -55,12 +41,11 @@ Resources:
         S3Bucket: !Ref LambdaCodeBucketName
         S3Key: lambda/user_profile_mgmt.zip
       Layers:
-        - !Ref AuthLayerArn
-        - !Ref UserLayer
+        - !Ref CoreLayerArn
       Environment:
         Variables:
-          JWT_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${ApiRegion}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}'
-          UUID_NAMESPACE_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${ApiRegion}:${AWS::AccountId}:secret:vibe-dating/uuid-namespace/${Environment}'
+          JWT_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${Region}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}'
+          UUID_NAMESPACE_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${Region}:${AWS::AccountId}:secret:vibe-dating/uuid-namespace/${Environment}'
           DYNAMODB_TABLE: !Ref DynamoDBTableName
       Timeout: 30
       MemorySize: 256
@@ -83,12 +68,6 @@ Outputs:
     Value: !GetAtt UserProfileMgmtFunction.Arn
     Export:
       Name: !Sub '${AWS::StackName}-UserProfileMgmtFunctionArn'
-
-  UserLayerArn:
-    Description: 'User Service Layer ARN'
-    Value: !Ref UserLayer
-    Export:
-      Name: !Sub '${AWS::StackName}-UserLayerArn'
 
   UserProfileMgmtFunctionName:
     Description: 'User Profile Management Lambda Function Name'

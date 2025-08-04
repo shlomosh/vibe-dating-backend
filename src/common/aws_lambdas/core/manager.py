@@ -51,11 +51,11 @@ class CommonManager:
         Convert platform ID string to Vibe user ID using UUID v5
 
         Args:
-            platform_id_string: String in format "tg:123456789" or "userId:profileIndex"
+            platform_id_string: String in format "telegram:123456789" or "userId:profileIndex"
             length: Length of the final user ID (default: 8)
 
         Returns:
-            str: Base64 encoded user ID
+            str: URL-safe base64 encoded user ID
         """
         # Get UUID namespace from AWS Secrets Manager
         uuid_namespace_arn = os.environ.get("UUID_NAMESPACE_SECRET_ARN")
@@ -70,9 +70,9 @@ class CommonManager:
         namespace_uuid = uuid.UUID(uuid_namespace)
         user_uuid = uuid.uuid5(namespace_uuid, platform_id_string)
 
-        # Convert UUID to base64
+        # Convert UUID to URL-safe base64
         uuid_bytes = user_uuid.bytes
-        base64_string = base64.b64encode(uuid_bytes).decode("utf-8")
+        base64_string = base64.urlsafe_b64encode(uuid_bytes).decode("utf-8")
 
         # Remove padding and return first N characters
         return base64_string.rstrip("=")[: CoreSettings().record_id_length]
@@ -99,8 +99,7 @@ class CommonManager:
         # Validate that the ID contains only valid base64 characters (A-Z, a-z, 0-9, +, /)
         # Note: Since hash_string_to_id removes padding (=), we don't expect padding in valid IDs
         import re
-
-        base64_pattern = r"^[A-Za-z0-9+/]+$"
+        base64_pattern = r"^[A-Za-z0-9\-_]+$"
         if not re.match(base64_pattern, some_id):
             return False
 

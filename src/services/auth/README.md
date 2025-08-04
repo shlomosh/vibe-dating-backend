@@ -170,7 +170,7 @@ The authentication service uses AWS Lambda Layers to optimize deployment and per
 
 #### Layer Structure
 ```
-auth_layer.zip
+core_layer.zip
 └── python/
     ├── PyJWT/
     ├── boto3/

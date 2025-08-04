@@ -8,3 +8,16 @@ alwaysApply: true
 ---
 
 @docs/context.md
+
+# Conda Environment Rule
+
+description: This project uses conda base environment as the default Python environment
+alwaysApply: true
+
+---
+
+- Use conda base environment for all Python operations
+- Python interpreter path: /opt/conda/bin/python
+- Conda path: /opt/conda/bin/conda
+- All terminal operations should activate conda base environment
+- Use `conda activate base` when starting new terminal sessions

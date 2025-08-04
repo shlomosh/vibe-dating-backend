@@ -95,7 +95,6 @@ class AuthServiceDeployer(ServiceDeployer):
             raise
 
     def update(self):
-        """Update Lambda function code without redeploying infrastructure"""
         print("• Starting Auth Service Lambda update...")
 
         try:
@@ -114,31 +113,6 @@ class AuthServiceDeployer(ServiceDeployer):
             # Update Lambda functions
             updated_functions = []
 
-            # Update Lambda layer
-            if "AuthLayerArn" in stack_outputs:
-                aws_layer_arn = stack_outputs["AuthLayerArn"]
-                aws_layer_name = aws_layer_arn.split(":")[-2]
-                aws_layer_version = aws_layer_arn.split(":")[-1]
-
-                # Ask user if they want to update the layer
-                update_question = input(
-                    f"  Do you want to update Lambda layer {aws_layer_name}? (y/n): "
-                ).lower()
-
-                if update_question == "y":
-                    print(
-                        f"  Updating Lambda layer: {aws_layer_name}:{aws_layer_version}"
-                    )
-                    self._update_aws_layer(
-                        aws_layer_name,
-                        aws_layer_version,
-                        s3_bucket,
-                        "lambda/auth_layer.zip",
-                    )
-                    updated_functions.append(aws_layer_name)
-                else:
-                    print(f"  Skipping Lambda layer update for: {aws_layer_name}")
-
             # Update platform auth function
             if "AuthPlatformFunctionArn" in stack_outputs:
                 aws_lambda_arn = stack_outputs["AuthPlatformFunctionArn"]
@@ -146,18 +120,18 @@ class AuthServiceDeployer(ServiceDeployer):
 
                 # Ask user if they want to update the function
                 update_question = input(
-                    f"  Do you want to update platform auth function {aws_lambda_name}? (y/n): "
+                    f"  Do you want to update function {aws_lambda_name}? (y/n): "
                 ).lower()
 
                 if update_question == "y":
-                    print(f"  Updating platform auth function: {aws_lambda_name}")
+                    print(f"  Updating function: {aws_lambda_name}")
                     self._update_aws_lambda(
                         aws_lambda_name, s3_bucket, "lambda/auth_platform.zip"
                     )
                     updated_functions.append(aws_lambda_name)
                 else:
                     print(
-                        f"  Skipping platform auth function update for: {aws_lambda_name}"
+                        f"  Skipping function update for: {aws_lambda_name}"
                     )
 
             # Update JWT authorizer function
@@ -167,18 +141,18 @@ class AuthServiceDeployer(ServiceDeployer):
 
                 # Ask user if they want to update the function
                 update_question = input(
-                    f"  Do you want to update JWT authorizer function {aws_lambda_name}? (y/n): "
+                    f"  Do you want to update function {aws_lambda_name}? (y/n): "
                 ).lower()
 
                 if update_question == "y":
-                    print(f"  Updating JWT authorizer function: {aws_lambda_name}")
+                    print(f"  Updating function: {aws_lambda_name}")
                     self._update_aws_lambda(
                         aws_lambda_name, s3_bucket, "lambda/auth_jwt_authorizer.zip"
                     )
                     updated_functions.append(aws_lambda_name)
                 else:
                     print(
-                        f"  Skipping JWT authorizer function update for: {aws_lambda_name}"
+                        f"  Skipping function update for: {aws_lambda_name}"
                     )
 
             print(f"✅ Successfully updated {len(updated_functions)} Lambda resources:")
@@ -190,7 +164,8 @@ class AuthServiceDeployer(ServiceDeployer):
             sys.exit(1)
 
     def deploy(self):
-        """Deploy all authentication infrastructure stacks in the correct order."""
+        print(f"    Parameters from *@core-service: {self.core_cfg}")
+
         # Deploy Lambda stack first
         lambda_stack_name = f"vibe-dating-auth-lambda-{self.environment}"
         lambda_stack = {
@@ -204,16 +179,21 @@ class AuthServiceDeployer(ServiceDeployer):
                     "LambdaExecutionRoleArn"
                 ],
                 "DynamoDBTableName": self.core_cfg["dynamodb"]["DynamoDBTableName"],
+                "CoreLayerArn": self.core_cfg["lambda"]["CoreLayerArn"],
             },
         }
-        self.deploy_stack(
+        is_deployed = self.deploy_stack(
             stack_name=lambda_stack["name"],
             template_file=lambda_stack["template"],
             parameters=lambda_stack["parameters"],
         )
+        if not is_deployed:
+            print("❌ Failed to deploy Lambda stack")
+            sys.exit(1)
 
         # Fetch outputs from Lambda stack
         lambda_cfg = self._get_stack_outputs(lambda_stack_name)
+        print(f"    Parameters from lambda@auth-service: {lambda_cfg}")
 
         # Now deploy API Gateway stack, using outputs from Lambda stack
         apigateway_stack = {
@@ -235,11 +215,18 @@ class AuthServiceDeployer(ServiceDeployer):
             },
         }
 
-        self.deploy_stack(
+        is_deployed = self.deploy_stack(
             stack_name=apigateway_stack["name"],
             template_file=apigateway_stack["template"],
             parameters=apigateway_stack["parameters"],
         )
+        if not is_deployed:
+            print("❌ Failed to deploy API Gateway stack")
+            sys.exit(1)
+
+        # Fetch outputs from API Gateway stack
+        apigateway_cfg = self._get_stack_outputs(apigateway_stack["name"])
+        print(f"    Parameters from apigateway@auth-service: {apigateway_cfg}")
 
 
 def main(action=None):

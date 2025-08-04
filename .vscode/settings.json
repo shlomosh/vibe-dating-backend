@@ -2,6 +2,4 @@
     "python.analysis.extraPaths": [
         "./src/common/aws_lambdas"
     ],
-    "python.defaultInterpreterPath": "./venv/bin/python",
-    "python.terminal.activateEnvironment": true
 } 

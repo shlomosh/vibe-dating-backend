@@ -7,5 +7,12 @@
         "--python-version=3.11",
         "--only-binary=:all:",
         "--no-deps"
-    ]
+    ],
+    "Pillow==10.0.0": [
+        "--platform=manylinux2014_x86_64",
+        "--implementation=cp",
+        "--python-version=3.11",
+        "--only-binary=:all:",
+        "--no-deps"
+      ]  
 }

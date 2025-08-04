@@ -8,7 +8,7 @@ Parameters:
     AllowedValues: [dev, staging, prod]
     Description: Environment name
 
-  ApiRegion:
+  Region:
     Type: String
     Description: Region for the application (e.g., il-central-1)
 
@@ -57,7 +57,7 @@ Resources:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
         Uri: !Sub 
-          - arn:aws:apigateway:${ApiRegion}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
           - LambdaArn: !Ref UserProfileMgmtFunctionArn
 
   # Profile Upsert Method (PUT /profile/{profileId})
@@ -73,7 +73,7 @@ Resources:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
         Uri: !Sub 
-          - arn:aws:apigateway:${ApiRegion}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
           - LambdaArn: !Ref UserProfileMgmtFunctionArn
 
   # Profile Delete Method (DELETE /profile/{profileId})
@@ -89,7 +89,7 @@ Resources:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
         Uri: !Sub 
-          - arn:aws:apigateway:${ApiRegion}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
           - LambdaArn: !Ref UserProfileMgmtFunctionArn
 
   # OPTIONS method for CORS on /profile/{profileId}
@@ -131,7 +131,7 @@ Resources:
       FunctionName: !Ref UserProfileMgmtFunctionArn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${ApiRegion}:${AWS::AccountId}:${ApiGatewayId}/*'
+      SourceArn: !Sub 'arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGatewayId}/*'
 
   # API Gateway Deployment (create new deployment for user service endpoints)
   UserServiceApiGatewayDeployment:

@@ -52,26 +52,53 @@ class MyServiceBuilder:
 
 ## Build Artifacts
 
+### Core Service
+
+The core service build creates:
+
+- **`core_layer.zip`**: Shared Python dependencies layer (~14.8 MB)
+
 ### Auth Service
 
 The auth service build creates:
 
-- **`auth_layer.zip`**: Shared Python dependencies layer (~14.8 MB)
 - **`auth_platform.zip`**: Telegram authentication function (~4.2 KB)
 - **`auth_jwt_authorizer.zip`**: JWT authorization function (~2.2 KB)
+
+### User Service
+
+The user service build creates:
+
+- **`user_profile_mgmt.zip`**: User profile management function (~3.1 KB)
+
+### Media Service
+
+The media service build creates:
+
+- **`media_upload.zip`**: Media upload function (~4.5 KB)
+- **`media_processing.zip`**: Media processing function (~4.8 KB)
+- **`media_management.zip`**: Media management function (~4.2 KB)
 
 ### Build Directory Structure
 
 ```
 build/lambda/
-├── auth_layer.zip           # Shared dependencies layer
+├── core_layer.zip           # Shared dependencies layer
 ├── auth_platform.zip        # Telegram auth function
-├── auth_jwt_authorizer.zip       # JWT authorizer function
+├── auth_jwt_authorizer.zip  # JWT authorizer function
+├── user_profile_mgmt.zip    # User profile management function
+├── media_upload.zip         # Media upload function
+├── media_processing.zip     # Media processing function
+├── media_management.zip     # Media management function
 ├── layer/                   # Layer source directory
 │   └── python/              # Python dependencies
 ├── core/                    # Shared utilities
 ├── auth_platform/           # Function source
-└── auth_jwt_authorizer/          # Function source
+├── auth_jwt_authorizer/     # Function source
+├── user_profile_mgmt/       # Function source
+├── media_upload/            # Function source
+├── media_processing/        # Function source
+└── media_management/        # Function source
 ```
 
 ## Common Build Utilities

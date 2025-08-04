@@ -11,7 +11,7 @@ from core.build_utils import ServiceBuilder
 class UserServiceBuilder(ServiceBuilder):
     def __init__(self):
         cfg = {
-            "aws_layers": [{"name": "user_layer", "requirements": "requirements.json"}],
+            "aws_layers": [],
             "aws_lambdas": [
                 {
                     "name": "user_profile_mgmt",

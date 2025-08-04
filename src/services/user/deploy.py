@@ -128,12 +128,12 @@ class UserServiceDeployer(ServiceDeployer):
 
                 # Ask user if they want to update the layer
                 update_question = input(
-                    f"  Do you want to update Lambda layer {aws_layer_name}? (y/n): "
+                    f"  Do you want to update layer {aws_layer_name}? (y/n): "
                 ).lower()
 
                 if update_question == "y":
                     print(
-                        f"  Updating Lambda layer: {aws_layer_name}:{aws_layer_version}"
+                        f"  Updating layer: {aws_layer_name}:{aws_layer_version}"
                     )
                     self._update_aws_layer(
                         aws_layer_name,
@@ -143,7 +143,7 @@ class UserServiceDeployer(ServiceDeployer):
                     )
                     updated_functions.append(aws_layer_name)
                 else:
-                    print(f"  Skipping Lambda layer update for: {aws_layer_name}")
+                    print(f"  Skipping layer update for: {aws_layer_name}")
 
             # Update profile management function
             if "UserProfileMgmtFunctionArn" in stack_outputs:
@@ -152,12 +152,12 @@ class UserServiceDeployer(ServiceDeployer):
 
                 # Ask user if they want to update the function
                 update_question = input(
-                    f"  Do you want to update user profile management function {aws_lambda_name}? (y/n): "
+                    f"  Do you want to update function {aws_lambda_name}? (y/n): "
                 ).lower()
 
                 if update_question == "y":
                     print(
-                        f"  Updating user profile management function: {aws_lambda_name}"
+                        f"  Updating function: {aws_lambda_name}"
                     )
                     self._update_aws_lambda(
                         aws_lambda_name, s3_bucket, "lambda/user_profile_mgmt.zip"
@@ -165,7 +165,7 @@ class UserServiceDeployer(ServiceDeployer):
                     updated_functions.append(aws_lambda_name)
                 else:
                     print(
-                        f"  Skipping user profile management function update for: {aws_lambda_name}"
+                        f"  Skipping function update for: {aws_lambda_name}"
                     )
 
             print(f"✅ Successfully updated {len(updated_functions)} Lambda resources:")
@@ -176,8 +176,11 @@ class UserServiceDeployer(ServiceDeployer):
             print(f"❌ User service update failed: {e}")
             sys.exit(1)
 
-    def deploy(self):
-        """Deploy all user service infrastructure stacks in the correct order."""
+    def deploy(self):        
+        """Deploy all user infrastructure stacks in the correct order."""
+        print(f"    Parameters from *@core-service: {self.core_cfg}")
+        print(f"    Parameters from *@auth-service: {self.auth_cfg}")
+
         # Deploy Lambda stack first
         lambda_stack_name = f"vibe-dating-user-lambda-{self.environment}"
         lambda_stack = {
@@ -185,45 +188,61 @@ class UserServiceDeployer(ServiceDeployer):
             "template": "01-lambda.yaml",
             "parameters": {
                 "Environment": self.environment,
+                "Region": self.parameters["ApiRegion"],
                 "LambdaCodeBucketName": self.core_cfg["s3"]["LambdaCodeBucketName"],
                 "LambdaExecutionRoleArn": self.core_cfg["iam"][
                     "LambdaExecutionRoleArn"
                 ],
+                "CoreLayerArn": self.core_cfg["lambda"]["CoreLayerArn"],
                 "DynamoDBTableName": self.core_cfg["dynamodb"]["DynamoDBTableName"],
-                "AuthLayerArn": self.auth_cfg["lambda"]["AuthLayerArn"],
             },
         }
-        self.deploy_stack(
+        is_deployed = self.deploy_stack(
             stack_name=lambda_stack["name"],
             template_file=lambda_stack["template"],
             parameters=lambda_stack["parameters"],
         )
+        if not is_deployed:
+            print("❌ Failed to deploy Lambda stack")
+            sys.exit(1)
 
         # Fetch outputs from Lambda stack
         lambda_cfg = self._get_stack_outputs(lambda_stack_name)
+        print(f"    Parameters from lambda@user-service: {lambda_cfg}")
 
-        # Now deploy API Gateway stack, using outputs from Lambda and auth stacks
+        # Now deploy API Gateway stack, using outputs from Lambda stack
         apigateway_stack = {
             "name": f"vibe-dating-user-apigateway-{self.environment}",
             "template": "02-apigateway.yaml",
             "parameters": {
                 "Environment": self.environment,
+                "Region": self.parameters["ApiRegion"],
                 "ApiGatewayId": self.auth_cfg["apigateway"]["ApiGatewayId"],
-                "ApiGatewayRootResourceId": self.auth_cfg["apigateway"][
-                    "ApiGatewayRootResourceId"
-                ],
-                "ApiGatewayAuthorizerId": self.auth_cfg["apigateway"][
-                    "ApiGatewayAuthorizerId"
-                ],
+                "ApiGatewayRootResourceId": self.auth_cfg["apigateway"]["ApiGatewayRootResourceId"],
+                "ApiGatewayAuthorizerId": self.auth_cfg["apigateway"]["ApiGatewayAuthorizerId"],
                 "UserProfileMgmtFunctionArn": lambda_cfg["UserProfileMgmtFunctionArn"],
             },
         }
 
-        self.deploy_stack(
+        # Check if auth service API Gateway outputs are available
+        if "apigateway" not in self.auth_cfg:
+            print("❌ Auth service API Gateway stack not found")
+            print("   Make sure to deploy auth service first: poetry run service-deploy auth")
+            sys.exit(1)
+
+        if not all(key in self.auth_cfg["apigateway"] for key in ["ApiGatewayId", "ApiGatewayRootResourceId", "ApiGatewayAuthorizerId"]):
+            print("❌ Auth service API Gateway outputs not available")
+            print("   Make sure auth service is fully deployed first")
+            sys.exit(1)
+
+        is_deployed = self.deploy_stack(
             stack_name=apigateway_stack["name"],
             template_file=apigateway_stack["template"],
             parameters=apigateway_stack["parameters"],
         )
+        if not is_deployed:
+            print("❌ Failed to deploy API Gateway stack")
+            sys.exit(1)
 
 
 def main(action=None):
@@ -246,6 +265,7 @@ def main(action=None):
     ap.add_argument(
         "--deployment-uuid", help="Custom deployment UUID (override parameters.yaml)"
     )
+    ap.add_argument("--validate", action="store_true", help="Validate templates only")
     args = ap.parse_args()
 
     # Create deployer
@@ -255,7 +275,9 @@ def main(action=None):
         deployment_uuid=args.deployment_uuid,
     )
 
-    if action == "deploy" or (action is None and not deployer.is_deployed()):
+    if args.validate:
+        deployer.validate_templates(templates=["01-lambda.yaml", "02-apigateway.yaml"])
+    elif action == "deploy" or (action is None and not deployer.is_deployed()):
         deployer.deploy()
     elif action == "update" or (action is None and deployer.is_deployed()):
         deployer.update()

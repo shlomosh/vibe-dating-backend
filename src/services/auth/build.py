@@ -11,7 +11,7 @@ from core.build_utils import ServiceBuilder
 class AuthServiceBuilder(ServiceBuilder):
     def __init__(self):
         cfg = {
-            "aws_layers": [{"name": "auth_layer", "requirements": "requirements.json"}],
+            "aws_layers": [],
             "aws_lambdas": [
                 {
                     "name": "auth_platform",

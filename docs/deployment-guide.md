@@ -111,7 +111,7 @@ poetry run build-lambda
 
 #### Generated Artifacts
 
-- **`build/lambda/auth_layer.zip`**: Shared Python dependencies layer
+- **`build/lambda/core_layer.zip`**: Shared Python dependencies layer
 - **`build/lambda/auth_platform.zip`**: Telegram authentication function
 - **`build/lambda/auth_jwt_authorizer.zip`**: JWT authorization function
 

@@ -113,14 +113,6 @@ class MediaServiceDeployer(ServiceDeployer):
             # Get S3 bucket name for Lambda code
             s3_bucket = self.core_cfg["s3"]["LambdaCodeBucketName"]
 
-            # Update Lambda layer
-            self._update_aws_layer(
-                f"vibe-media-layer-{self.environment}",
-                "latest",
-                s3_bucket,
-                "lambda/media_layer.zip",
-            )
-
             # Update Lambda functions
             self._update_aws_lambda(
                 f"vibe-media-upload-{self.environment}",
@@ -172,6 +164,7 @@ class MediaServiceDeployer(ServiceDeployer):
                     "LambdaExecutionRoleArn"
                 ],
                 "DynamoDBTableName": self.core_cfg["dynamodb"]["DynamoDBTableName"],
+                "CoreLayerArn": self.core_cfg["lambda"]["CoreLayerArn"],
                 "ApiGatewayRestApiId": self.auth_cfg["apigateway"]["ApiGatewayId"],
                 "ApiGatewayRootResourceId": self.auth_cfg["apigateway"][
                     "ApiGatewayRootResourceId"

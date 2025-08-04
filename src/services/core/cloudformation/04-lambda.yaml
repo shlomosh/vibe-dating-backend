@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Vibe Dating - Core Service Lambda Layer Infrastructure'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+
+  Region:
+    Type: String
+    Description: Region for the application (e.g., il-central-1)
+
+  LambdaCodeBucketName:
+    Type: String
+    Description: Lambda Code Bucket Name (imported from s3 stack)
+
+Resources:
+  # Lambda Layer for shared dependencies
+  CoreLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: !Sub 'vibe-core-layer-${Environment}'
+      Description: 'Vibe Dating App core layer with shared dependencies'
+      Content:
+        S3Bucket: !Ref LambdaCodeBucketName
+        S3Key: lambda/core_layer.zip
+      CompatibleRuntimes:
+        - python3.11
+      CompatibleArchitectures:
+        - x86_64
+
+Outputs:
+  CoreLayerArn:
+    Description: 'Vibe Core Layer ARN'
+    Value: !Ref CoreLayer
+    Export:
+      Name: !Sub '${AWS::StackName}-CoreLayerArn'
+
+  CoreLayerName:
+    Description: 'Vibe Core Layer Name'
+    Value: !Ref CoreLayer
+    Export:
+      Name: !Sub '${AWS::StackName}-CoreLayerName' 
