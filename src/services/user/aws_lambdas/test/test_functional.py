@@ -9,9 +9,15 @@ import traceback
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-# Add the parent directory to Python path for imports
-current_dir = Path(__file__).parent.parent
-sys.path.insert(0, str(current_dir))
+# Add the lambda directories to the path
+project_root = Path(__file__).parent.parent.parent.parent.parent.parent
+service_aws_lambdas_dir = project_root / "src" / "services" / "user" / "aws_lambdas"
+common_aws_lambdas_dir = project_root / "src" / "common" / "aws_lambdas"
+
+print(f"Adding {service_aws_lambdas_dir} to sys.path")
+sys.path.insert(0, str(service_aws_lambdas_dir))
+print(f"Adding {common_aws_lambdas_dir} to sys.path")
+sys.path.insert(0, str(common_aws_lambdas_dir))
 
 
 def test_auth_utils():
@@ -21,8 +27,8 @@ def test_auth_utils():
     try:
         from core.auth_utils import (
             extract_user_id_from_context,
-            get_allocated_profile_ids,
         )
+        from core.user_utils import UserManager
 
         # Test extract_user_id_from_context
         mock_event = {"requestContext": {"authorizer": {"uid": "test_user_123"}}}
@@ -33,10 +39,10 @@ def test_auth_utils():
         print("✓ extract_user_id_from_context works correctly")
 
         # Test get_allocated_profile_ids with mocked hash function
-        with patch("core.auth_utils.hash_string_to_id") as mock_hash:
+        with patch("core.user_utils.UserManager.hash_string_to_id") as mock_hash:
             mock_hash.side_effect = lambda x: f"profile_{x.split(':')[1]}"
 
-            profile_ids = get_allocated_profile_ids("test_user")
+            profile_ids = UserManager.get_allocated_profile_ids("test_user")
             assert (
                 len(profile_ids) == 5
             ), f"Expected 5 profile IDs, got {len(profile_ids)}"
@@ -114,15 +120,23 @@ def test_profile_utils():
 
     try:
         from core.profile_utils import (
-            get_user_profile_ids,
-            upsert_profile,
-            validate_profile_ownership,
+            ProfileManager,
         )
 
-        # These functions require DynamoDB, so we'll test import and basic structure
-        assert callable(validate_profile_ownership)
-        assert callable(get_user_profile_ids)
-        assert callable(upsert_profile)
+        # Mock DynamoDB dependencies to avoid environment variable requirements
+        with patch("core.aws.DynamoDBService.get_table") as mock_table:
+            # Create a mock table that returns empty results
+            mock_table_instance = Mock()
+            mock_table_instance.get_item.return_value = {"Item": None}
+            mock_table_instance.query.return_value = {"Items": []}
+            mock_table.return_value = mock_table_instance
+            
+            # Test that ProfileManager can be instantiated (without DynamoDB)
+            # Use a valid 8-character user ID that matches the expected format
+            valid_user_id = "test1234"
+            manager = ProfileManager(valid_user_id, ok_if_not_exists=True)
+            assert hasattr(manager, "user_id")
+            assert manager.user_id == valid_user_id
 
         print("✓ Profile utility functions are importable")
 

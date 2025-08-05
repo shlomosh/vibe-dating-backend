@@ -1,0 +1,37 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Vibe Dating - Agora Service Infrastructure'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+
+  DeploymentUUID:
+    Type: String
+    Description: Deployment UUID for resource naming
+
+  ApiRegion:
+    Type: String
+    Description: AWS region for the API
+
+Resources:
+  # Placeholder for Agora service resources
+  # This template will be expanded when Agora integration is implemented
+  AgoraServicePlaceholder:
+    Type: AWS::CloudFormation::WaitCondition
+    Properties:
+      Count: 0
+      Handle: !Ref AgoraServicePlaceholderHandle
+      Timeout: '1'
+
+  AgoraServicePlaceholderHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+Outputs:
+  AgoraServiceStatus:
+    Description: Status of Agora service deployment
+    Value: "Ready for implementation"
+    Export:
+      Name: !Sub '${AWS::StackName}-AgoraServiceStatus'

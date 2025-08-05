@@ -1,0 +1,43 @@
+[
+  {
+    "platformId": "485233267",
+    "platformMetadata": {
+      "language_code": "en",
+      "last_name": "Shachar",
+      "id": "485233267",
+      "photo_url": "https://t.me/i/userpic/320/hz_lBwqKghtC8Whuyd_JUoVykTP1XG2D_HPURCnfEKc.svg",
+      "first_name": "Shlomo",
+      "allows_write_to_pm": true,
+      "username": "XomoGo"
+    },
+    "status": "active",
+    "createdAt": "2025-08-04T19:04:08.272346+00:00",
+    "loginCount": "2",
+    "GSI1SK": "METADATA",
+    "GSI1PK": "USER#bz-0vx3B",
+    "lastActiveAt": "2025-08-04T19:09:27.562443+00:00",
+    "platform": "telegram",
+    "updatedAt": "2025-08-04T19:09:27.562443+00:00",
+    "statusData": {
+      "banTo": null,
+      "banHistory": null,
+      "banFrom": null,
+      "banCount": "0",
+      "reportedCount": "0",
+      "banReason": null
+    },
+    "SK": "METADATA",
+    "preferences": {
+      "privacy": "public",
+      "notifications": true
+    },
+    "profileIds": [
+      "SbAIJLPY",
+      "ZponlD-4",
+      "AQiwc2DL",
+      "88mW9Imb",
+      "-MHat0h-"
+    ],
+    "PK": "USER#bz-0vx3B"
+  }
+]

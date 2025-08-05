@@ -59,9 +59,9 @@ class ServiceTester(ServiceConstructor):
         print("• Installing test dependencies...")
 
         try:
-            # Install lambda dependencies for testing
+            # Install lambda dependencies for testing (without installing the project itself)
             subprocess.run(
-                ["poetry", "install", "--with", "lambda"],
+                ["poetry", "install", "--no-root", "--with", "lambda"],
                 check=True,
                 cwd=self.project_dir,
             )

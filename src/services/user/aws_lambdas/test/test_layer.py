@@ -5,6 +5,17 @@ Test that all required packages are available in the user service layer
 
 import sys
 import traceback
+from pathlib import Path
+
+# Add the lambda directories to the path
+project_root = Path(__file__).parent.parent.parent.parent.parent.parent
+service_aws_lambdas_dir = project_root / "src" / "services" / "user" / "aws_lambdas"
+common_aws_lambdas_dir = project_root / "src" / "common" / "aws_lambdas"
+
+print(f"Adding {service_aws_lambdas_dir} to sys.path")
+sys.path.insert(0, str(service_aws_lambdas_dir))
+print(f"Adding {common_aws_lambdas_dir} to sys.path")
+sys.path.insert(0, str(common_aws_lambdas_dir))
 
 
 def test_imports():

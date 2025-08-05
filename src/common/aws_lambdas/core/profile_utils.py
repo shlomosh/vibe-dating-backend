@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 class ProfileManager(CommonManager):
-    def __init__(self, user_id: str):
-        super().__init__(user_id)
+    def __init__(self, user_id: str, ok_if_not_exists: bool = False):
+        super().__init__(user_id, ok_if_not_exists=ok_if_not_exists)
 
         self.table = DynamoDBService.get_table()
 

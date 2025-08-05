@@ -8,6 +8,16 @@ import sys
 import traceback
 from pathlib import Path
 
+# Add the lambda directories to the path
+project_root = Path(__file__).parent.parent.parent.parent.parent.parent
+service_aws_lambdas_dir = project_root / "src" / "services" / "user" / "aws_lambdas"
+common_aws_lambdas_dir = project_root / "src" / "common" / "aws_lambdas"
+
+print(f"Adding {service_aws_lambdas_dir} to sys.path")
+sys.path.insert(0, str(service_aws_lambdas_dir))
+print(f"Adding {common_aws_lambdas_dir} to sys.path")
+sys.path.insert(0, str(common_aws_lambdas_dir))
+
 
 def test_lambda_structure():
     """Test that the profile management Lambda function directory exists and has proper structure"""
@@ -84,8 +94,8 @@ def test_lambda_imports():
 
 def test_core_structure():
     """Test that core modules exist and have proper structure"""
-    current_dir = Path(__file__).parent.parent
-    core_dir = current_dir / "core"
+    project_root = Path(__file__).parent.parent.parent.parent.parent.parent
+    core_dir = project_root / "src" / "common" / "aws_lambdas" / "core"
 
     core_files = [
         "__init__.py",
@@ -93,6 +103,10 @@ def test_core_structure():
         "profile_utils.py",
         "rest_utils.py",
         "settings.py",
+        "aws.py",
+        "manager.py",
+        "platform.py",
+        "user_utils.py",
     ]
 
     passed = 0
