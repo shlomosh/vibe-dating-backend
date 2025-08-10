@@ -167,7 +167,6 @@ class ProfileManager(CommonManager):
                     {
                         "PutRequest": {
                             "Item": profile_item,
-                            "ConditionExpression": "attribute_not_exists(PK)",
                         }
                     },
                     {
@@ -190,14 +189,16 @@ class ProfileManager(CommonManager):
                 if retry_response.get("UnprocessedItems"):
                     raise ValueError("Failed to write all items after retry")
 
+            # Update in-memory cache with the newly created profile
+            self.profiles_data[profile_id] = profile_item
+            if profile_id not in self.active_profile_ids:
+                self.active_profile_ids.append(profile_id)
+
             logger.info(f"Profile {profile_id} created successfully for user {self.user_id}")
             return True
 
         except ClientError as e:
-            if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
-                logger.error(f"Profile {profile_id} already exists for user {self.user_id}")
-            else:
-                logger.error(f"Failed to create profile {profile_id} for user {self.user_id}: {str(e)} {e.response}")
+            logger.error(f"Failed to create profile {profile_id} for user {self.user_id}: {str(e)} {e.response}")
             raise ValueError(f"Failed to create profile: {str(e)} {e.response}")
 
     def update(self, profile_id: str, profile_record: Dict[str, Any]) -> bool:
@@ -254,7 +255,11 @@ class ProfileManager(CommonManager):
                 kwargs["ExpressionAttributeNames"] = expression_attribute_names
 
             logger.info(f"Profile {profile_id} updated successfully for user {self.user_id}")
-            self.table.update_item(**kwargs)
+            response = self.table.update_item(**kwargs)
+            
+            # Update in-memory cache with the updated profile
+            if profile_id in self.profiles_data:
+                self.profiles_data[profile_id].update(response.get("Attributes", {}))
 
             return True
 
@@ -342,6 +347,13 @@ class ProfileManager(CommonManager):
                     raise ValueError("Failed to delete all items after retry")
 
             logger.info(f"Profile {profile_id} deleted successfully for user {self.user_id}")
+            
+            # Update in-memory cache by removing the deleted profile
+            if profile_id in self.profiles_data:
+                del self.profiles_data[profile_id]
+            if profile_id in self.active_profile_ids:
+                self.active_profile_ids.remove(profile_id)
+
             return True
 
         except ClientError as e:
@@ -367,7 +379,36 @@ class ProfileManager(CommonManager):
         if profile_id not in self.allocated_profile_ids:
             raise ValueError("Profile-Id is invalid")
 
+        # If profile is not in cache, try to fetch it directly from DynamoDB
         if profile_id not in self.profiles_data:
-            raise ValueError("Profile not found")
+            try:
+                response = self.table.get_item(
+                    Key={"PK": f"PROFILE#{profile_id}", "SK": "METADATA"}
+                )
+                if "Item" in response:
+                    profile_item = response["Item"]
+                    # Update cache
+                    self.profiles_data[profile_id] = profile_item
+                    if profile_id not in self.active_profile_ids:
+                        self.active_profile_ids.append(profile_id)
+                    return profile_item
+                else:
+                    raise ValueError("Profile not found")
+            except ClientError as e:
+                logger.error(f"Failed to get profile {profile_id} from DynamoDB: {str(e)}")
+                raise ValueError(f"Profile not found: {str(e)}")
 
         return self.profiles_data[profile_id]
+
+    def refresh_cache(self) -> None:
+        """
+        Refresh the in-memory cache by re-fetching data from DynamoDB
+        Useful when GSI consistency issues occur
+        """
+        try:
+            self.profiles_data = self._get_profiles_records()
+            self.active_profile_ids = list(self.profiles_data.keys())
+            logger.info(f"Cache refreshed for user {self.user_id}")
+        except Exception as e:
+            logger.error(f"Failed to refresh cache for user {self.user_id}: {str(e)}")
+            # Keep existing cache on failure
