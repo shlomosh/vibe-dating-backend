@@ -16,6 +16,8 @@ class UserServiceBuilder(ServiceBuilder):
                 {
                     "name": "user_profile_mgmt",
                     "extra_files": [
+                        Path("src/common/aws_lambdas/core") / "aws.py",
+                        Path("src/common/aws_lambdas/core") / "manager.py",
                         Path("src/common/aws_lambdas/core") / "settings.py",
                         Path("src/common/aws_lambdas/core") / "auth_utils.py",
                         Path("src/common/aws_lambdas/core") / "rest_utils.py",

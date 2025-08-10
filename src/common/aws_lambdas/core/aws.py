@@ -2,19 +2,29 @@ import os
 from typing import Any, Dict, Optional
 
 from botocore.exceptions import ClientError
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class DynamoDBService:
     dynamodb = None
 
     @classmethod
+    def get_dynamodb(cls):
+        """Get DynamoDB resource with lazy initialization"""
+        if cls.dynamodb is None:
+            import boto3
+            cls.dynamodb = boto3.resource("dynamodb")
+        return cls.dynamodb
+
+    @classmethod
     def get_table(cls, table_name: Optional[str] = None):
         """Get DynamoDB table with lazy initialization"""
 
-        if cls.dynamodb is None:
-            import boto3
-
-            cls.dynamodb = boto3.resource("dynamodb")
+        # Ensure DynamoDB resource is initialized
+        cls.get_dynamodb()
 
         if table_name is None:
             table_name = os.environ.get("DYNAMODB_TABLE")
@@ -30,10 +40,12 @@ class DynamoDBService:
 
     @classmethod
     def serialize_dynamodb_item(cls, item: Dict[str, Any]) -> Dict[str, Any]:
-        """Efficiently serialize items for DynamoDB"""
+        logger.info(f"Serializing item: {item}")
         serialized = {}
         for key, value in item.items():
-            if isinstance(value, str):
+            if key == "PK" or key == "SK":
+                serialized[key] = value
+            elif isinstance(value, str):
                 serialized[key] = {"S": value}
             elif isinstance(value, (int, float)):
                 serialized[key] = {"N": str(value)}
@@ -41,19 +53,31 @@ class DynamoDBService:
                 serialized[key] = {"BOOL": value}
             elif isinstance(value, list):
                 serialized[key] = {
-                    "L": [
-                        cls.serialize_dynamodb_item([v])[0]
-                        if isinstance(v, dict)
-                        else {"S": str(v)}
-                        for v in value
-                    ]
+                    "L": [cls._serialize_single_value(v) for v in value]
                 }
             elif isinstance(value, dict):
+                logger.warning(f"Unexpected dict value for key {key}: {value}")
                 serialized[key] = {"M": cls.serialize_dynamodb_item(value)}
             else:
                 serialized[key] = {"S": str(value)}
-
+        logger.info(f"Serialized item: {serialized}")
         return serialized
+
+    @classmethod
+    def _serialize_single_value(cls, value: Any) -> Dict[str, Any]:
+        """Serialize a single value for DynamoDB"""
+        if isinstance(value, str):
+            return {"S": value}
+        elif isinstance(value, (int, float)):
+            return {"N": str(value)}
+        elif isinstance(value, bool):
+            return {"BOOL": value}
+        elif isinstance(value, dict):
+            return {"M": cls.serialize_dynamodb_item(value)}
+        elif isinstance(value, list):
+            return {"L": [cls._serialize_single_value(v) for v in value]}
+        else:
+            return {"S": str(value)}
 
 
 class SecretsManagerService:

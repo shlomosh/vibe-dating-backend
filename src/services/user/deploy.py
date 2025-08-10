@@ -132,9 +132,7 @@ class UserServiceDeployer(ServiceDeployer):
                 ).lower()
 
                 if update_question == "y":
-                    print(
-                        f"  Updating layer: {aws_layer_name}:{aws_layer_version}"
-                    )
+                    print(f"  Updating layer: {aws_layer_name}:{aws_layer_version}")
                     self._update_aws_layer(
                         aws_layer_name,
                         aws_layer_version,
@@ -156,17 +154,13 @@ class UserServiceDeployer(ServiceDeployer):
                 ).lower()
 
                 if update_question == "y":
-                    print(
-                        f"  Updating function: {aws_lambda_name}"
-                    )
+                    print(f"  Updating function: {aws_lambda_name}")
                     self._update_aws_lambda(
                         aws_lambda_name, s3_bucket, "lambda/user_profile_mgmt.zip"
                     )
                     updated_functions.append(aws_lambda_name)
                 else:
-                    print(
-                        f"  Skipping function update for: {aws_lambda_name}"
-                    )
+                    print(f"  Skipping function update for: {aws_lambda_name}")
 
             print(f"✅ Successfully updated {len(updated_functions)} Lambda resources:")
             for func in updated_functions:
@@ -176,7 +170,7 @@ class UserServiceDeployer(ServiceDeployer):
             print(f"❌ User service update failed: {e}")
             sys.exit(1)
 
-    def deploy(self):        
+    def deploy(self):
         """Deploy all user infrastructure stacks in the correct order."""
         print(f"    Parameters from *@core-service: {self.core_cfg}")
         print(f"    Parameters from *@auth-service: {self.auth_cfg}")
@@ -218,8 +212,12 @@ class UserServiceDeployer(ServiceDeployer):
                 "Environment": self.environment,
                 "Region": self.parameters["ApiRegion"],
                 "ApiGatewayId": self.auth_cfg["apigateway"]["ApiGatewayId"],
-                "ApiGatewayRootResourceId": self.auth_cfg["apigateway"]["ApiGatewayRootResourceId"],
-                "ApiGatewayAuthorizerId": self.auth_cfg["apigateway"]["ApiGatewayAuthorizerId"],
+                "ApiGatewayRootResourceId": self.auth_cfg["apigateway"][
+                    "ApiGatewayRootResourceId"
+                ],
+                "ApiGatewayAuthorizerId": self.auth_cfg["apigateway"][
+                    "ApiGatewayAuthorizerId"
+                ],
                 "UserProfileMgmtFunctionArn": lambda_cfg["UserProfileMgmtFunctionArn"],
             },
         }
@@ -227,10 +225,19 @@ class UserServiceDeployer(ServiceDeployer):
         # Check if auth service API Gateway outputs are available
         if "apigateway" not in self.auth_cfg:
             print("❌ Auth service API Gateway stack not found")
-            print("   Make sure to deploy auth service first: poetry run service-deploy auth")
+            print(
+                "   Make sure to deploy auth service first: poetry run service-deploy auth"
+            )
             sys.exit(1)
 
-        if not all(key in self.auth_cfg["apigateway"] for key in ["ApiGatewayId", "ApiGatewayRootResourceId", "ApiGatewayAuthorizerId"]):
+        if not all(
+            key in self.auth_cfg["apigateway"]
+            for key in [
+                "ApiGatewayId",
+                "ApiGatewayRootResourceId",
+                "ApiGatewayAuthorizerId",
+            ]
+        ):
             print("❌ Auth service API Gateway outputs not available")
             print("   Make sure auth service is fully deployed first")
             sys.exit(1)

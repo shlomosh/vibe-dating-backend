@@ -5,7 +5,7 @@ This module contains all profile-related type definitions shared across services
 """
 
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import msgspec
 
@@ -103,18 +103,8 @@ class ChatStatusType(str, Enum):
     OFFLINE = "offline"
 
 
-class ProfileImage(msgspec.Struct):
-    """Profile image structure"""
-
-    imageId: str
-    imageUrl: str
-    imageThumbnailUrl: str
-    imageAttributes: Dict[str, str] = msgspec.field(default_factory=dict)
-
-
 class ProfileRecord(msgspec.Struct):
     """Profile record validation using msgspec - matches frontend interface"""
-
     nickName: Optional[str] = None
     aboutMe: Optional[str] = None
     age: Optional[str] = None
@@ -127,9 +117,20 @@ class ProfileRecord(msgspec.Struct):
     preventionPractices: Optional[PreventionPracticesType] = None
     hosting: Optional[HostingType] = None
     travelDistance: Optional[TravelDistanceType] = None
-    profileImages: List[ProfileImage] = msgspec.field(default_factory=list)
+    imageIds: List[str] = msgspec.field(default_factory=list)
 
     def __post_init__(self):
         """Additional validation after struct creation"""
         self.aboutMe = self.aboutMe.strip() if self.aboutMe is not None else None
         self.nickName = self.nickName.strip() if self.nickName is not None else None
+
+        # Validate imageIds to ensure they are at the correct length
+        if self.imageIds:
+            # Use hardcoded length to avoid import issues during validation
+            expected_length = 8  # CoreSettings().record_id_length
+
+            for image_id in self.imageIds:
+                if not isinstance(image_id, str):
+                    raise ValueError(f"Image ID must be a string, got {type(image_id)}")
+                if len(image_id) != expected_length:
+                    raise ValueError(f"Image ID must be {expected_length} characters long, got {len(image_id)} for '{image_id}'")

@@ -8,7 +8,6 @@ import datetime
 import logging
 from typing import Any, Dict, List
 
-import boto3
 import msgspec
 from botocore.exceptions import ClientError
 from core_types.profile import *
@@ -23,6 +22,7 @@ class ProfileManager(CommonManager):
     def __init__(self, user_id: str, ok_if_not_exists: bool = False):
         super().__init__(user_id, ok_if_not_exists=ok_if_not_exists)
 
+        self.dynamodb = DynamoDBService.get_dynamodb()
         self.table = DynamoDBService.get_table()
 
         self.profiles_data = self._get_profiles_records()
@@ -74,7 +74,7 @@ class ProfileManager(CommonManager):
                 }
             }
 
-            response = dynamodb.batch_get_item(RequestItems=request_items)
+            response = self.dynamodb.batch_get_item(RequestItems=request_items)
             profiles_data = {}
 
             # Handle partial failures in batch operations
@@ -123,19 +123,9 @@ class ProfileManager(CommonManager):
             raise ValueError(f"Invalid profile data: {str(e)}")
 
     def create(self, profile_id: str, profile_record: Dict[str, Any]) -> bool:
-        """
-        Create a new profile for a user
+        if not isinstance(profile_id, str):
+            raise ValueError(f"Invalid profile_id type: expected str, got {type(profile_id)}")
 
-        Args:
-            profile_id: The profile ID
-            profile_record: Profile data dictionary
-
-        Returns:
-            bool: True if creation was successful
-
-        Raises:
-            ValueError: If profile creation fails
-        """
         if not self.validate_id(profile_id):
             raise ValueError("Invalid profile_id format")
 
@@ -148,11 +138,9 @@ class ProfileManager(CommonManager):
         validated_record = self.validate_profile_record(profile_record)
         profile_record = msgspec.to_builtins(validated_record)
 
-        # Use timezone-aware datetime
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         try:
-            # Use transaction to ensure atomicity
             profile_item = {
                 "PK": f"PROFILE#{profile_id}",
                 "SK": "METADATA",
@@ -173,41 +161,44 @@ class ProfileManager(CommonManager):
                 "createdAt": now,
             }
 
-            # Use optimized serialization
-            dynamodb.meta.client.transact_write_items(
-                TransactItems=[
+            # Use BatchWriteItem instead of TransactWriteItems for better performance
+            request_items = {
+                self.table.name: [
                     {
-                        "Put": {
-                            "TableName": self.table.name,
-                            "Item": DynamoDBService.serialize_dynamodb_item(
-                                profile_item
-                            ),
+                        "PutRequest": {
+                            "Item": profile_item,
                             "ConditionExpression": "attribute_not_exists(PK)",
                         }
                     },
                     {
-                        "Put": {
-                            "TableName": self.table.name,
-                            "Item": DynamoDBService.serialize_dynamodb_item(
-                                lookup_item
-                            ),
+                        "PutRequest": {
+                            "Item": lookup_item,
                         }
                     },
                 ]
-            )
+            }
 
-            logger.info(
-                f"Profile {profile_id} created successfully for user {self.user_id}"
-            )
+            # Execute batch write
+            response = self.dynamodb.meta.client.batch_write_item(RequestItems=request_items)
+
+            # Handle unprocessed items (retry if needed)
+            unprocessed_items = response.get("UnprocessedItems", {})
+            if unprocessed_items:
+                logger.warning(f"Unprocessed items in batch write: {unprocessed_items}")
+                # Retry unprocessed items once
+                retry_response = self.dynamodb.meta.client.batch_write_item(RequestItems=unprocessed_items)
+                if retry_response.get("UnprocessedItems"):
+                    raise ValueError("Failed to write all items after retry")
+
+            logger.info(f"Profile {profile_id} created successfully for user {self.user_id}")
             return True
 
         except ClientError as e:
-            logger.error(
-                f"Failed to create profile {profile_id} for user {self.user_id}: {str(e)}"
-            )
             if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
-                raise ValueError("Profile already exists")
-            raise ValueError(f"Failed to create profile: {str(e)}")
+                logger.error(f"Profile {profile_id} already exists for user {self.user_id}")
+            else:
+                logger.error(f"Failed to create profile {profile_id} for user {self.user_id}: {str(e)} {e.response}")
+            raise ValueError(f"Failed to create profile: {str(e)} {e.response}")
 
     def update(self, profile_id: str, profile_record: Dict[str, Any]) -> bool:
         """
@@ -262,12 +253,14 @@ class ProfileManager(CommonManager):
             if expression_attribute_names:
                 kwargs["ExpressionAttributeNames"] = expression_attribute_names
 
+            logger.info(f"Profile {profile_id} updated successfully for user {self.user_id}")
             self.table.update_item(**kwargs)
 
             return True
 
         except ClientError as e:
-            raise ValueError(f"Failed to update profile: {str(e)}")
+            logger.error(f"Failed to update profile {profile_id} for user {self.user_id}: {str(e)} {e.response}")
+            raise ValueError(f"Failed to update profile: {str(e)} {e.response}")
 
     def upsert(self, profile_id: str, profile_record: Dict[str, Any]) -> bool:
         """
@@ -314,40 +307,46 @@ class ProfileManager(CommonManager):
             raise ValueError("Profile-Id not created")
 
         try:
-            # Use transaction to ensure atomicity
-            dynamodb.meta.client.transact_write_items(
-                TransactItems=[
+            # Use BatchWriteItem instead of TransactWriteItems for better performance
+            request_items = {
+                self.table.name: [
                     {
-                        "Delete": {
-                            "TableName": self.table.name,
+                        "DeleteRequest": {
                             "Key": {
-                                "PK": {"S": f"PROFILE#{profile_id}"},
-                                "SK": {"S": "METADATA"},
+                                "PK": f"PROFILE#{profile_id}",
+                                "SK": "METADATA",
                             },
                         }
                     },
                     {
-                        "Delete": {
-                            "TableName": self.table.name,
+                        "DeleteRequest": {
                             "Key": {
-                                "PK": {"S": f"USER#{self.user_id}"},
-                                "SK": {"S": f"PROFILE#{profile_id}"},
+                                "PK": f"USER#{self.user_id}",
+                                "SK": f"PROFILE#{profile_id}",
                             },
                         }
                     },
                 ]
-            )
+            }
 
-            logger.info(
-                f"Profile {profile_id} deleted successfully for user {self.user_id}"
-            )
+            # Execute batch write
+            response = self.dynamodb.meta.client.batch_write_item(RequestItems=request_items)
+
+            # Handle unprocessed items (retry if needed)
+            unprocessed_items = response.get("UnprocessedItems", {})
+            if unprocessed_items:
+                logger.warning(f"Unprocessed items in batch delete: {unprocessed_items}")
+                # Retry unprocessed items once
+                retry_response = self.dynamodb.meta.client.batch_write_item(RequestItems=unprocessed_items)
+                if retry_response.get("UnprocessedItems"):
+                    raise ValueError("Failed to delete all items after retry")
+
+            logger.info(f"Profile {profile_id} deleted successfully for user {self.user_id}")
             return True
 
         except ClientError as e:
-            logger.error(
-                f"Failed to delete profile {profile_id} for user {self.user_id}: {str(e)}"
-            )
-            raise ValueError(f"Failed to delete profile: {str(e)}")
+            logger.error(f"Failed to delete profile {profile_id} for user {self.user_id}: {str(e)} {e.response}")
+            raise ValueError(f"Failed to delete profile: {str(e)} {e.response}")
 
     def get(self, profile_id: str) -> Dict[str, Any]:
         """

@@ -192,8 +192,8 @@ class UserManager(CommonManager):
             return True
 
         except ClientError as e:
-            logger.error(f"Failed to create/update user {self.user_id}: {str(e)}")
-            raise RuntimeError(f"Failed to create/update user: {str(e)}")
+            logger.error(f"Failed to create/update user {self.user_id}: {str(e)} {e.response}")
+            raise RuntimeError(f"Failed to create/update user: {str(e)} {e.response}")
 
     def is_banned(self) -> bool:
         """
