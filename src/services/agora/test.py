@@ -142,7 +142,9 @@ class AgoraServiceTester(ServiceTester):
             if param in self.parameters:
                 print(f"[PASS] Agora parameter configured: {param}")
             else:
-                print(f"⚠️  Agora parameter not configured: {param} (optional for development)")
+                print(
+                    f"⚠️  Agora parameter not configured: {param} (optional for development)"
+                )
 
         print("[PASS] Agora integration plan test passed")
 
@@ -177,4 +179,4 @@ def main(action=None):
 
 
 if __name__ == "__main__":
-    main() 
+    main()

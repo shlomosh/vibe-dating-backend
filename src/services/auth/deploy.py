@@ -130,9 +130,7 @@ class AuthServiceDeployer(ServiceDeployer):
                     )
                     updated_functions.append(aws_lambda_name)
                 else:
-                    print(
-                        f"  Skipping function update for: {aws_lambda_name}"
-                    )
+                    print(f"  Skipping function update for: {aws_lambda_name}")
 
             # Update JWT authorizer function
             if "AuthJWTAuthorizerFunctionArn" in stack_outputs:
@@ -151,9 +149,7 @@ class AuthServiceDeployer(ServiceDeployer):
                     )
                     updated_functions.append(aws_lambda_name)
                 else:
-                    print(
-                        f"  Skipping function update for: {aws_lambda_name}"
-                    )
+                    print(f"  Skipping function update for: {aws_lambda_name}")
 
             print(f"✅ Successfully updated {len(updated_functions)} Lambda resources:")
             for func in updated_functions:

@@ -7,9 +7,9 @@ Based on profile-image-backend-spec.md
 import json
 import os
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import Mock, patch
-from datetime import datetime, timedelta
 
 # Add the lambda directories to the path
 project_root = Path(__file__).parent.parent.parent.parent.parent.parent
@@ -122,22 +122,26 @@ def test_profile_image_upload_request():
                 "location": None,
                 "flags": "",
             },
-            "order": 1
+            "order": 1,
         }
 
         # Test that the handler can validate the request structure
         # (assuming validate_upload_request method exists)
-        if hasattr(handler, 'validate_upload_request'):
+        if hasattr(handler, "validate_upload_request"):
             try:
                 handler.validate_upload_request(valid_request)
                 print("+ Profile image upload request validation works")
             except Exception as e:
-                print(f"+ Profile image upload request validation works (with expected error: {e})")
+                print(
+                    f"+ Profile image upload request validation works (with expected error: {e})"
+                )
         else:
-            print("+ Profile image upload request structure validation (method not implemented yet)")
+            print(
+                "+ Profile image upload request structure validation (method not implemented yet)"
+            )
 
         # Test that the handler has the expected interface
-        expected_methods = ['generate_media_id', 'validate_upload_request']
+        expected_methods = ["generate_media_id", "validate_upload_request"]
         for method in expected_methods:
             if hasattr(handler, method):
                 print(f"+ {method} method exists")
@@ -162,7 +166,7 @@ def test_profile_image_processing():
         processor = MediaProcessor()
 
         # Test that the processor has the expected interface
-        expected_methods = ['extract_media_id_from_s3_key']
+        expected_methods = ["extract_media_id_from_s3_key"]
         for method in expected_methods:
             if hasattr(processor, method):
                 print(f"+ {method} method exists")
@@ -170,9 +174,15 @@ def test_profile_image_processing():
                 print(f"⚠️  {method} method not implemented yet")
 
         # Test processing workflow interface (methods that should exist according to spec)
-        spec_methods = ['process_profile_image', 'download_from_s3', 'validate_image', 
-                       'generate_thumbnail', 'upload_to_s3_and_cdn', 'update_media_record']
-        
+        spec_methods = [
+            "process_profile_image",
+            "download_from_s3",
+            "validate_image",
+            "generate_thumbnail",
+            "upload_to_s3_and_cdn",
+            "update_media_record",
+        ]
+
         print("\nProfile Image Processing Pipeline Interface Check:")
         for method in spec_methods:
             if hasattr(processor, method):
@@ -208,8 +218,8 @@ def test_profile_image_status():
                 print(f"⚠️  {method} method not implemented yet")
 
         # Test status checking interface (methods that should exist according to spec)
-        spec_methods = ['get_media_status', 'get_media_record']
-        
+        spec_methods = ["get_media_status", "get_media_record"]
+
         print("\nProfile Image Status Interface Check:")
         for method in spec_methods:
             if hasattr(manager, method):
@@ -223,11 +233,11 @@ def test_profile_image_status():
             "status": "completed",
             "urls": {
                 "original": "https://cdn.vibe-dating.io/original/test123.jpg",
-                "thumbnail": "https://cdn.vibe-dating.io/thumb/test123.jpg"
+                "thumbnail": "https://cdn.vibe-dating.io/thumb/test123.jpg",
             },
-            "processedAt": "2024-01-01T12:05:00Z"
+            "processedAt": "2024-01-01T12:05:00Z",
         }
-        
+
         print("+ Profile image status response structure validation completed")
         print("+ Expected status structure documented in spec")
 
@@ -249,8 +259,13 @@ def test_profile_image_deletion():
         manager = MediaManager()
 
         # Test deletion interface (methods that should exist according to spec)
-        spec_methods = ['delete_profile_image', 'delete_from_s3', 'delete_media_record', 'get_media_record']
-        
+        spec_methods = [
+            "delete_profile_image",
+            "delete_from_s3",
+            "delete_media_record",
+            "get_media_record",
+        ]
+
         print("\nProfile Image Deletion Interface Check:")
         for method in spec_methods:
             if hasattr(manager, method):
@@ -262,9 +277,9 @@ def test_profile_image_deletion():
         expected_deletion_response = {
             "mediaId": "test123",
             "deleted": True,
-            "deletedAt": "2024-01-01T12:10:00Z"
+            "deletedAt": "2024-01-01T12:10:00Z",
         }
-        
+
         print("+ Profile image deletion response structure validation completed")
         print("+ Expected deletion response documented in spec")
 
@@ -286,8 +301,12 @@ def test_profile_image_security():
         handler = MediaUploadHandler()
 
         # Test security interface (methods that should exist according to spec)
-        spec_methods = ['check_profile_ownership', 'check_image_limit', 'generate_presigned_upload_url']
-        
+        spec_methods = [
+            "check_profile_ownership",
+            "check_image_limit",
+            "generate_presigned_upload_url",
+        ]
+
         print("\nProfile Image Security Interface Check:")
         for method in spec_methods:
             if hasattr(handler, method):
@@ -302,9 +321,9 @@ def test_profile_image_security():
             "S3 presigned URL generation with security conditions",
             "Content-Type validation",
             "File size limits (10MB max)",
-            "Aspect ratio validation (3:4 only)"
+            "Aspect ratio validation (3:4 only)",
         ]
-        
+
         print("\nProfile Image Security Requirements Check:")
         for requirement in security_requirements:
             print(f"✓ {requirement} (spec requirement)")
@@ -326,8 +345,8 @@ def test_profile_image_data_models():
     try:
         # Test ImageMetadata dataclass
         from dataclasses import dataclass
-        from typing import Optional, Dict, Any
         from enum import Enum
+        from typing import Any, Dict, Optional
 
         class MediaStatus(Enum):
             PENDING = "pending"
@@ -376,9 +395,9 @@ def test_profile_image_data_models():
             aspect="3:4",
             camera="iPhone 12 Pro",
             software="iOS 17.0",
-            timestamp="2024-01-01T12:00:00Z"
+            timestamp="2024-01-01T12:00:00Z",
         )
-        
+
         assert metadata.width == 1440
         assert metadata.height == 1920
         assert metadata.format == "jpeg"
@@ -398,9 +417,9 @@ def test_profile_image_data_models():
             s3_key="profile-images/test123.jpg",
             s3_bucket="test-bucket",
             created_at="2024-01-01T12:00:00Z",
-            updated_at="2024-01-01T12:05:00Z"
+            updated_at="2024-01-01T12:05:00Z",
         )
-        
+
         assert profile_image.media_id == "test123"
         assert profile_image.status == MediaStatus.COMPLETED
         assert profile_image.metadata.width == 1440
@@ -533,9 +552,17 @@ def main():
     print(f"  Security & Access Control: {'PASS' if security_ok else 'FAIL'}")
     print(f"  Data Models: {'PASS' if data_models_ok else 'FAIL'}")
 
-    all_passed = (upload_ok and processor_ok and manager_ok and 
-                  upload_request_ok and processing_ok and status_ok and 
-                  deletion_ok and security_ok and data_models_ok)
+    all_passed = (
+        upload_ok
+        and processor_ok
+        and manager_ok
+        and upload_request_ok
+        and processing_ok
+        and status_ok
+        and deletion_ok
+        and security_ok
+        and data_models_ok
+    )
 
     if all_passed:
         print("\n🎉 All Media Service functional tests PASSED!")

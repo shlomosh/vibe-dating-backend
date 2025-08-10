@@ -6,6 +6,7 @@ Deploys core infrastructure stacks (S3, DynamoDB, IAM) in the correct order.
 
 import argparse
 import sys
+
 from core.deploy_utils import ServiceDeployer
 
 
@@ -36,7 +37,7 @@ class CoreServiceDeployer(ServiceDeployer):
 
             # Update Lambda functions
             updated_layers = []
-        
+
             # Update Lambda layer
             if "CoreLayerArn" in stack_outputs:
                 aws_layer_arn = stack_outputs["CoreLayerArn"]
@@ -49,9 +50,7 @@ class CoreServiceDeployer(ServiceDeployer):
                 ).lower()
 
                 if update_question == "y":
-                    print(
-                        f"  Updating layer: {aws_layer_name}:{aws_layer_version}"
-                    )
+                    print(f"  Updating layer: {aws_layer_name}:{aws_layer_version}")
                     self._update_aws_layer(
                         aws_layer_name,
                         aws_layer_version,
@@ -150,7 +149,12 @@ def main(action=None):
 
     if args.validate:
         deployer.validate_templates(
-            templates=["01-s3.yaml", "02-dynamodb.yaml", "03-iam.yaml", "04-lambda.yaml"]
+            templates=[
+                "01-s3.yaml",
+                "02-dynamodb.yaml",
+                "03-iam.yaml",
+                "04-lambda.yaml",
+            ]
         )
     elif action == "deploy" or (action is None and not deployer.is_deployed()):
         deployer.deploy()

@@ -11,12 +11,10 @@ class CoreServiceTester(ServiceTester):
         super().__init__("core", cfg={})
 
 
-
-
 def main(action=None):
     tester = CoreServiceTester()
     tester.test()
 
 
 if __name__ == "__main__":
-    main() 
+    main()

@@ -47,9 +47,7 @@ def test_auth_utils():
     print("\nTesting auth utilities...")
 
     try:
-        from core.auth_utils import (
-            extract_user_id_from_context,
-        )
+        from core.auth_utils import extract_user_id_from_context
 
         # Test extract_user_id_from_context
         mock_event = {"requestContext": {"authorizer": {"uid": "test_user_123"}}}
@@ -135,9 +133,7 @@ def test_profile_utils():
     print("\nTesting profile utilities...")
 
     try:
-        from core.profile_utils import (
-            ProfileManager,
-        )
+        from core.profile_utils import ProfileManager
 
         # Mock DynamoDB dependencies to avoid environment variable requirements
         with patch("core.aws.DynamoDBService.get_table") as mock_table:
@@ -146,7 +142,7 @@ def test_profile_utils():
             mock_table_instance.get_item.return_value = {"Item": None}
             mock_table_instance.query.return_value = {"Items": []}
             mock_table.return_value = mock_table_instance
-            
+
             # Test that ProfileManager can be instantiated (without DynamoDB)
             # Use a valid 8-character user ID that matches the expected format
             valid_user_id = "test1234"
@@ -188,4 +184,4 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    sys.exit(main())
