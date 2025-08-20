@@ -39,19 +39,43 @@ class CommonManager:
                     raise ValueError(
                         f"User record not found for user_id: {self.user_id}"
                     )
-            return user_record
+            return DynamoDBService.convert_dynamodb_types_to_python(user_record)
 
         except ClientError as e:
             logger.error(f"Failed to get user record for {self.user_id}: {str(e)}")
             raise RuntimeError(f"Failed to get user record: {str(e)}")
 
     @classmethod
-    def hash_string_to_id(cls, platform_id_string: str) -> str:
+    def allocate_ids(cls, count: int, prefix: Optional[str] = None) -> list:
+        """
+        Get allocated IDs
+
+        Args:
+            count: The number of IDs to allocate
+            prefix: The prefix to use for the IDs (optional. If not provided, random IDs will be generated)
+
+        Returns:
+            list: List of allocated IDs
+        """
+
+        if prefix is None:
+            return [
+                cls.generate_random_id()
+                for _ in range(0, count)
+            ]
+        else:
+            return [
+                cls.hash_string_to_id(f"{prefix}:{_}")
+                for _ in range(0, count)
+            ]
+
+    @classmethod
+    def hash_string_to_id(cls, string_to_hash: str) -> str:
         """
         Convert platform ID string to Vibe user ID using UUID v5
 
         Args:
-            platform_id_string: String in format "telegram:123456789" or "userId:profileIndex"
+            string_to_hash: String in format "telegram:123456789" or "userId:profileIndex"
             length: Length of the final user ID (default: 8)
 
         Returns:
@@ -68,10 +92,28 @@ class CommonManager:
 
         # Create UUID v5 with namespace from Secrets Manager
         namespace_uuid = uuid.UUID(uuid_namespace)
-        user_uuid = uuid.uuid5(namespace_uuid, platform_id_string)
+        user_uuid = uuid.uuid5(namespace_uuid, string_to_hash)
 
         # Convert UUID to URL-safe base64
         uuid_bytes = user_uuid.bytes
+        base64_string = base64.urlsafe_b64encode(uuid_bytes).decode("utf-8")
+
+        # Remove padding and return first N characters
+        return base64_string.rstrip("=")[: CoreSettings().record_id_length]
+
+    @classmethod
+    def generate_random_id(cls) -> str:
+        """
+        Generate a random ID using UUID v4
+
+        Returns:
+            str: URL-safe base64 encoded random ID
+        """
+        # Generate random UUID v4
+        random_uuid = uuid.uuid4()
+
+        # Convert UUID to URL-safe base64
+        uuid_bytes = random_uuid.bytes
         base64_string = base64.urlsafe_b64encode(uuid_bytes).decode("utf-8")
 
         # Remove padding and return first N characters

@@ -49,15 +49,11 @@ class MediaUploadHandler:
                 raise ResponseError(400, {"error": f"Missing required field: {field}"})
 
         # Validate image type
-        if request_data["type"] != "image":
+        if request_data["mediaType"] != "image":
             raise ResponseError(400, {"error": "Only image type supported"})
 
-        # Validate aspect ratio
-        if request_data["aspectRatio"] != "3:4":
-            raise ResponseError(400, {"error": "Only 3:4 aspect ratio supported"})
-
         # Validate metadata
-        metadata = request_data["metadata"]
+        metadata = request_data["mediaMeta"]
         if metadata["size"] > self.max_file_size:
             raise ResponseError(
                 400, {"error": f"File size exceeds limit: {self.max_file_size}"}
@@ -283,6 +279,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if not profile_id:
             raise ResponseError(400, {"error": "profileId path parameter is required"})
 
+        # Create profile manager for specific profile
+        profile_mgr = ProfileManager(user_id, profile_id)
+
         # Route based on HTTP method and path
         if http_method == "POST":
             request_body = parse_request_body(event)
@@ -315,27 +314,3 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     except Exception as e:
         print(f"Error: {str(e)}")
         return generate_response(500, {"error": f"Internal server error: {str(e)}"})
-
-
-if __name__ == "__main__":
-    # Test handler
-    test_event = {
-        "httpMethod": "POST",
-        "pathParameters": {"profileId": "test123"},
-        "body": json.dumps(
-            {
-                "type": "image",
-                "aspectRatio": "3:4",
-                "metadata": {
-                    "width": 1440,
-                    "height": 1920,
-                    "size": 2048576,
-                    "format": "jpeg",
-                },
-                "order": 1,
-            }
-        ),
-    }
-
-    result = lambda_handler(test_event, None)
-    print(json.dumps(result, indent=2))

@@ -66,72 +66,42 @@ Resources:
           AttributeType: S
         - AttributeName: GSI3SK
           AttributeType: S
-        - AttributeName: GSI4PK
-          AttributeType: S
-        - AttributeName: GSI4SK
-          AttributeType: S
-        - AttributeName: GSI5PK
-          AttributeType: S
-        - AttributeName: GSI5SK
-          AttributeType: S
-        - AttributeName: GSI6PK
-          AttributeType: S
-        - AttributeName: GSI6SK
-          AttributeType: S
+
+      # Primary key schema for main table access
       KeySchema:
-        - AttributeName: PK
+        - AttributeName: PK  # Primary partition key for data distribution (e.g. USER#123, PROFILE#456)
           KeyType: HASH
-        - AttributeName: SK
+        - AttributeName: SK  # Primary sort key for ordering within partitions (e.g. METADATA, PROFILE#789)
           KeyType: RANGE
       GlobalSecondaryIndexes:
+        # GSI1 - User-based queries (e.g. get all profiles/media for a user)
         - IndexName: GSI1
           KeySchema:
-            - AttributeName: GSI1PK
+            - AttributeName: GSI1PK  # Partition key for user-based queries (e.g. USER#123)
               KeyType: HASH
-            - AttributeName: GSI1SK
+            - AttributeName: GSI1SK  # Sort key for user items (e.g. PROFILE#456, MEDIA#789)
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
+        # GSI2 - Time-based queries (e.g. recently updated profiles, last active users)
         - IndexName: GSI2
           KeySchema:
-            - AttributeName: GSI2PK
+            - AttributeName: GSI2PK  # Partition key for time-based queries (e.g. TIME#2024-01-01)
               KeyType: HASH
-            - AttributeName: GSI2SK
+            - AttributeName: GSI2SK  # Sort key for exact timestamp
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
+        # GSI3 - Location/Geographic queries (e.g. users in specific cities)
         - IndexName: GSI3
           KeySchema:
-            - AttributeName: GSI3PK
+            - AttributeName: GSI3PK  # Partition key for location queries (e.g. LOCATION#NYC)
               KeyType: HASH
-            - AttributeName: GSI3SK
+            - AttributeName: GSI3SK  # Sort key for location details
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-        - IndexName: GSI4
-          KeySchema:
-            - AttributeName: GSI4PK
-              KeyType: HASH
-            - AttributeName: GSI4SK
-              KeyType: RANGE
-          Projection:
-            ProjectionType: ALL
-        - IndexName: GSI5
-          KeySchema:
-            - AttributeName: GSI5PK
-              KeyType: HASH
-            - AttributeName: GSI5SK
-              KeyType: RANGE
-          Projection:
-            ProjectionType: ALL
-        - IndexName: GSI6
-          KeySchema:
-            - AttributeName: GSI6PK
-              KeyType: HASH
-            - AttributeName: GSI6SK
-              KeyType: RANGE
-          Projection:
-            ProjectionType: ALL
+
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
       SSESpecification:

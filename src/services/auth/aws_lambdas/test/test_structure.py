@@ -25,7 +25,6 @@ def test_auth_utils_import():
         from core.auth_utils import (
             generate_jwt_token,
             generate_policy,
-            hash_string_to_id,
             verify_jwt_token_with_secret_manager,
         )
 

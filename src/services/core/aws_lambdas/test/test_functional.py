@@ -29,9 +29,9 @@ def test_settings():
 
         settings = CoreSettings()
         assert hasattr(settings, "record_id_length")
-        assert hasattr(settings, "max_profile_count")
+        assert hasattr(settings, "max_profiles_count")
         assert settings.record_id_length == 8
-        assert settings.max_profile_count == 5
+        assert settings.max_profiles_count == 5
 
         print("✓ CoreSettings works correctly")
         return True

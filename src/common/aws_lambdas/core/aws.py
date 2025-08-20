@@ -39,6 +39,17 @@ class DynamoDBService:
             )
 
     @classmethod
+    def convert_dynamodb_types_to_python(cls, value):
+        """Convert DynamoDB types to Python native types"""
+        if hasattr(value, '__int__') and not isinstance(value, bool):  # decimal, float, etc.
+            return int(value)
+        elif isinstance(value, dict):
+            return {k: cls.convert_dynamodb_types_to_python(v) for k, v in value.items()}
+        elif isinstance(value, list):
+            return [cls.convert_dynamodb_types_to_python(item) for item in value]
+        return value
+
+    @classmethod
     def serialize_dynamodb_item(cls, item: Dict[str, Any]) -> Dict[str, Any]:
         logger.info(f"Serializing item: {item}")
         serialized = {}

@@ -36,20 +36,6 @@ def test_auth_utils():
 
         print("✓ extract_user_id_from_context works correctly")
 
-        # Test get_allocated_profile_ids with mocked hash function
-        with patch("core.user_utils.UserManager.hash_string_to_id") as mock_hash:
-            mock_hash.side_effect = lambda x: f"profile_{x.split(':')[1]}"
-
-            profile_ids = UserManager.get_allocated_profile_ids("test_user")
-            assert (
-                len(profile_ids) == 5
-            ), f"Expected 5 profile IDs, got {len(profile_ids)}"
-            assert (
-                profile_ids[0] == "profile_0"
-            ), f"Expected 'profile_0', got '{profile_ids[0]}'"
-
-        print("✓ get_allocated_profile_ids works correctly")
-
         return True
 
     except Exception as e:
@@ -99,8 +85,8 @@ def test_settings():
         from core.settings import CoreSettings
 
         settings = CoreSettings()
-        assert hasattr(settings, "max_profile_count")
-        assert settings.max_profile_count == 5
+        assert hasattr(settings, "max_profiles_count")
+        assert settings.max_profiles_count == 5
 
         print("✓ CoreSettings works correctly")
 

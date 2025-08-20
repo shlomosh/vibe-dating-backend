@@ -101,7 +101,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             {
                 "token": token,
                 "userId": user_mgmt.user_id,
-                "profileIds": user_mgmt.allocated_profile_ids,
+                "profileIds": user_mgmt.get()["allocatedProfileIds"],
             },
         )
 

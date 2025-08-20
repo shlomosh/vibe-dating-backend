@@ -117,20 +117,23 @@ class ProfileRecord(msgspec.Struct):
     preventionPractices: Optional[PreventionPracticesType] = None
     hosting: Optional[HostingType] = None
     travelDistance: Optional[TravelDistanceType] = None
-    imageIds: List[str] = msgspec.field(default_factory=list)
+    allocatedMediaIds: List[str] = msgspec.field(default_factory=list)
+    activeMediaIds: List[str] = msgspec.field(default_factory=list)
 
     def __post_init__(self):
         """Additional validation after struct creation"""
         self.aboutMe = self.aboutMe.strip() if self.aboutMe is not None else None
         self.nickName = self.nickName.strip() if self.nickName is not None else None
 
-        # Validate imageIds to ensure they are at the correct length
-        if self.imageIds:
-            # Use hardcoded length to avoid import issues during validation
+        if self.allocatedMediaIds:
             expected_length = 8  # CoreSettings().record_id_length
+            for media_id in self.allocatedMediaIds:
+                if not isinstance(media_id, str):
+                    raise ValueError(f"Media ID must be a string, got {type(media_id)}")
+                if len(media_id) != expected_length:
+                    raise ValueError(f"Media ID must be {expected_length} characters long, got {len(media_id)} for '{media_id}'")
 
-            for image_id in self.imageIds:
-                if not isinstance(image_id, str):
-                    raise ValueError(f"Image ID must be a string, got {type(image_id)}")
-                if len(image_id) != expected_length:
-                    raise ValueError(f"Image ID must be {expected_length} characters long, got {len(image_id)} for '{image_id}'")
+        if self.activeMediaIds:
+            for media_id in self.activeMediaIds:
+                if media_id not in self.allocatedMediaIds:
+                    raise ValueError(f"Media ID is not allocated: {media_id}")

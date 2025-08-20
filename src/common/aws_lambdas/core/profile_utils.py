@@ -6,7 +6,8 @@ This module contains all profile-related functions shared across services.
 
 import datetime
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+from copy import deepcopy
 
 import msgspec
 from botocore.exceptions import ClientError
@@ -14,62 +15,55 @@ from core_types.profile import *
 
 from core.aws import DynamoDBService
 from core.manager import CommonManager
+from core.settings import CoreSettings
 
 logger = logging.getLogger(__name__)
 
 
 class ProfileManager(CommonManager):
-    def __init__(self, user_id: str, ok_if_not_exists: bool = False):
+    def __init__(self, user_id: str, profile_id: Optional[str] = None, ok_if_not_exists: bool = False):
         super().__init__(user_id, ok_if_not_exists=ok_if_not_exists)
 
         self.dynamodb = DynamoDBService.get_dynamodb()
         self.table = DynamoDBService.get_table()
 
-        self.profiles_data = self._get_profiles_records()
+        # get allocated/active profile ids for the user
+        if self.user_data:            
+            self.allocated_profile_ids = self.user_data.get("allocatedProfileIds", [])
+            self.active_profile_ids = self.user_data.get("activeProfileIds", [])
+        else:
+            self.allocated_profile_ids = []
+            self.active_profile_ids = []
 
-        self.allocated_profile_ids = (
-            self.user_data.get("profileIds", []) if self.user_data else []
-        )
-        self.active_profile_ids = list(self.profiles_data.keys())
+        if profile_id is not None:
+            profile_ids_to_fetch = [profile_id]
+        else:
+            profile_ids_to_fetch = self.active_profile_ids
+
+        # get profiles data from DB
+        self.profiles_data = self._get_profiles_records(profile_ids_to_fetch=profile_ids_to_fetch)
+
+        # validate profile_id if provided
+        if profile_id is not None:
+            if not self.validate_profile_id(profile_id, is_existing=True):
+                raise ValueError(f"Invalid profile_id: {profile_id}")
+        self.profile_id = profile_id
 
         # Use ProfileRecord fields directly instead of separate enum
         self.profile_fields = [field for field in ProfileRecord.__struct_fields__]
 
-    def _get_active_profile_ids(self) -> List[str]:
-        """Get active profile IDs for a user using GSI query"""
+    def _get_profiles_records(self, profile_ids_to_fetch: List[str]) -> Dict[str, Dict[str, Any]]:
+        """Get all active profiles for a user with batch optimization"""        
         try:
-            response = self.table.query(
-                KeyConditionExpression="PK = :pk AND begins_with(SK, :sk_prefix)",
-                ExpressionAttributeValues={
-                    ":pk": f"USER#{self.user_id}",
-                    ":sk_prefix": "PROFILE#",
-                },
-                ProjectionExpression="profileId",
-            )
-            return [
-                item.get("profileId")
-                for item in response.get("Items", [])
-                if item.get("profileId")
-            ]
-        except ClientError as e:
-            logger.error(
-                f"Failed to get active profile IDs for user {self.user_id}: {str(e)}"
-            )
-            return []
-
-    def _get_profiles_records(self) -> Dict[str, Dict[str, Any]]:
-        """Get all active profiles for a user with batch optimization"""
-        try:
-            profile_ids = self._get_active_profile_ids()
-            if not profile_ids:
-                return {}
+            if not profile_ids_to_fetch:
+               return {}
 
             # Use batch_get_item for better performance
             request_items = {
                 self.table.name: {
                     "Keys": [
                         {"PK": f"PROFILE#{profile_id}", "SK": "METADATA"}
-                        for profile_id in profile_ids
+                        for profile_id in profile_ids_to_fetch
                     ]
                 }
             }
@@ -97,197 +91,115 @@ class ProfileManager(CommonManager):
             )
             raise RuntimeError(f"Failed to get active profiles data: {str(e)}")
 
-    def validate_profile_id(self, profile_id: str, is_existing: bool = False) -> bool:
-        """Validate profile ID format"""
+    def validate_profile_id(self, profile_id: str, is_existing: Optional[bool] = None) -> bool:
+        """Validate profile ID format
+        Args:
+            profile_id: The profile ID to validate
+            is_existing: Whether the profile ID is existing (if None, both allocated and active profiles are checked)
+
+        Returns:
+            bool: True if the profile ID is valid, False otherwise
+        """
         if not self.validate_id(profile_id):
             return False
-
-        if profile_id not in self.allocated_profile_ids:
+        
+        if not profile_id in self.allocated_profile_ids:
             return False
-
-        if is_existing and profile_id not in self.active_profile_ids:
-            return False
-
+        
+        if is_existing == True:
+            return profile_id in self.active_profile_ids
+        elif is_existing == False:
+            return profile_id not in self.active_profile_ids
+        
         return True
 
     def validate_profile_record(self, profile_record: Dict[str, Any]) -> ProfileRecord:
         """Validate profile record data using msgspec"""
         try:
-            # Convert dict to ProfileRecord struct for validation
             validated_record = msgspec.convert(profile_record, ProfileRecord)
             return validated_record
         except (msgspec.ValidationError, ValueError) as e:
             logger.warning(
-                f"Profile validation failed for user {self.user_id}: {str(e)}"
+                f"Profile validation failed for user {profile_record}: {str(e)}"
             )
             raise ValueError(f"Invalid profile data: {str(e)}")
 
-    def create(self, profile_id: str, profile_record: Dict[str, Any]) -> bool:
-        if not isinstance(profile_id, str):
-            raise ValueError(f"Invalid profile_id type: expected str, got {type(profile_id)}")
-
-        if not self.validate_id(profile_id):
-            raise ValueError("Invalid profile_id format")
-
-        if profile_id not in self.allocated_profile_ids:
-            raise ValueError("Profile-Id is invalid")
-
-        if profile_id in self.active_profile_ids:
-            raise ValueError("Profile-Id already created")
-
-        validated_record = self.validate_profile_record(profile_record)
-        profile_record = msgspec.to_builtins(validated_record)
-
+    def upsert(self, profile_id: str, profile_record: Dict[str, Any]) -> bool:
+        """Create or update profile in DynamoDB"""
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-        try:
-            profile_item = {
-                "PK": f"PROFILE#{profile_id}",
-                "SK": "METADATA",
+        if not self.validate_profile_id(profile_id, is_existing=None):
+            raise ValueError(f"Invalid profile_id: {profile_id}")
+        
+        if profile_id not in self.profiles_data:
+            # Create new profile
+            profile_data = {
                 "userId": self.user_id,
-                **{
-                    k: v
-                    for k, v in profile_record.items()
-                    if k in self.profile_fields and v is not None
-                },
+                "allocatedMediaIds": self.allocate_ids(count=CoreSettings().max_profiles_count),
+                "activeMediaIds": [],
                 "createdAt": now,
                 "updatedAt": now,
+                **profile_record
             }
+        else:
+            # Update existing profile
+            profile_data = deepcopy(self.profiles_data[profile_id])
+            profile_data.update({
+                "updatedAt": now,
+                **profile_record
+            })
 
-            lookup_item = {
-                "PK": f"USER#{self.user_id}",
-                "SK": f"PROFILE#{profile_id}",
-                "profileId": profile_id,
-                "createdAt": now,
-            }
-
-            # Use BatchWriteItem instead of TransactWriteItems for better performance
-            request_items = {
-                self.table.name: [
-                    {
-                        "PutRequest": {
-                            "Item": profile_item,
-                        }
-                    },
-                    {
-                        "PutRequest": {
-                            "Item": lookup_item,
-                        }
-                    },
-                ]
-            }
-
-            # Execute batch write
-            response = self.dynamodb.meta.client.batch_write_item(RequestItems=request_items)
-
-            # Handle unprocessed items (retry if needed)
-            unprocessed_items = response.get("UnprocessedItems", {})
-            if unprocessed_items:
-                logger.warning(f"Unprocessed items in batch write: {unprocessed_items}")
-                # Retry unprocessed items once
-                retry_response = self.dynamodb.meta.client.batch_write_item(RequestItems=unprocessed_items)
-                if retry_response.get("UnprocessedItems"):
-                    raise ValueError("Failed to write all items after retry")
-
-            # Update in-memory cache with the newly created profile
-            self.profiles_data[profile_id] = profile_item
-            if profile_id not in self.active_profile_ids:
-                self.active_profile_ids.append(profile_id)
-
-            logger.info(f"Profile {profile_id} created successfully for user {self.user_id}")
-            return True
-
-        except ClientError as e:
-            logger.error(f"Failed to create profile {profile_id} for user {self.user_id}: {str(e)} {e.response}")
-            raise ValueError(f"Failed to create profile: {str(e)} {e.response}")
-
-    def update(self, profile_id: str, profile_record: Dict[str, Any]) -> bool:
-        """
-        Update an existing profile
-
-        Args:
-            profile_id: The profile ID
-            profile_record: Updated profile data
-
-        Returns:
-            bool: True if update was successful
-
-        Raises:
-            ValueError: If profile update fails
-        """
-        if not self.validate_id(profile_id):
-            raise ValueError("Invalid profile_id format")
-
-        if profile_id not in self.allocated_profile_ids:
-            raise ValueError("Profile-Id is invalid")
-
-        if profile_id not in self.active_profile_ids:
-            raise ValueError("Profile-Id not created")
-
-        validated_record = self.validate_profile_record(profile_record)
-        profile_record = msgspec.to_builtins(validated_record)
-
-        # Use timezone-aware datetime
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-
-        # Optimized update expression building
-        update_fields = []
-        expression_attribute_values = {":updated_at": now}
-        expression_attribute_names = {}
-
-        for field in self.profile_fields:
-            if field in profile_record:
-                update_fields.append(f"#{field} = :{field}")
-                expression_attribute_values[f":{field}"] = profile_record[field]
-                expression_attribute_names[f"#{field}"] = field
-
-        update_expression = f"SET updatedAt = :updated_at{', ' + ', '.join(update_fields) if update_fields else ''}"
+        # Validate and convert to ProfileRecord
+        try:
+            validated_profile_data = self.validate_profile_record(profile_data)
+            profile_data = msgspec.to_builtins(validated_profile_data)
+        except (ValueError, TypeError) as e:
+            logger.error(f"Profile data validation failed for {profile_id}: {str(e)}")
+            raise ValueError(f"Invalid profile data: {str(e)}")
 
         try:
-            kwargs = {
-                "Key": {"PK": f"PROFILE#{profile_id}", "SK": "METADATA"},
-                "UpdateExpression": update_expression,
-                "ExpressionAttributeValues": expression_attribute_values,
-                "ReturnValues": "ALL_NEW",
-            }
+            pk = f"PROFILE#{profile_id}"
+            sk = "METADATA"
 
-            if expression_attribute_names:
-                kwargs["ExpressionAttributeNames"] = expression_attribute_names
-
-            logger.info(f"Profile {profile_id} updated successfully for user {self.user_id}")
-            response = self.table.update_item(**kwargs)
+            # Use put_item for both create and update to ensure it works
+            self.table.put_item(
+                Item={
+                    "PK": pk,
+                    "SK": sk,
+                    "GSI1PK": f"USER#{self.user_id}",  # GSI1 for user-based queries
+                    "GSI1SK": f"PROFILE#{profile_id}",   # GSI1 sort key for profile ordering
+                    "GSI2PK": f"TIME#{now[:10]}",       # GSI2 for time-based queries (date only)
+                    "GSI2SK": now,                       # GSI2 sort key for exact timestamp
+                    "GSI3PK": "LOCATION#DEFAULT",        # GSI3 for location-based queries (placeholder)
+                    "GSI3SK": "DEFAULT",                 # GSI3 sort key for location (placeholder)
+                    **profile_data
+                }
+            )
             
-            # Update in-memory cache with the updated profile
-            if profile_id in self.profiles_data:
-                self.profiles_data[profile_id].update(response.get("Attributes", {}))
+            # Update in-memory cache
+            self.profiles_data[profile_id] = profile_data
+            
+            # If this is a new profile, add to active list and create lookup item
+            if profile_id not in self.active_profile_ids:
+                # Create lookup item
+                lookup_item = {
+                    "PK": f"USER#{self.user_id}",
+                    "SK": f"PROFILE#{profile_id}",
+                    "profileId": profile_id,
+                    "createdAt": now,
+                }
+                
+                self.table.put_item(Item=lookup_item)
+                
+                # Add to user's activeProfileIds
+                self._update_user_active_profile_ids(profile_id, action="add")
 
+            logger.info(f"Profile {profile_id} upserted successfully for user {self.user_id}")
             return True
 
         except ClientError as e:
-            logger.error(f"Failed to update profile {profile_id} for user {self.user_id}: {str(e)} {e.response}")
-            raise ValueError(f"Failed to update profile: {str(e)} {e.response}")
-
-    def upsert(self, profile_id: str, profile_record: Dict[str, Any]) -> bool:
-        """
-        Upsert a profile
-
-        Args:
-            profile_id: The profile ID
-            profile_record: Upsert profile data
-
-        Returns:
-            bool: True if upsert was successful
-
-        Raises:
-            ValueError: If profile upsert fails
-        """
-        if profile_id not in self.allocated_profile_ids:
-            raise ValueError("Profile-Id is invalid")
-
-        if profile_id in self.active_profile_ids:
-            return self.update(profile_id, profile_record)
-        else:
-            return self.create(profile_id, profile_record)
+            logger.error(f"Failed to upsert profile {profile_id} for user {self.user_id}: {str(e)} {e.response}")
+            raise ValueError(f"Failed to upsert profile: {str(e)} {e.response}")
 
     def delete(self, profile_id: str) -> bool:
         """
@@ -302,14 +214,11 @@ class ProfileManager(CommonManager):
         Raises:
             ValueError: If profile deletion fails
         """
-        if not self.validate_id(profile_id):
-            raise ValueError("Invalid profile_id format")
+        if self.profile_id is not None and self.profile_id != profile_id:
+            raise ValueError("Profile delete is not allowed in current manager-mode.")
 
-        if profile_id not in self.allocated_profile_ids:
-            raise ValueError("Profile-Id is invalid")
-
-        if profile_id not in self.active_profile_ids:
-            raise ValueError("Profile-Id not created")
+        if not self.validate_profile_id(profile_id, is_existing=True):
+            raise ValueError("Profile-Id is invalid or not created.")
 
         try:
             # Use BatchWriteItem instead of TransactWriteItems for better performance
@@ -346,14 +255,14 @@ class ProfileManager(CommonManager):
                 if retry_response.get("UnprocessedItems"):
                     raise ValueError("Failed to delete all items after retry")
 
-            logger.info(f"Profile {profile_id} deleted successfully for user {self.user_id}")
-            
             # Update in-memory cache by removing the deleted profile
             if profile_id in self.profiles_data:
                 del self.profiles_data[profile_id]
-            if profile_id in self.active_profile_ids:
-                self.active_profile_ids.remove(profile_id)
 
+            # Remove profile_ids from user's activeProfileIds list
+            self._update_user_active_profile_ids(profile_id, action="remove")
+
+            logger.info(f"Profile {profile_id} deleted successfully for user {self.user_id}")
             return True
 
         except ClientError as e:
@@ -406,9 +315,65 @@ class ProfileManager(CommonManager):
         Useful when GSI consistency issues occur
         """
         try:
-            self.profiles_data = self._get_profiles_records()
-            self.active_profile_ids = list(self.profiles_data.keys())
+            self.profiles_data = self._get_profiles_records(profile_ids_to_fetch=self.active_profile_ids)
             logger.info(f"Cache refreshed for user {self.user_id}")
         except Exception as e:
             logger.error(f"Failed to refresh cache for user {self.user_id}: {str(e)}")
-            # Keep existing cache on failure
+
+    def _update_user_active_profile_ids(self, profile_id: str, action: str = "add") -> bool:
+        """
+        Update the user's activeProfileIds list in DynamoDB
+        
+        Args:
+            profile_id: The profile ID to add/remove
+            action: Either "add" or "remove"
+            
+        Returns:
+            bool: True if update was successful
+        """
+        try:
+            if action == "add":
+                # Add profile_id to activeProfileIds if not already present
+                if profile_id not in self.active_profile_ids:
+                    self.active_profile_ids.append(profile_id)
+                    
+                    # Update DynamoDB user item
+                    update_expression = "SET activeProfileIds = :profile_ids, updatedAt = :updated_at"
+                    expression_attribute_values = {
+                        ":profile_ids": self.active_profile_ids,
+                        ":updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                    }
+                    
+                    self.table.update_item(
+                        Key={"PK": f"USER#{self.user_id}", "SK": "METADATA"},
+                        UpdateExpression=update_expression,
+                        ExpressionAttributeValues=expression_attribute_values
+                    )
+                    
+                    logger.info(f"Added profile {profile_id} to activeProfileIds for user {self.user_id}")
+                    
+            elif action == "remove":
+                # Remove profile_id from activeProfileIds if present
+                if profile_id in self.active_profile_ids:
+                    self.active_profile_ids.remove(profile_id)
+                    
+                    # Update DynamoDB user item
+                    update_expression = "SET activeProfileIds = :profile_ids, updatedAt = :updated_at"
+                    expression_attribute_values = {
+                        ":profile_ids": self.active_profile_ids,
+                        ":updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                    }
+                    
+                    self.table.update_item(
+                        Key={"PK": f"USER#{self.user_id}", "SK": "METADATA"},
+                        UpdateExpression=update_expression,
+                        ExpressionAttributeValues=expression_attribute_values
+                    )
+                    
+                    logger.info(f"Removed profile {profile_id} from activeProfileIds for user {self.user_id}")
+            
+            return True
+            
+        except ClientError as e:
+            logger.error(f"Failed to update user activeProfileIds for user {self.user_id}: {str(e)}")
+            raise ValueError(f"Failed to update user activeProfileIds: {str(e)}")

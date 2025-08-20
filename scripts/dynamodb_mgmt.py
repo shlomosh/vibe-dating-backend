@@ -441,12 +441,12 @@ class DynamoDBDumper:
     def dump_as_tree(self, output_file: str = None, limit: Optional[int] = None):
         """Dump database as hierarchical tree showing user->profile->media relationships"""
         print(f"🌳 Building hierarchical tree from table '{self.table_name}'...")
-        
+
         # Collect all data organized by relationships
         users = {}
         profiles = {}
         media_items = {}
-        
+
         # First pass: collect all entities
         print("• Scanning users...")
         user_count = 0
@@ -463,24 +463,36 @@ class DynamoDBDumper:
                         'status': item.get('status', 'N/A')
                     }
                     user_count += 1
-        
+
         print("• Scanning profiles...")
         profile_count = 0
+
+        # First, collect all profile data
+        all_profiles = {}
         for item in self.scan_table(entity_type="profile"):
-            user_id = item.get('userId', '')  # Changed from 'user_id' to 'userId'
             profile_id = item.get('PK', '').replace('PROFILE#', '')
-            if user_id and profile_id:
-                if user_id not in profiles:
-                    profiles[user_id] = []
-                profiles[user_id].append({
-                    'id': profile_id,
-                    'name': item.get('nickName', 'N/A'),  # Changed from 'name' to 'nickName'
-                    'age': item.get('age', 'N/A'),
-                    'location': item.get('location', 'N/A'),
-                    'position': item.get('sexualPosition', 'N/A')
-                })
-                profile_count += 1
-        
+            if profile_id:
+                all_profiles[profile_id] = item
+
+        # Then, scan for user-profile lookup items to establish relationships
+        for item in self.scan_table():
+            if item.get('SK', '').startswith('PROFILE#'):
+                user_id = item.get('PK', '').replace('USER#', '')
+                profile_id = item.get('profileId', '')
+
+                if user_id and profile_id and profile_id in all_profiles:
+                    profile_data = all_profiles[profile_id]
+                    if user_id not in profiles:
+                        profiles[user_id] = []
+                    profiles[user_id].append({
+                        'id': profile_id,
+                        'name': profile_data.get('nickName', 'N/A'),
+                        'age': profile_data.get('age', 'N/A'),
+                        'location': profile_data.get('location', 'N/A'),
+                        'position': profile_data.get('sexualPosition', 'N/A')
+                    })
+                    profile_count += 1
+
         print("• Scanning media...")
         media_count = 0
         for item in self.scan_table(entity_type="media"):
@@ -497,9 +509,9 @@ class DynamoDBDumper:
                     'uploaded_at': item.get('uploaded_at', 'N/A')
                 })
                 media_count += 1
-        
+
         print(f"✅ Collected {user_count} users, {profile_count} profiles, {media_count} media items")
-        
+
         # Build tree structure
         tree_data = []
         for user_id, user_data in users.items():
@@ -508,7 +520,7 @@ class DynamoDBDumper:
                 'data': user_data,
                 'profiles': []
             }
-            
+
             # Add profiles for this user
             user_profiles = profiles.get(user_id, [])
             for profile_data in user_profiles:
@@ -517,7 +529,7 @@ class DynamoDBDumper:
                     'data': profile_data,
                     'media': []
                 }
-                
+
                 # Add media for this profile
                 profile_media = media_items.get(profile_data['id'], [])
                 for media_data in profile_media:
@@ -526,56 +538,56 @@ class DynamoDBDumper:
                         'data': media_data
                     }
                     profile_node['media'].append(media_node)
-                
+
                 user_node['profiles'].append(profile_node)
-            
+
             tree_data.append(user_node)
-        
+
         # Output the tree
         if output_file:
             self._save_tree_to_file(tree_data, output_file)
         else:
             self._print_tree_to_console(tree_data)
-    
+
     def _print_tree_to_console(self, tree_data: List[Dict[str, Any]]):
         """Print tree structure to console"""
         print(f"\n🌳 Database Tree Structure ({len(tree_data)} users):")
         print("=" * 80)
-        
+
         for user_node in tree_data:
             user = user_node['data']
             print(f"⚪ USER: {user['id']} ({user['email']} @ {user['platform']}, status: {user['status']})")
-            
+
             profiles = user_node.get('profiles', [])
             for i, profile_node in enumerate(profiles):
                 is_last_profile = i == len(profiles) - 1
                 profile = profile_node['data']
                 profile_prefix = "└── " if is_last_profile else "├── "
                 print(f"   {profile_prefix}𖦹 PROFILE: {profile['id']} - {profile['name']} (age: {profile['age']}, position: {profile['position']})")
-                
+
                 media_items = profile_node.get('media', [])
                 for j, media_node in enumerate(media_items):
                     is_last_media = j == len(media_items) - 1
                     media = media_node['data']
-                    
+
                     if is_last_profile:
                         media_prefix = "    └── " if is_last_media else "    ├── "
                     else:
                         media_prefix = "│   └── " if is_last_media else "│   ├── "
-                    
+
                     print(f"   {media_prefix}🖼️  MEDIA: {media['id']} - {media['type']} - {media['status']}")
-            
+
             print()  # Empty line between users
-    
+
     def _save_tree_to_file(self, tree_data: List[Dict[str, Any]], output_file: str):
         """Save tree structure to JSON file"""
         try:
             output_path = Path(output_file)
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(tree_data, f, indent=2, default=str)
-            
+
             print(f"✅ Tree structure saved to {output_path}")
         except Exception as e:
             print(f"❌ Failed to save tree structure: {e}")

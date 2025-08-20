@@ -57,6 +57,8 @@ def test_auth_platform():
         with patch("core.aws.DynamoDBService.get_table") as mock_get_table:
             mock_table = MagicMock()
             mock_get_table.return_value = mock_table
+            # Mock get_item to return None (user doesn't exist yet)
+            mock_table.get_item.return_value = {"Item": {}}
 
             # Test event
             test_event = {
@@ -221,7 +223,7 @@ def test_auth_jwt_authorizer():
 
 def test_user_id_generation():
     """Test the user ID generation function"""
-    from core.auth_utils import hash_string_to_id
+    from core.manager import CommonManager
 
     # Mock environment variables
     os.environ[
@@ -244,7 +246,7 @@ def test_user_id_generation():
         ]
 
         for platform_string, expected_length in test_cases:
-            user_id = hash_string_to_id(platform_string)
+            user_id = CommonManager.hash_string_to_id(platform_string)
 
             print(f"Platform: {platform_string}")
             print(f"Generated User ID: {user_id}")
@@ -255,7 +257,7 @@ def test_user_id_generation():
             assert len(user_id) == expected_length
 
             # Test determinism (same input should produce same output)
-            user_id2 = hash_string_to_id(platform_string)
+            user_id2 = CommonManager.hash_string_to_id(platform_string)
             assert user_id == user_id2
 
             print("[PASS] User ID generation test passed!")
