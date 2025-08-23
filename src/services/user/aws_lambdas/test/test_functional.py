@@ -116,9 +116,9 @@ def test_profile_utils():
             # Test that ProfileManager can be instantiated (without DynamoDB)
             # Use a valid 8-character user ID that matches the expected format
             valid_user_id = "test1234"
-            manager = ProfileManager(valid_user_id, ok_if_not_exists=True)
-            assert hasattr(manager, "user_id")
-            assert manager.user_id == valid_user_id
+            profile_mgmt = ProfileManager(valid_user_id, ok_if_not_exists=True)
+            assert hasattr(profile_mgmt, "user_id")
+            assert profile_mgmt.user_id == valid_user_id
 
         print("✓ Profile utility functions are importable")
 

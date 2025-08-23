@@ -160,69 +160,46 @@ class AuthServiceDeployer(ServiceDeployer):
             sys.exit(1)
 
     def deploy(self):
+        """Deploy all auth infrastructure stacks in the correct order."""
         print(f"    Parameters from *@core-service: {self.core_cfg}")
 
-        # Deploy Lambda stack first
-        lambda_stack_name = f"vibe-dating-auth-lambda-{self.environment}"
-        lambda_stack = {
-            "name": lambda_stack_name,
-            "template": "01-lambda.yaml",
-            "parameters": {
-                "Environment": self.environment,
-                "Region": self.parameters["ApiRegion"],
-                "LambdaCodeBucketName": self.core_cfg["s3"]["LambdaCodeBucketName"],
-                "LambdaExecutionRoleArn": self.core_cfg["iam"][
-                    "LambdaExecutionRoleArn"
-                ],
-                "DynamoDBTableName": self.core_cfg["dynamodb"]["DynamoDBTableName"],
-                "CoreLayerArn": self.core_cfg["lambda"]["CoreLayerArn"],
+        # Define stack configurations
+        stacks = {
+            "lambda": {
+                "name": f"vibe-dating-auth-lambda-{self.environment}",
+                "template": "01-lambda.yaml",
+                "parameters": {
+                    "Environment": self.environment,
+                    "Region": self.parameters["ApiRegion"],
+                    "LambdaCodeBucketName": self.core_cfg["s3"]["LambdaCodeBucketName"],
+                    "LambdaExecutionRoleArn": self.core_cfg["iam"][
+                        "LambdaExecutionRoleArn"
+                    ],
+                    "DynamoDBTableName": self.core_cfg["dynamodb"]["DynamoDBTableName"],
+                    "CoreLayerArn": self.core_cfg["lambda"]["CoreLayerArn"],
+                },
+                "depends_on": [],
             },
-        }
-        is_deployed = self.deploy_stack(
-            stack_name=lambda_stack["name"],
-            template_file=lambda_stack["template"],
-            parameters=lambda_stack["parameters"],
-        )
-        if not is_deployed:
-            print("❌ Failed to deploy Lambda stack")
-            sys.exit(1)
-
-        # Fetch outputs from Lambda stack
-        lambda_cfg = self._get_stack_outputs(lambda_stack_name)
-        print(f"    Parameters from lambda@auth-service: {lambda_cfg}")
-
-        # Now deploy API Gateway stack, using outputs from Lambda stack
-        apigateway_stack = {
-            "name": f"vibe-dating-auth-apigateway-{self.environment}",
-            "template": "02-apigateway.yaml",
-            "parameters": {
-                "Environment": self.environment,
-                "Region": self.parameters["ApiRegion"],
-                "ApiDomainName": self.parameters["ApiDomainName"],
-                "ApiHostedZoneId": self.parameters["ApiHostedZoneId"],
-                "ApiCertificateArn": self.parameters["ApiCertificateArn"],
-                "ApiGatewayAuthorizerRoleArn": self.core_cfg["iam"][
-                    "ApiGatewayAuthorizerRoleArn"
-                ],
-                "AuthJWTAuthorizerFunctionArn": lambda_cfg[
-                    "AuthJWTAuthorizerFunctionArn"
-                ],
-                "AuthPlatformFunctionArn": lambda_cfg["AuthPlatformFunctionArn"],
+            "apigateway": {
+                "name": f"vibe-dating-auth-apigateway-{self.environment}",
+                "template": "02-apigateway.yaml",
+                "parameters": {
+                    "Environment": self.environment,
+                    "Region": self.parameters["ApiRegion"],
+                    "ApiDomainName": self.parameters["ApiDomainName"],
+                    "ApiHostedZoneId": self.parameters["ApiHostedZoneId"],
+                    "ApiCertificateArn": self.parameters["ApiCertificateArn"],
+                    "ApiGatewayAuthorizerRoleArn": self.core_cfg["iam"]["ApiGatewayAuthorizerRoleArn"],                
+                    "AuthJWTAuthorizerFunctionArn": f"${{vibe-dating-auth-lambda-{self.environment}.AuthJWTAuthorizerFunctionArn}}",
+                    "AuthPlatformFunctionArn": f"${{vibe-dating-auth-lambda-{self.environment}.AuthPlatformFunctionArn}}",
+                },
+                "depends_on": ["lambda"],
             },
         }
 
-        is_deployed = self.deploy_stack(
-            stack_name=apigateway_stack["name"],
-            template_file=apigateway_stack["template"],
-            parameters=apigateway_stack["parameters"],
-        )
-        if not is_deployed:
-            print("❌ Failed to deploy API Gateway stack")
-            sys.exit(1)
-
-        # Fetch outputs from API Gateway stack
-        apigateway_cfg = self._get_stack_outputs(apigateway_stack["name"])
-        print(f"    Parameters from apigateway@auth-service: {apigateway_cfg}")
+        # Deploy stacks in order
+        stack_order = ["lambda", "apigateway"]
+        self.deploy_stacks(stacks, stack_order)
 
 
 def main(action=None):

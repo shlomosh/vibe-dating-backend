@@ -100,7 +100,6 @@ class SecretsManagerService:
 
         if cls.secretsmanager is None:
             import boto3
-
             cls.secretsmanager = boto3.client("secretsmanager")
 
         try:

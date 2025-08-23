@@ -2,7 +2,7 @@
 Media Processing Lambda Function
 
 Handles S3 event notifications for uploaded media files.
-Processes images to generate thumbnails, optimize files, and update metadata.
+Processes images to generate thumbnails, optimize files, and update media-blob.
 """
 
 import io
@@ -18,12 +18,12 @@ from PIL import Image
 from core.aws import DynamoDBService
 
 
-class MediaProcessor:
+class DataMediaProcessingHandler:
     """Handles media processing operations"""
 
     def __init__(self):
-        self.s3_client = boto3.client("s3")
-        self.cloudfront_client = boto3.client("cloudfront")
+        self.s3_client = boto3.client("s3", region_name=os.environ.get("MEDIA_S3_REGION"))
+        self.cloudfront_client = boto3.client("cloudfront", region_name="us-east-1")
         self.table = DynamoDBService.get_table()
         self.media_bucket = os.environ.get("MEDIA_S3_BUCKET")
         self.cloudfront_domain = os.environ.get("CLOUDFRONT_DOMAIN")
@@ -295,7 +295,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     try:
         print(f"Media Processing Event: {json.dumps(event)}")
 
-        processor = MediaProcessor()
+        processor = DataMediaProcessingHandler()
 
         # Process S3 event notifications
         for record in event.get("Records", []):

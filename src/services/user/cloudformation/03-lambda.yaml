@@ -28,6 +28,10 @@ Parameters:
     Type: String
     Description: Core Layer ARN (imported from core service)
 
+  MediaBucketName:
+    Type: String
+    Description: Media S3 Bucket Name (imported from s3 stack)
+
 Resources:
   # Single Lambda function for all user profile operations
   UserProfileMgmtFunction:
@@ -55,11 +59,45 @@ Resources:
         - Key: Service
           Value: user
 
+  # Single Lambda function for all user media operations
+  UserMediaMgmtFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'vibe-user-media-mgmt-${Environment}'
+      Runtime: python3.11
+      Handler: lambda_function.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Code:
+        S3Bucket: !Ref LambdaCodeBucketName
+        S3Key: lambda/user_media_mgmt.zip
+      Layers:
+        - !Ref CoreLayerArn
+      Environment:
+        Variables:
+          JWT_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${Region}:${AWS::AccountId}:secret:vibe-dating/jwt-secret/${Environment}'
+          UUID_NAMESPACE_SECRET_ARN: !Sub 'arn:aws:secretsmanager:${Region}:${AWS::AccountId}:secret:vibe-dating/uuid-namespace/${Environment}'
+          DYNAMODB_TABLE: !Ref DynamoDBTableName
+          MEDIA_S3_BUCKET: !Ref MediaBucketName
+          MEDIA_S3_REGION: !Ref Region
+      Timeout: 30
+      MemorySize: 256
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: user
+
   # CloudWatch Log Group for Lambda function
   UserProfileMgmtLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/vibe-user-profile-mgmt-${Environment}'
+      RetentionInDays: 14
+
+  UserMediaMgmtLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/vibe-user-media-mgmt-${Environment}'
       RetentionInDays: 14
 
 Outputs:
@@ -74,3 +112,15 @@ Outputs:
     Value: !Ref UserProfileMgmtFunction
     Export:
       Name: !Sub '${AWS::StackName}-UserProfileMgmtFunctionName'
+
+  UserMediaMgmtFunctionArn:
+    Description: 'User Media Management Lambda Function ARN'
+    Value: !GetAtt UserMediaMgmtFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-UserMediaMgmtFunctionArn'
+
+  UserMediaMgmtFunctionName:
+    Description: 'User Media Management Lambda Function Name'
+    Value: !Ref UserMediaMgmtFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-UserMediaMgmtFunctionName'

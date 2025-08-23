@@ -7,23 +7,20 @@ This document specifies the backend implementation for profile image upload, pro
 ## Architecture Components
 
 ### Service Location
-- **Module**: Media Service (`src/services/media/`)
-- **Handler Files**: 
-  - `media_upload.py` - Upload request handling
-  - `media_processing.py` - Image processing pipeline
-  - `media_management.py` - CRUD operations
+- **Module**: User Service (`src/services/user/aws_lambdas/user_media_mgmt/`)
+- **Handler File**: `lambda_function.py` - Main media management handler
 
 ### AWS Resources
-- **S3 Bucket**: `vibe-dating-media-{environment}`
+- **S3 Bucket**: `vibe-dating-media-{environment}` (configured via `MEDIA_S3_BUCKET` env var)
 - **CloudFront Distribution**: Media delivery CDN
-- **Lambda Functions**: Image processing and API handlers (prefixed with `media_`)
+- **Lambda Function**: `user_media_mgmt` - Media management API handler
 - **DynamoDB**: Metadata storage in main table
 
 ## API Endpoints
 
 ### 1. Request Upload URL
 
-**Endpoint**: `POST /profiles/{profile_id}/media/request-upload`
+**Endpoint**: `POST /profiles/{profile_id}/media`
 
 **Purpose**: Allocate media ID and provide presigned S3 upload URL
 
@@ -36,21 +33,19 @@ Content-Type: application/json
 **Request Body**:
 ```json
 {
-  "type": "image",
-  "aspectRatio": "3:4",
-  "metadata": {
-    "width": 1440,
-    "height": 1920,
-    "size": 2048576,
-    "format": "jpeg",
-    "aspect": "3:4",
-    "camera": "iPhone 12 Pro",
-    "software": "iOS 17.0",
-    "timestamp": "2024-01-01T12:00:00Z",
-    "location": null,
-    "flags": "",
-  },
-  "order": 1
+  "mediaType": "image",
+  "mediaMeta": "base64_encoded_metadata",
+  "mediaOrder": 1
+}
+```
+
+**Metadata Format** (base64 encoded):
+```json
+{
+  "size": 2048576,
+  "format": "jpeg",
+  "width": 1440,
+  "height": 1920
 }
 ```
 
@@ -59,9 +54,15 @@ Content-Type: application/json
 {
   "mediaId": "aB3cD4eF",
   "uploadUrl": "https://s3.amazonaws.com/vibe-dating-media-prod/uploads/profile-images/aB3cD4eF.jpg?X-Amz-Algorithm=...",
-  "uploadMethod": "PUT",
+  "uploadMethod": "POST",
   "uploadHeaders": {
-    "Content-Type": "image/jpeg"
+    "Content-Type": "image/jpeg",
+    "key": "uploads/profile-images/aB3cD4eF.jpg",
+    "policy": "...",
+    "x-amz-algorithm": "AWS4-HMAC-SHA256",
+    "x-amz-credential": "...",
+    "x-amz-date": "...",
+    "x-amz-signature": "..."
   },
   "expiresAt": "2024-01-01T13:00:00Z"
 }
@@ -69,18 +70,17 @@ Content-Type: application/json
 
 **Implementation**:
 ```python
-def request_upload_url(profile_id: str, request_data: dict) -> dict:
-    # 1. Validate user owns profile
-    # 2. Check profile image limit (max 5)
-    # 3. Generate unique media ID
-    # 4. Create presigned S3 upload URL
-    # 5. Store pending upload record in DynamoDB
-    # 6. Return response
+def request_upload(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+    # 1. Validate request and decode metadata
+    # 2. Get available pre-allocated media ID
+    # 3. Generate presigned S3 upload URL
+    # 4. Create media record and store pending upload
+    # 5. Return response with expiration
 ```
 
 ### 2. Complete Upload
 
-**Endpoint**: `POST /profiles/{profile_id}/media/{media_id}/complete`
+**Endpoint**: `POST /profiles/{profile_id}/media/{media_id}`
 
 **Purpose**: Finalize upload and trigger processing pipeline
 
@@ -102,26 +102,11 @@ def request_upload_url(profile_id: str, request_data: dict) -> dict:
 }
 ```
 
-### 3. Get Processing Status
-
-**Endpoint**: `GET /profiles/{profile_id}/media/{media_id}/status`
-
-**Response**:
-```json
-{
-  "mediaId": "aB3cD4eF",
-  "status": "completed",
-  "urls": {
-    "original": "https://cdn.vibe-dating.io/original/aB3cD4eF.jpg",
-    "thumbnail": "https://cdn.vibe-dating.io/thumb/aB3cD4eF.jpg"
-  },
-  "processedAt": "2024-01-01T12:05:00Z"
-}
-```
-
-### 4. Delete Image
+### 3. Delete Media
 
 **Endpoint**: `DELETE /profiles/{profile_id}/media/{media_id}`
+
+**Purpose**: Delete media file and record
 
 **Response**:
 ```json
@@ -129,6 +114,28 @@ def request_upload_url(profile_id: str, request_data: dict) -> dict:
   "mediaId": "aB3cD4eF",
   "deleted": true,
   "deletedAt": "2024-01-01T12:10:00Z"
+}
+```
+
+### 4. Reorder Media
+
+**Endpoint**: `PUT /profiles/{profile_id}/media`
+
+**Purpose**: Reorder profile media
+
+**Request Body**:
+```json
+{
+  "imageOrder": ["media_id_1", "media_id_2", "media_id_3"]
+}
+```
+
+**Response**:
+```json
+{
+  "profileId": "profile123",
+  "imageOrder": ["media_id_1", "media_id_2", "media_id_3"],
+  "updatedAt": "2024-01-01T12:15:00Z"
 }
 ```
 
@@ -142,194 +149,147 @@ def request_upload_url(profile_id: str, request_data: dict) -> dict:
   "PK": "PROFILE#{profileId}",
   "SK": "MEDIA#{mediaId}",
   "mediaId": "aB3cD4eF",
-  "type": "image",
-  "status": "completed",
-  "order": 1,
-  "originalUrl": "https://cdn.vibe-dating.io/original/aB3cD4eF.jpg",
-  "thumbnailUrl": "https://cdn.vibe-dating.io/thumb/aB3cD4eF.jpg",
-  "metadata": {
-    "width": 1440,
-    "height": 1920,
-    "size": 2048576,
-    "format": "jpeg",
-    "aspect": "3:4",
-    "camera": "iPhone 12 Pro",
-    "software": "iOS 17.0",
-    "timestamp": "2024-01-01T12:00:00Z",
-    "location": null,
-    "flags": "",
-  },
-  "s3Key": "profile-images/aB3cD4eF.jpg",
-  "s3Bucket": "vibe-dating-media-prod",
-  "uploadedAt": "2024-01-01T12:00:00Z",
-  "processedAt": "2024-01-01T12:05:00Z",
-  "createdAt": "2024-01-01T12:00:00Z",
-  "updatedAt": "2024-01-01T12:05:00Z",
-  "TTL": 0
-}
-```
-
-#### Pending Upload Record
-```json
-{
-  "PK": "UPLOAD#{mediaId}",
-  "SK": "PENDING",
-  "mediaId": "aB3cD4eF",
   "profileId": "profile123",
   "userId": "user456",
+  "s3Key": "uploads/profile-images/aB3cD4eF.jpg",
   "status": "pending",
-  "uploadUrl": "https://s3.amazonaws.com/...",
-  "expiresAt": "2024-01-01T13:00:00Z",
+  "order": 1,
+  "metadata": {
+    "size": 2048576,
+    "format": "jpeg",
+    "width": 1440,
+    "height": 1920
+  },
+  "mediaType": "image",
+  "fileSize": 2048576,
+  "mimeType": "image/jpeg",
+  "dimensions": {
+    "width": 1440,
+    "height": 1920
+  },
   "createdAt": "2024-01-01T12:00:00Z",
-  "TTL": 1704110400
+  "updatedAt": "2024-01-01T12:00:00Z"
 }
 ```
 
 ### Python Data Classes
 
 ```python
-from dataclasses import dataclass
-from typing import Optional, Dict, Any
 from enum import Enum
+from typing import Any, Dict, Optional
+import msgspec
 
-class MediaStatus(Enum):
+class MediaStatus(str, Enum):
     PENDING = "pending"
-    UPLOADING = "uploading"
     PROCESSING = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
+    READY = "ready"
+    ERROR = "error"
 
-@dataclass
-class ImageMetadata:
-    # all strings size should be limited to maximum 32 chars.
-    width: int
-    height: int
-    size: int
-    format: str
-    aspect: str
-    camera: Optional[str] = None
-    software: Optional[str] = None
-    timestamp: Optional[str] = None
-    location: Optional[Dict[str, float]] = None
-    flags: Optional[str] = None
+class MediaType(str, Enum):
+    IMAGE = "image"
+    VIDEO = "video"
+    AUDIO = "audio"
 
-@dataclass
-class ProfileImage:
-    media_id: str
-    profile_id: str
-    user_id: str
-    type: str
-    status: MediaStatus
-    order: int
-    original_url: Optional[str] = None
-    thumbnail_url: Optional[str] = None
-    metadata: Optional[ImageMetadata] = None
-    s3_key: Optional[str] = None
-    s3_bucket: Optional[str] = None
-    uploaded_at: Optional[str] = None
-    processed_at: Optional[str] = None
-    created_at: str
-    updated_at: str
+class MediaRecord(msgspec.Struct):
+    """Media record validation using msgspec"""
+    mediaId: str
+    profileId: str
+    userId: str
+    s3Key: str
+    status: MediaStatus = MediaStatus.PENDING
+    order: int = 1
+    metadata: Dict[str, Any] = msgspec.field(default_factory=dict)
+    mediaType: Optional[MediaType] = None
+    fileSize: Optional[int] = None
+    mimeType: Optional[str] = None
+    dimensions: Optional[Dict[str, int]] = None
+    duration: Optional[float] = None
+    error_msg: Optional[str] = None
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
 ```
 
-## Image Processing Pipeline
+## Media Management Flow
 
-### Processing Workflow
+### Upload Process
 
-1. **Upload Completion Detection**
-   - S3 Event Notification triggers Lambda
-   - Validate upload integrity (ETag, size)
-   - Update status to "processing"
+1. **Request Upload URL**
+   - Client sends upload request with metadata
+   - Server validates request and decodes base64 metadata
+   - Server allocates pre-existing media ID from profile
+   - Server generates presigned S3 upload URL
+   - Server creates pending media record in DynamoDB
 
-2. **Image Processing**
-   - Download original image from S3
-   - Validate image format and dimensions
-   - Generate thumbnail (300x400px, maintaining aspect ratio)
-   - Optimize images (compression, format conversion if needed)
+2. **Client Upload**
+   - Client uploads file directly to S3 using presigned URL
+   - S3 stores file in `uploads/profile-images/` directory
 
-3. **Storage & CDN**
-   - Upload processed images to S3
-   - Invalidate CloudFront cache if needed
-   - Update DynamoDB with final URLs and metadata
+3. **Complete Upload**
+   - Client confirms successful upload with ETag and actual size
+   - Server validates media ID ownership
+   - Server updates media status to "processing"
+   - Server activates media ID in profile
 
-4. **Cleanup**
-   - Remove temporary files
-   - Update status to "completed"
-   - Send completion notification if needed
+4. **Image Processing** (External Pipeline)
+   - S3 event triggers image processing Lambda
+   - Processing generates thumbnail and optimizes image
+   - Final images stored in `original/` and `thumb/` directories
+   - Media status updated to "ready"
 
-### Processing Function
+### Media ID Management
 
-```python
-def process_profile_image(media_id: str, s3_bucket: str, s3_key: str):
-    """
-    Process uploaded profile image
-    
-    Args:
-        media_id: Unique media identifier
-        s3_bucket: S3 bucket name
-        s3_key: S3 object key
-    """
-    try:
-        # Update status to processing
-        update_media_status(media_id, MediaStatus.PROCESSING)
-        
-        # Download original image
-        original_image = download_from_s3(s3_bucket, s3_key)
-        
-        # Validate image
-        validate_image(original_image)
-        
-        # Generate thumbnail
-        thumbnail = generate_thumbnail(original_image, (300, 400))
-        
-        # Upload processed images
-        original_url = upload_to_s3_and_cdn(original_image, f"original/{media_id}.jpg")
-        thumbnail_url = upload_to_s3_and_cdn(thumbnail, f"thumb/{media_id}.jpg")
-        
-        # Update record with URLs
-        update_media_record(media_id, {
-            'status': MediaStatus.COMPLETED,
-            'original_url': original_url,
-            'thumbnail_url': thumbnail_url,
-            'processed_at': datetime.utcnow().isoformat()
-        })
-        
-    except Exception as e:
-        update_media_status(media_id, MediaStatus.FAILED)
-        raise e
-```
+The system uses a pre-allocation strategy where:
+- Each profile has 5 pre-allocated media IDs (`allocatedMediaIds`)
+- Media IDs are moved from allocated to active (`activeMediaIds`) upon successful upload
+- This ensures consistent media ID references and prevents conflicts
 
 ## Validation & Security
 
 ### Input Validation
 
 ```python
-def validate_upload_request(request_data: dict) -> bool:
-    """Validate upload request data"""
-    required_fields = ['type', 'aspectRatio', 'metadata']
+def validate_upload_request(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Validate upload request data and decode metadata"""
+    required_fields = ["mediaType", "mediaMeta"]
     
     # Check required fields
     for field in required_fields:
         if field not in request_data:
-            raise ValidationError(f"Missing required field: {field}")
+            raise ResponseError(400, {"error": f"Missing required field: {field}"})
     
-    # Validate image type
-    if request_data['type'] != 'image':
-        raise ValidationError("Only image type supported")
+    # Validate media type
+    if request_data["mediaType"] != "image":
+        raise ResponseError(400, {"error": "Only image type supported"})
     
-    # Validate aspect ratio
-    if request_data['aspectRatio'] != '3:4':
-        raise ValidationError("Only 3:4 aspect ratio supported")
+    # Decode and validate metadata
+    metadata = self._decode_media_metadata(request_data["mediaMeta"])
     
-    # Validate metadata
-    metadata = request_data['metadata']
-    if metadata['size'] > MAX_FILE_SIZE:
-        raise ValidationError(f"File size exceeds limit: {MAX_FILE_SIZE}")
+    # Validate file size and format
+    self._validate_file_size(metadata.get("size", 0))
+    self._validate_file_format(metadata.get("format", ""))
     
-    if metadata['format'] not in ALLOWED_FORMATS:
-        raise ValidationError(f"Unsupported format: {metadata['format']}")
-    
-    return True
+    return metadata
+```
+
+### File Validation
+
+```python
+def _validate_file_size(self, size: int) -> None:
+    """Validate file size against limits"""
+    if size > self.core_settings.media_max_file_size:
+        raise ResponseError(
+            400, 
+            {"error": f"File size exceeds limit: {self.core_settings.media_max_file_size}"}
+        )
+
+def _validate_file_format(self, format_str: str) -> None:
+    """Validate file format against allowed formats"""
+    file_format = format_str.lower()
+    if file_format not in self.core_settings.media_allowed_formats:
+        raise ResponseError(
+            400, 
+            {"error": f"Unsupported format: {file_format}"}
+        )
 ```
 
 ### Access Control
@@ -337,81 +297,34 @@ def validate_upload_request(request_data: dict) -> bool:
 ```python
 def check_profile_ownership(user_id: str, profile_id: str) -> bool:
     """Verify user owns the profile"""
-    profile = get_profile_by_id(profile_id)
-    return profile and profile.user_id == user_id
-
-def check_image_limit(profile_id: str) -> bool:
-    """Check if profile has reached image limit"""
-    current_count = count_profile_images(profile_id)
-    return current_count < MAX_IMAGES_PER_PROFILE
+    profile_mgmt = ProfileManager(user_id)
+    return profile_mgmt.validate_profile_id(profile_id, is_existing=True)
 ```
 
 ### S3 Security
 
 ```python
-def generate_presigned_upload_url(bucket: str, key: str, content_type: str) -> dict:
+def generate_presigned_upload_url(self, media_id: str, content_type: str) -> Dict[str, Any]:
     """Generate secure presigned upload URL"""
-    return s3_client.generate_presigned_post(
-        Bucket=bucket,
-        Key=key,
-        Fields={
-            'Content-Type': content_type
-        },
-        Conditions=[
-            {'Content-Type': content_type},
-            ['content-length-range', 1024, MAX_FILE_SIZE]
-        ],
-        ExpiresIn=3600  # 1 hour
-    )
-```
-
-## Error Handling
-
-### Error Types
-
-```python
-class ProfileImageError(Exception):
-    """Base exception for profile image operations"""
-    pass
-
-class ValidationError(ProfileImageError):
-    """Invalid input data"""
-    pass
-
-class PermissionError(ProfileImageError):
-    """Access denied"""
-    pass
-
-class ProcessingError(ProfileImageError):
-    """Image processing failed"""
-    pass
-
-class StorageError(ProfileImageError):
-    """S3/storage operation failed"""
-    pass
-```
-
-### Error Responses
-
-```python
-def handle_error(error: Exception) -> dict:
-    """Convert exceptions to API error responses"""
-    error_mapping = {
-        ValidationError: (400, "VALIDATION_ERROR"),
-        PermissionError: (403, "PERMISSION_DENIED"),
-        ProcessingError: (422, "PROCESSING_FAILED"),
-        StorageError: (500, "STORAGE_ERROR")
-    }
+    s3_key = f"uploads/profile-images/{media_id}.{content_type.split('/')[-1]}"
     
-    status_code, error_code = error_mapping.get(type(error), (500, "INTERNAL_ERROR"))
+    presigned_url = self.s3_client.generate_presigned_post(
+        Bucket=self.media_bucket,
+        Key=s3_key,
+        Fields={"Content-Type": content_type},
+        Conditions=[
+            {"Content-Type": content_type},
+            ["content-length-range", 1024, self.core_settings.media_max_file_size],
+        ],
+        ExpiresIn=self.core_settings.media_upload_expiry_hours * 3600,
+    )
     
     return {
-        "error": {
-            "code": error_code,
-            "message": str(error),
-            "timestamp": datetime.utcnow().isoformat()
-        }
-    }, status_code
+        "uploadUrl": presigned_url["url"],
+        "uploadMethod": "POST",
+        "uploadHeaders": presigned_url["fields"],
+        "s3Key": s3_key,
+    }
 ```
 
 ## Configuration
@@ -420,55 +333,91 @@ def handle_error(error: Exception) -> dict:
 
 ```python
 # S3 Configuration
-S3_BUCKET_NAME = os.environ.get("MEDIA_S3_BUCKET")
-S3_REGION = os.environ.get("AWS_REGION", "us-east-1")
+MEDIA_S3_BUCKET = os.environ.get("MEDIA_S3_BUCKET")
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 
-# CloudFront Configuration
-CLOUDFRONT_DOMAIN = os.environ.get("CLOUDFRONT_DOMAIN")
-CLOUDFRONT_DISTRIBUTION_ID = os.environ.get("CLOUDFRONT_DISTRIBUTION_ID")
-
-# Image Processing Configuration
-MAX_FILE_SIZE = int(os.environ.get("MAX_FILE_SIZE", "10485760"))  # 10MB
-MAX_IMAGES_PER_PROFILE = int(os.environ.get("MAX_IMAGES_PER_PROFILE", "5"))
-ALLOWED_FORMATS = ["jpeg", "jpg", "png", "webp"]
-
-# Thumbnail Configuration
-THUMBNAIL_WIDTH = 300
-THUMBNAIL_HEIGHT = 400
-THUMBNAIL_QUALITY = 85
+# Media Configuration
+MEDIA_MAX_FILE_SIZE = 10485760  # 10MB
+MEDIA_ALLOWED_FORMATS = ["jpeg", "jpg", "png", "webp"]
+MEDIA_UPLOAD_EXPIRY_HOURS = 1
+MAX_MEDIAS_PER_PROFILE = 5
 ```
 
-## Implementation Checklist
+### Core Settings
 
-- [ ] Create Lambda function handlers
-- [ ] Implement S3 presigned URL generation
+```python
+@dataclass
+class CoreSettings:
+    record_id_length: int = 8
+    max_profiles_count: int = 5
+    max_medias_per_profile: int = 5
+    media_max_file_size: int = 10485760
+    media_allowed_formats: list[str] = ["jpeg", "jpg", "png", "webp"]
+    media_upload_expiry_hours: int = 1
+```
+
+## Error Handling
+
+### Error Types
+
+```python
+class ResponseError(Exception):
+    """Custom response error with status code and message"""
+    def __init__(self, status_code: int, body: Dict[str, Any]):
+        self.status_code = status_code
+        self.body = body
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "statusCode": self.status_code,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps(self.body)
+        }
+```
+
+### Common Error Responses
+
+```json
+{
+  "statusCode": 400,
+  "headers": {"Content-Type": "application/json"},
+  "body": "{\"error\": \"Invalid mediaMeta format: Invalid base64\"}"
+}
+```
+
+## Implementation Status
+
+- [x] Create Lambda function handler (`user_media_mgmt`)
+- [x] Implement S3 presigned URL generation
+- [x] Implement upload request validation
+- [x] Implement upload completion handling
+- [x] Implement media deletion
+- [x] Implement media reordering
+- [x] Create DynamoDB operations
+- [x] Add input validation and security checks
+- [x] Implement error handling and logging
 - [ ] Set up S3 event notifications for processing
 - [ ] Implement image processing pipeline
-- [ ] Create DynamoDB operations
-- [ ] Add input validation and security checks
-- [ ] Implement error handling and logging
 - [ ] Create CloudFront invalidation logic
 - [ ] Add monitoring and metrics
 - [ ] Write unit tests
 - [ ] Write integration tests
-- [ ] Create deployment scripts
 
 ## Testing Strategy
 
 ### Unit Tests
 - Upload request validation
-- Media ID generation
-- S3 operations
-- Image processing functions
-- Error handling
+- Media ID allocation and activation
+- S3 presigned URL generation
+- Error handling scenarios
 
 ### Integration Tests
 - End-to-end upload flow
-- S3 event processing
-- CloudFront integration
+- S3 operations
 - DynamoDB operations
+- Profile ownership validation
 
 ### Load Tests
 - Concurrent upload handling
-- Processing pipeline performance
+- Media ID allocation performance
 - S3 throughput limits

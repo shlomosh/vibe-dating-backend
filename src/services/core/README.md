@@ -132,7 +132,7 @@ After successful deployment, the script will display all stack outputs. Key outp
 
 After deploying the core infrastructure:
 
-1. **Deploy Service Stacks**: Use the outputs to deploy service-specific stacks (auth, user, media, etc.)
+1. **Deploy Service Stacks**: Use the outputs to deploy service-specific stacks (auth, user, data, etc.)
 2. **Configure Lambda Functions**: Use the IAM roles and S3 bucket for Lambda deployments
 3. **Set Up Database**: Use the DynamoDB table for application data
 

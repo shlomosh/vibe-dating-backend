@@ -80,20 +80,8 @@ SK: MetadataType#{Timestamp/ID}
   "preventionPractices": ["prep", "condoms"],
   "hostingType": "can_host",
   "travelDistance": "within_10km",
-  "profileImages": [
-    {
-      "imageId": "imageId1",
-      "imageUrl": "https://cdn.example.com/original/imageId1.jpg",
-      "imageThumbnailUrl": "https://cdn.example.com/thumb/imageId1.jpg",
-      "imageAttributes": {
-        "width": 1920,
-        "height": 1080,
-        "size": 2048576,
-        "format": "jpeg",
-        "aspectRatio": "3:4"
-      }
-    }
-  ],
+  "allocatedMediaIds": ["mediaId1", "mediaId2", "mediaId3", "mediaId4", "mediaId5"],
+  "activeMediaIds": ["mediaId1", "mediaId2"],
   "isActive": true,
   "createdAt": "2024-01-01T00:00:00Z",
   "updatedAt": "2024-01-01T12:00:00Z",
@@ -208,32 +196,28 @@ SK: MetadataType#{Timestamp/ID}
 ```json
 {
   "PK": "PROFILE#{profileId}",
-  "SK": "MEDIA#{imageId}",
-  "imageId": "imageId",
-  "type": "image",
-  "status": "completed",
+  "SK": "MEDIA#{mediaId}",
+  "mediaId": "mediaId",
+  "profileId": "profileId",
+  "userId": "userId",
+  "s3Key": "uploads/profile-images/mediaId.jpg",
+  "status": "pending",
   "order": 1,
-  "originalUrl": "https://cdn.example.com/original/imageId.jpg",
-  "thumbnailUrl": "https://cdn.example.com/thumb/imageId.jpg",
   "metadata": {
     "width": 1920,
     "height": 1080,
     "size": 2048576,
-    "format": "jpeg",
-    "aspectRatio": "3:4",
-    "camera": "iPhone 12 Pro",
-    "software": "iOS 17.0",
-    "timestamp": "2024-01-01T12:00:00Z",
-    "location": null,
-    "flags": ""
+    "format": "jpeg"
   },
-  "s3Key": "profile-images/imageId.jpg",
-  "s3Bucket": "vibe-dating-media-prod",
-  "uploadedAt": "2024-01-01T12:00:00Z",
-  "processedAt": "2024-01-01T12:05:00Z",
-  "createdAt": "2024-01-01T12:00:00Z",
-  "updatedAt": "2024-01-01T12:05:00Z",
-  "TTL": 0
+  "mediaType": "image",
+  "fileSize": 2048576,
+  "mimeType": "image/jpeg",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T12:00:00Z"
 }
 ```
 
@@ -267,17 +251,26 @@ SK: MetadataType#{Timestamp/ID}
 
 ### Profile System
 ```typescript
-interface ProfileImage {
-  imageId: string;
-  imageUrl: string;
-  imageThumbnailUrl: string;
-  imageAttributes: {
+interface ProfileMedia {
+  mediaId: string;
+  status: 'pending' | 'processing' | 'ready' | 'error';
+  order: number;
+  s3Key: string;
+  metadata: {
     width: number;
     height: number;
     size: number;
     format: string;
-    aspectRatio: string;
   };
+  mediaType: 'image' | 'video' | 'audio';
+  fileSize?: number;
+  mimeType?: string;
+  dimensions?: {
+    width: number;
+    height: number;
+  };
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface ProfileRecord {
@@ -294,7 +287,8 @@ interface ProfileRecord {
   preventionPractices?: PreventionPracticesType[];
   hostingType?: HostingType;
   travelDistance?: TravelDistanceType;
-  profileImages?: ProfileImage[];  // max 10 images
+  allocatedMediaIds: string[];  // max 5 media IDs
+  activeMediaIds: string[];     // currently active media
 }
 
 interface ProfileDB {

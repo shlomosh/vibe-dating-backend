@@ -54,13 +54,12 @@ def test_media_upload_handler():
         valid_request = {
             "type": "image",
             "aspectRatio": "3:4",
-            "metadata": {
+            "mediaBlob": {
                 "width": 1440,
                 "height": 1920,
                 "size": 2048576,
                 "format": "jpeg",
             },
-            "order": 1,
         }
 
         try:
@@ -74,7 +73,7 @@ def test_media_upload_handler():
         invalid_request = {
             "type": "video",  # Invalid type
             "aspectRatio": "3:4",
-            "metadata": {
+            "mediaBlob": {
                 "width": 1440,
                 "height": 1920,
                 "size": 2048576,
@@ -110,7 +109,7 @@ def test_profile_image_upload_request():
         valid_request = {
             "type": "image",
             "aspectRatio": "3:4",
-            "metadata": {
+            "mediaBlob": {
                 "width": 1440,
                 "height": 1920,
                 "size": 2048576,
@@ -122,7 +121,6 @@ def test_profile_image_upload_request():
                 "location": None,
                 "flags": "",
             },
-            "order": 1,
         }
 
         # Test that the handler can validate the request structure
@@ -375,19 +373,18 @@ def test_profile_image_data_models():
             user_id: str
             type: str
             status: MediaStatus
-            order: int
             created_at: str
             updated_at: str
             original_url: Optional[str] = None
             thumbnail_url: Optional[str] = None
-            metadata: Optional[ImageMetadata] = None
+            mediaBlob: Optional[ImageMetadata] = None
             s3_key: Optional[str] = None
             s3_bucket: Optional[str] = None
             uploaded_at: Optional[str] = None
             processed_at: Optional[str] = None
 
         # Test ImageMetadata creation
-        metadata = ImageMetadata(
+        mediaBlob = ImageMetadata(
             width=1440,
             height=1920,
             size=2048576,
@@ -398,9 +395,9 @@ def test_profile_image_data_models():
             timestamp="2024-01-01T12:00:00Z",
         )
 
-        assert metadata.width == 1440
-        assert metadata.height == 1920
-        assert metadata.format == "jpeg"
+        assert mediaBlob.width == 1440
+        assert mediaBlob.height == 1920
+        assert mediaBlob.format == "jpeg"
         print("+ ImageMetadata dataclass works")
 
         # Test ProfileImage creation
@@ -410,10 +407,9 @@ def test_profile_image_data_models():
             user_id="user123",
             type="image",
             status=MediaStatus.COMPLETED,
-            order=1,
             original_url="https://cdn.vibe-dating.io/original/test123.jpg",
             thumbnail_url="https://cdn.vibe-dating.io/thumb/test123.jpg",
-            metadata=metadata,
+            mediaBlob=mediaBlob,
             s3_key="profile-images/test123.jpg",
             s3_bucket="test-bucket",
             created_at="2024-01-01T12:00:00Z",
@@ -422,7 +418,7 @@ def test_profile_image_data_models():
 
         assert profile_image.media_id == "test123"
         assert profile_image.status == MediaStatus.COMPLETED
-        assert profile_image.metadata.width == 1440
+        assert profile_image.mediaBlob.width == 1440
         print("+ ProfileImage dataclass works")
 
         # Test MediaStatus enum

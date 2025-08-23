@@ -322,10 +322,10 @@ Authorization: Bearer <jwt_token>
 
 ### Media Management
 
-**Note**: Media management is currently in development. The endpoints below are planned but not yet implemented.
+Media management endpoints for profile image upload, processing, and management.
 
-#### POST /profiles/{profile_id}/media/request-upload
-Request upload URL for media (planned).
+#### POST /profiles/{profile_id}/media
+Request upload URL for media.
 
 **Headers:**
 ```
@@ -335,20 +335,19 @@ Authorization: Bearer <jwt_token>
 **Request Body:**
 ```json
 {
-  "type": "image",
-  "metadata": {
-    "width": 1440,
-    "height": 1920,
-    "size": 2048576,
-    "format": "jpeg",
-    "aspect": "3:4",
-    "camera": "iPhone 12 Pro",
-    "software": "iOS 17.0",
-    "timestamp": "2024-01-01T12:00:00Z",
-    "location": null,
-    "flags": "",
-  },
-  "order": 1
+  "mediaType": "image",
+  "mediaMeta": "base64_encoded_metadata",
+  "mediaOrder": 1
+}
+```
+
+**Metadata Format** (base64 encoded):
+```json
+{
+  "size": 2048576,
+  "format": "jpeg",
+  "width": 1440,
+  "height": 1920
 }
 ```
 
@@ -357,15 +356,21 @@ Authorization: Bearer <jwt_token>
 {
   "mediaId": "aB3cD4eF",
   "uploadUrl": "https://s3.amazonaws.com/vibe-dating-media-prod/uploads/profile-images/aB3cD4eF.jpg?X-Amz-Algorithm=...",
-  "uploadMethod": "PUT",
+  "uploadMethod": "POST",
   "uploadHeaders": {
-    "Content-Type": "image/jpeg"
+    "Content-Type": "image/jpeg",
+    "key": "uploads/profile-images/aB3cD4eF.jpg",
+    "policy": "...",
+    "x-amz-algorithm": "AWS4-HMAC-SHA256",
+    "x-amz-credential": "...",
+    "x-amz-date": "...",
+    "x-amz-signature": "..."
   },
   "expiresAt": "2024-01-01T13:00:00Z"
 }
 
-#### POST /profiles/{profile_id}/media/{media_id}/complete
-Complete media upload and trigger processing (planned).
+#### POST /profiles/{profile_id}/media/{media_id}
+Complete media upload and trigger processing.
 
 **Headers:**
 ```
@@ -390,29 +395,10 @@ Authorization: Bearer <jwt_token>
 }
 ```
 
-#### GET /profiles/{profile_id}/media/{media_id}/status
-Get media processing status (planned).
 
-**Headers:**
-```
-Authorization: Bearer <jwt_token>
-```
 
-**Response:**
-```json
-{
-  "mediaId": "aB3cD4eF",
-  "status": "completed",
-  "urls": {
-    "original": "https://cdn.vibe-dating.io/original/aB3cD4eF.jpg",
-    "thumbnail": "https://cdn.vibe-dating.io/thumb/aB3cD4eF.jpg"
-  },
-  "processedAt": "2024-01-01T12:05:00Z"
-}
-```
-
-#### PUT /profiles/{profile_id}/media/order
-Reorder profile media (planned).
+#### PUT /profiles/{profile_id}/media
+Reorder profile media.
 
 **Headers:**
 ```
@@ -422,12 +408,21 @@ Authorization: Bearer <jwt_token>
 **Request Body:**
 ```json
 {
-  "imageOrder": ["image_id_1", "image_id_2", "image_id_3"]
+  "imageOrder": ["media_id_1", "media_id_2", "media_id_3"]
+}
+```
+
+**Response:**
+```json
+{
+  "profileId": "profile123",
+  "imageOrder": ["media_id_1", "media_id_2", "media_id_3"],
+  "updatedAt": "2024-01-01T12:15:00Z"
 }
 ```
 
 #### DELETE /profiles/{profile_id}/media/{media_id}
-Delete media file (planned).
+Delete media file.
 
 **Headers:**
 ```

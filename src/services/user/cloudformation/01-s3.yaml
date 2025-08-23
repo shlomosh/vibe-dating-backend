@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Vibe Dating - User-Service S3 Resources Infrastructure'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+
+  Region:
+    Type: String
+    Description: Region for the application (e.g., il-central-1)
+
+Resources:
+  # S3 Bucket for Media Storage
+  MediaBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub 'vibe-dating-media-${Environment}'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, PUT, POST, DELETE]
+            AllowedOrigins: ['*']
+            MaxAge: 3000
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: user
+
+  # S3 Bucket Policy for CloudFront Access (commented out for future use)
+  # MediaBucketPolicy:
+  #   Type: AWS::S3::BucketPolicy
+  #   Properties:
+  #     Bucket: !Ref MediaBucket
+  #     PolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Sid: CloudFrontAccess
+  #           Effect: Allow
+  #           Principal:
+  #             Service: cloudfront.amazonaws.com
+  #           Action: s3:GetObject
+  #           Resource: !Sub '${MediaBucket}/*'
+  #           Condition:
+  #             StringEquals:
+  #               AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/*'
+
+  # CloudFront Distribution for Media Delivery (commented out for future use)
+  # CloudFrontDistribution:
+  #   Type: AWS::CloudFront::Distribution
+  #   Properties:
+  #     DistributionConfig:
+  #       Comment: !Sub 'Vibe Dating Media CDN - ${Environment}'
+  #       Enabled: true
+  #       DefaultCacheBehavior:
+  #         TargetOriginId: MediaS3Origin
+  #         ViewerProtocolPolicy: redirect-to-https
+  #         AllowedMethods:
+  #           - GET
+  #           - HEAD
+  #           - OPTIONS
+  #         CachedMethods:
+  #           - GET
+  #           - HEAD
+  #         Compress: true
+  #         DefaultTTL: 86400
+  #         MaxTTL: 31536000
+  #         MinTTL: 0
+  #         ForwardedValues:
+  #           QueryString: false
+  #           Cookies:
+  #             Forward: none
+  #       Origins:
+  #         - Id: MediaS3Origin
+  #           DomainName: !GetAtt MediaBucket.RegionalDomainName
+  #           S3OriginConfig:
+  #             OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}'
+  #       PriceClass: PriceClass_100
+  #       ViewerCertificate:
+  #         CloudFrontDefaultCertificate: true
+  #     Tags:
+  #       - Key: Environment
+  #         Value: !Ref Environment
+  #       - Key: Service
+  #         Value: media
+
+  # CloudFront Origin Access Identity (commented out for future use)
+  # CloudFrontOriginAccessIdentity:
+  #   Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+  #   Properties:
+  #     CloudFrontOriginAccessIdentityConfig:
+  #       Comment: !Sub 'Vibe Dating Media OAI - ${Environment}'
+
+Outputs:
+  MediaBucketName:
+    Description: 'S3 Bucket for Media Storage'
+    Value: !Ref MediaBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-MediaBucketName'
+
+  MediaBucketArn:
+    Description: 'S3 Bucket ARN for Media Storage'
+    Value: !GetAtt MediaBucket.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-MediaBucketArn'
+
+  # CloudFrontDistributionId:
+  #   Description: 'CloudFront Distribution ID for Media Delivery'
+  #   Value: !Ref CloudFrontDistribution
+  #   Export:
+  #     Name: !Sub '${AWS::StackName}-CloudFrontDistributionId'
+
+  # CloudFrontDomainName:
+  #   Description: 'CloudFront Domain Name for Media Delivery'
+  #   Value: !GetAtt CloudFrontDistribution.DomainName
+  #   Export:
+  #     Name: !Sub '${AWS::StackName}-CloudFrontDomainName'

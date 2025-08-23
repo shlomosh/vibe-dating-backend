@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""
-Deployment script for Vibe Dating App Media Service CloudFormation stacks.
-Deploys media infrastructure stacks (S3, CloudFront, Lambda, API Gateway) in the correct order.
-If infrastructure already exists, updates Lambda function code only.
-"""
 
 import argparse
 import sys
@@ -14,15 +9,15 @@ from core.config_utils import ServiceConfigUtils
 from core.deploy_utils import ServiceDeployer
 
 
-class MediaServiceDeployer(ServiceDeployer):
-    """Deploys the Vibe Dating App media service infrastructure"""
+class DataServiceDeployer(ServiceDeployer):
+    """Deploys the Vibe Dating App data service infrastructure"""
 
     def __init__(
         self, region: str = None, environment: str = None, deployment_uuid: str = None
     ):
-        """Initialize the media service deployer."""
+        """Initialize the data service deployer."""
         super().__init__(
-            "media",
+            "data",
             cfg={},
             region=region,
             environment=environment,
@@ -45,12 +40,12 @@ class MediaServiceDeployer(ServiceDeployer):
         self.lambda_client = boto3.client("lambda", region_name=self.region)
 
     def is_deployed(self) -> bool:
-        """Check if media infrastructure is already deployed"""
-        media_stack_name = f"vibe-dating-media-{self.environment}"
+        """Check if data infrastructure is already deployed"""
+        data_stack_name = f"vibe-dating-data-{self.environment}"
 
         try:
-            # Check if media stack exists and is in a completed state
-            response = self.cf.describe_stacks(StackName=media_stack_name)
+            # Check if data stack exists and is in a completed state
+            response = self.cf.describe_stacks(StackName=data_stack_name)
             stack_status = response["Stacks"][0]["StackStatus"]
 
             # Only consider it deployed if it's in a completed state
@@ -107,82 +102,75 @@ class MediaServiceDeployer(ServiceDeployer):
 
     def update(self):
         """Update Lambda function code without redeploying infrastructure"""
-        print("• Starting Media Service Lambda update...")
+        print("• Starting Data Service Lambda update...")
 
         try:
             # Get S3 bucket name for Lambda code
-            s3_bucket = self.core_cfg["s3"]["LambdaCodeBucketName"]
-
-            # Update Lambda functions
-            self._update_aws_lambda(
-                f"vibe-media-upload-{self.environment}",
-                s3_bucket,
-                "lambda/media_upload.zip",
-            )
+            s3_bucket = self.get_lambda_code_bucket_name()
 
             self._update_aws_lambda(
-                f"vibe-media-processing-{self.environment}",
+                f"vibe-data-media-processing-{self.environment}",
                 s3_bucket,
-                "lambda/media_processing.zip",
+                "lambda/data_media_processing.zip",
             )
 
-            self._update_aws_lambda(
-                f"vibe-media-management-{self.environment}",
-                s3_bucket,
-                "lambda/media_management.zip",
-            )
-
-            print("✅ Media Service Lambda update completed successfully")
+            print("✅ Data Service Lambda update completed successfully")
 
         except Exception as e:
-            print(f"❌ Media Service Lambda update failed: {e}")
+            print(f"❌ Data Service Lambda update failed: {e}")
             sys.exit(1)
 
     def deploy(self):
-        """Deploy media service infrastructure"""
-        print("• Starting Media Service deployment...")
+        """Deploy data service infrastructure"""
+        print("• Starting Data Service deployment...")
+        print(f"    Parameters from *@core-service: {self.core_cfg}")
+        print(f"    Parameters from *@auth-service: {self.auth_cfg}")
 
         try:
             # Check if already deployed
             if self.is_deployed():
                 print(
-                    "    ⚠️  Media infrastructure already deployed, updating Lambda code only"
+                    "    ⚠️  Data infrastructure already deployed, updating Lambda code only"
                 )
                 self.update()
                 return
 
-            # Deploy media infrastructure stack
-            stack_name = f"vibe-dating-media-{self.environment}"
-            template_file = self.service_dir / "cloudformation" / "template.yaml"
-
-            # Prepare parameters
-            parameters = {
-                "Environment": self.environment,
-                "Region": self.region,
-                "LambdaCodeBucketName": self.core_cfg["s3"]["LambdaCodeBucketName"],
-                "LambdaExecutionRoleArn": self.core_cfg["iam"][
-                    "LambdaExecutionRoleArn"
-                ],
-                "DynamoDBTableName": self.core_cfg["dynamodb"]["DynamoDBTableName"],
-                "CoreLayerArn": self.core_cfg["lambda"]["CoreLayerArn"],
-                "ApiGatewayRestApiId": self.auth_cfg["apigateway"]["ApiGatewayId"],
-                "ApiGatewayRootResourceId": self.auth_cfg["apigateway"][
-                    "ApiGatewayRootResourceId"
-                ],
+            # Deploy data infrastructure stack
+            data_stack = {
+                "name": f"vibe-dating-data-{self.environment}",
+                "template": "01-lambda.yaml",
+                "parameters": {
+                    "Environment": self.environment,
+                    "Region": self.parameters["ApiRegion"],
+                    "LambdaCodeBucketName": self.core_cfg["s3"]["LambdaCodeBucketName"],
+                    "LambdaExecutionRoleArn": self.core_cfg["iam"][
+                        "LambdaExecutionRoleArn"
+                    ],
+                    "DynamoDBTableName": self.core_cfg["dynamodb"]["DynamoDBTableName"],
+                    "CoreLayerArn": self.core_cfg["lambda"]["CoreLayerArn"],
+                    "ApiGatewayRestApiId": self.auth_cfg["apigateway"]["ApiGatewayId"],
+                    "ApiGatewayRootResourceId": self.auth_cfg["apigateway"][
+                        "ApiGatewayRootResourceId"
+                    ],
+                },
             }
 
             # Deploy CloudFormation stack
-            self.deploy_stack(
-                stack_name=stack_name,
-                template_file=str(template_file),
-                parameters=parameters,
+            is_deployed = self.deploy_stack(
+                stack_name=data_stack["name"],
+                template_file=data_stack["template"],
+                parameters=data_stack["parameters"],
                 capabilities=["CAPABILITY_IAM"],
             )
 
-            print("✅ Media Service deployment completed successfully")
+            if not is_deployed:
+                print("❌ Failed to deploy data stack")
+                sys.exit(1)
+
+            print("✅ Data Service deployment completed successfully")
 
         except Exception as e:
-            print(f"❌ Media Service deployment failed: {e}")
+            print(f"❌ Data Service deployment failed: {e}")
             sys.exit(1)
 
 
@@ -190,35 +178,48 @@ def main(action=None):
     """Main deployment function"""
     # Only parse arguments if not called from service script
     if action is None:
-        parser = argparse.ArgumentParser(description="Deploy Media Service")
-        parser.add_argument(
-            "--region",
-            default="il-central-1",
-            help="AWS region (default: il-central-1)",
+        ap = argparse.ArgumentParser(
+            description="Deploy or Update Vibe Dating App Data Service Infrastructure"
         )
-        parser.add_argument(
-            "--environment", default="dev", help="Environment (default: dev)"
+        ap.add_argument("task", default="deploy", help="task to run")
+        ap.add_argument(
+            "service", nargs="?", default="data", help="Service to run task for"
         )
-        parser.add_argument("--deployment-uuid", help="Deployment UUID for tracking")
+        ap.add_argument(
+            "--environment",
+            default=None,
+            choices=["dev", "staging", "prod"],
+            help="Environment to deploy (override parameters.yaml)",
+        )
+        ap.add_argument(
+            "--region", default=None, help="AWS region (override parameters.yaml)"
+        )
+        ap.add_argument(
+            "--deployment-uuid",
+            help="Custom deployment UUID (override parameters.yaml)",
+        )
+        ap.add_argument(
+            "--validate", action="store_true", help="Validate templates only"
+        )
+        args = ap.parse_args()
 
-        args = parser.parse_args()
-
-        deployer = MediaServiceDeployer(
+        deployer = DataServiceDeployer(
             region=args.region,
             environment=args.environment,
             deployment_uuid=args.deployment_uuid,
         )
     else:
         # Called from service script, use defaults
-        deployer = MediaServiceDeployer()
+        deployer = DataServiceDeployer()
 
-    if action == "deploy":
+    if args.validate:
+        deployer.validate_templates(templates=["01-lambda.yaml"])
+    elif action == "deploy" or (action is None and not deployer.is_deployed()):
         deployer.deploy()
-    elif action == "update":
+    elif action == "update" or (action is None and deployer.is_deployed()):
         deployer.update()
     else:
-        # Default to deploy
-        deployer.deploy()
+        raise ValueError(f"Invalid action: {action}")
 
 
 if __name__ == "__main__":

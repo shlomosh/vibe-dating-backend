@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Vibe Dating - Core-Service IAM Resources Infrastructure'
+Description: 'Vibe Dating - User-Service IAM Resources Infrastructure'
 
 Parameters:
   Environment:
@@ -20,16 +20,16 @@ Parameters:
     Type: String
     Description: DynamoDB KMS Key ARN (imported from dynamodb stack)
 
-  LambdaCodeBucketArn:
+  MediaBucketArn:
     Type: String
-    Description: Lambda Code Bucket ARN (imported from s3 stack)
+    Description: Media S3 Bucket ARN (imported from s3 stack)
 
 Resources:
-  # IAM Role for Lambda functions
+  # IAM Role for User Service Lambda functions
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub 'vibe-auth-lambda-role-${Environment}'
+      RoleName: !Sub 'vibe-user-lambda-role-${Environment}'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -75,7 +75,13 @@ Resources:
                   - s3:GetObject
                   - s3:PutObject
                   - s3:DeleteObject
-                Resource: !Sub '${LambdaCodeBucketArn}/*'
+                  - s3:DeleteObjects
+                  - s3:ListBucket
+                  - s3:PutObjectAcl
+                  - s3:GetObjectAcl
+                Resource:
+                  - !Ref MediaBucketArn
+                  - !Sub '${MediaBucketArn}/*'                
         - PolicyName: SecretsManagerAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -85,88 +91,25 @@ Resources:
                   - secretsmanager:GetSecretValue
                 Resource:
                   - !Sub 'arn:aws:secretsmanager:${Region}:${AWS::AccountId}:secret:vibe-dating/*'
-      Tags:
-        - Key: Environment
-          Value: !Ref Environment
-        - Key: Service
-          Value: auth
-
-  # IAM Role for API Gateway Authorizer
-  ApiGatewayAuthorizerRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub 'vibe-api-authorizer-role-${Environment}'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: apigateway.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: LambdaInvoke
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: lambda:InvokeFunction
-                Resource: !Sub 'arn:aws:lambda:${Region}:${AWS::AccountId}:function:vibe-auth-jwt-authorizer-${Environment}'
-      Tags:
-        - Key: Environment
-          Value: !Ref Environment
-        - Key: Service
-          Value: auth
-
-  # IAM Role for API Gateway CloudWatch Logging
-  ApiGatewayCloudWatchRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub 'vibe-api-cloudwatch-role-${Environment}'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: apigateway.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
-      Policies:
-        - PolicyName: CloudWatchLoggingPolicy
+        - PolicyName: CloudFrontAccess
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:DescribeLogGroups
-                  - logs:DescribeLogStreams
-                  - logs:PutLogEvents
-                  - logs:GetLogEvents
-                  - logs:FilterLogEvents
+                  - cloudfront:CreateInvalidation
+                  - cloudfront:GetInvalidation
+                  - cloudfront:ListInvalidations
                 Resource: '*'
       Tags:
         - Key: Environment
           Value: !Ref Environment
         - Key: Service
-          Value: auth
+          Value: user
 
 Outputs:
   LambdaExecutionRoleArn:
-    Description: 'Lambda Execution Role ARN'
+    Description: 'User Service Lambda Execution Role ARN'
     Value: !GetAtt LambdaExecutionRole.Arn
     Export:
       Name: !Sub '${AWS::StackName}-LambdaExecutionRoleArn'
-
-  ApiGatewayAuthorizerRoleArn:
-    Description: 'API Gateway Authorizer Role ARN'
-    Value: !GetAtt ApiGatewayAuthorizerRole.Arn
-    Export:
-      Name: !Sub '${AWS::StackName}-ApiGatewayAuthorizerRoleArn'
-
-  ApiGatewayCloudWatchRoleArn:
-    Description: 'API Gateway CloudWatch Logging Role ARN'
-    Value: !GetAtt ApiGatewayCloudWatchRole.Arn
-    Export:
-      Name: !Sub '${AWS::StackName}-ApiGatewayCloudWatchRoleArn' 

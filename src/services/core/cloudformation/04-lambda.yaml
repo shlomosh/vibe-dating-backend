@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Vibe Dating - Core Service Lambda Layer Infrastructure'
+Description: 'Vibe Dating - Core-Service Lambda Layer Infrastructure'
 
 Parameters:
   Environment:

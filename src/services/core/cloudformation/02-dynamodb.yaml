@@ -74,7 +74,7 @@ Resources:
         - AttributeName: SK  # Primary sort key for ordering within partitions (e.g. METADATA, PROFILE#789)
           KeyType: RANGE
       GlobalSecondaryIndexes:
-        # GSI1 - User-based queries (e.g. get all profiles/media for a user)
+        # GSI1 - User-based queries (e.g. get all profiles for a user)
         - IndexName: GSI1
           KeySchema:
             - AttributeName: GSI1PK  # Partition key for user-based queries (e.g. USER#123)

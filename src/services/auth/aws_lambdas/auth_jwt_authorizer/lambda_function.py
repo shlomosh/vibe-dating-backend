@@ -103,18 +103,43 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         payload = api_verify_jwt_token(token)
         user_id = payload["uid"]
 
-        # Generate allow policy
-        policy = api_generate_policy(
-            principal_id=user_id,
-            effect="Allow",
-            resource=event["methodArn"],
-            context={
+        # Generate allow policy with broader resource access
+        # The methodArn format is: arn:aws:execute-api:region:account:api-id/stage/HTTP-VERB/resource-path
+        method_arn = event["methodArn"]
+        arn_parts = method_arn.split('/')
+        
+        if len(arn_parts) >= 3:
+            # Extract the base API ARN and allow access to all methods/resources under this API
+            base_arn = f"{arn_parts[0]}/{arn_parts[1]}/{arn_parts[2]}/*"
+            print(f"Generated base ARN: {base_arn}")
+        else:
+            # Fallback to the original methodArn if parsing fails
+            base_arn = method_arn
+            print(f"Using fallback ARN: {base_arn}")
+        
+        # Also include the specific method ARN to ensure immediate access
+        resources = [base_arn, method_arn]
+        print(f"Final resources: {resources}")
+        
+        policy = {
+            "principalId": user_id,
+            "policyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Action": "execute-api:Invoke",
+                        "Effect": "Allow",
+                        "Resource": resources
+                    }
+                ],
+            },
+            "context": {
                 "uid": user_id,
                 "iss": payload.get("iss"),
                 "iat": str(payload.get("iat")),
                 "exp": str(payload.get("exp")),
             },
-        )
+        }
 
     except Exception as ex:
         # Generate deny policy

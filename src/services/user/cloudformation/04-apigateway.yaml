@@ -1,0 +1,381 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Vibe Dating - User-Service API Gateway Resources Infrastructure'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+
+  Region:
+    Type: String
+    Description: Region for the application (e.g., il-central-1)
+
+  ApiGatewayId:
+    Type: String
+    Description: API Gateway ID (imported from auth stack)
+
+  ApiGatewayRootResourceId:
+    Type: String
+    Description: API Gateway Root Resource ID (imported from auth stack)
+
+  ApiGatewayAuthorizerId:
+    Type: String
+    Description: API Gateway Authorizer ID (imported from auth stack)
+
+  UserProfileMgmtFunctionArn:
+    Type: String
+    Description: User Profile Management Lambda Function ARN (imported from lambda stack)
+
+  UserMediaMgmtFunctionArn:
+    Type: String
+    Description: User Media Management Lambda Function ARN (imported from lambda stack)
+
+  ApiGatewayCloudWatchRoleArn:
+    Type: String
+    Description: API Gateway CloudWatch Logging Role ARN (imported from IAM stack)
+
+Resources:
+  # CloudWatch Log Group for API Gateway access logs
+  ApiGatewayAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/apigateway/${ApiGatewayId}/access-logs'
+      RetentionInDays: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: user-service
+
+  # CloudWatch Log Group for API Gateway execution logs
+  ApiGatewayExecutionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/apigateway/${ApiGatewayId}/execution-logs'
+      RetentionInDays: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: user-service
+
+  # API Gateway Resources
+  ProfileResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      ParentId: !Ref ApiGatewayRootResourceId
+      PathPart: profile
+
+  ProfileIdResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      ParentId: !Ref ProfileResource
+      PathPart: '{profileId}'
+
+  MediaResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      ParentId: !Ref ProfileIdResource
+      PathPart: media
+
+  MediaIdResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      ParentId: !Ref MediaResource
+      PathPart: '{mediaId}'
+
+  # Profile Get Method (GET /profile/{profileId})
+  ProfileGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      ResourceId: !Ref ProfileIdResource
+      HttpMethod: GET
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref ApiGatewayAuthorizerId
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 
+          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - LambdaArn: !Ref UserProfileMgmtFunctionArn
+
+  # Profile Upsert Method (PUT /profile/{profileId})
+  ProfileUpsertMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      ResourceId: !Ref ProfileIdResource
+      HttpMethod: PUT
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref ApiGatewayAuthorizerId
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 
+          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - LambdaArn: !Ref UserProfileMgmtFunctionArn
+
+  # Profile Delete Method (DELETE /profile/{profileId})
+  ProfileDeleteMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      ResourceId: !Ref ProfileIdResource
+      HttpMethod: DELETE
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref ApiGatewayAuthorizerId
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 
+          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - LambdaArn: !Ref UserProfileMgmtFunctionArn
+
+  # Media Request Upload Method (POST /profile/{profileId}/media)
+  MediaRequestUploadMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      ResourceId: !Ref MediaResource
+      HttpMethod: POST
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref ApiGatewayAuthorizerId
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 
+          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - LambdaArn: !Ref UserMediaMgmtFunctionArn
+
+  # Media Complete Upload Method (POST /profile/{profileId}/media/{mediaId})
+  MediaCompleteUploadMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      ResourceId: !Ref MediaIdResource
+      HttpMethod: POST
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref ApiGatewayAuthorizerId
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 
+          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - LambdaArn: !Ref UserMediaMgmtFunctionArn
+
+  # Media Delete Method (DELETE /profile/{profileId}/media/{mediaId})
+  MediaDeleteMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      ResourceId: !Ref MediaIdResource
+      HttpMethod: DELETE
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref ApiGatewayAuthorizerId
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 
+          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - LambdaArn: !Ref UserMediaMgmtFunctionArn
+
+  # Media Reorder Method (PUT /profile/{profileId}/media)
+  MediaReorderMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      ResourceId: !Ref MediaResource
+      HttpMethod: PUT
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref ApiGatewayAuthorizerId
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 
+          - arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - LambdaArn: !Ref UserMediaMgmtFunctionArn
+
+  # OPTIONS method for CORS on /profile/{profileId}
+  ProfileIdOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      ResourceId: !Ref ProfileIdResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        IntegrationHttpMethod: OPTIONS
+        PassthroughBehavior: WHEN_NO_MATCH
+        ContentHandling: CONVERT_TO_TEXT
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: '200'
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,PUT,DELETE,OPTIONS'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'"
+            ResponseTemplates:
+              application/json: ''
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Credentials: true
+
+  # OPTIONS method for CORS on /profile/{profileId}/media
+  MediaOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      ResourceId: !Ref MediaResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        IntegrationHttpMethod: OPTIONS
+        PassthroughBehavior: WHEN_NO_MATCH
+        ContentHandling: CONVERT_TO_TEXT
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: '200'
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,PUT,OPTIONS'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'"
+            ResponseTemplates:
+              application/json: ''
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Credentials: true
+
+  # OPTIONS method for CORS on /profile/{profileId}/media/{mediaId}
+  MediaIdOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      ResourceId: !Ref MediaIdResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        IntegrationHttpMethod: OPTIONS
+        PassthroughBehavior: WHEN_NO_MATCH
+        ContentHandling: CONVERT_TO_TEXT
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: '200'
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,DELETE,OPTIONS'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'"
+            ResponseTemplates:
+              application/json: ''
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Credentials: true
+
+  # Lambda permission for API Gateway to invoke user profile management function
+  UserProfileMgmtLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref UserProfileMgmtFunctionArn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGatewayId}/*'
+
+  # Lambda permission for API Gateway to invoke user media management function
+  UserMediaMgmtLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref UserMediaMgmtFunctionArn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGatewayId}/*'
+
+  # API Gateway Deployment (create new deployment for user service endpoints)
+  UserServiceApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - ProfileGetMethod
+      - ProfileUpsertMethod
+      - ProfileDeleteMethod
+      - ProfileIdOptionsMethod
+      - MediaRequestUploadMethod
+      - MediaCompleteUploadMethod
+      - MediaDeleteMethod
+      - MediaReorderMethod
+      - MediaOptionsMethod
+      - MediaIdOptionsMethod
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      StageName: !Ref Environment
+      Description: !Sub 'User service deployment for ${Environment}'
+
+
+
+  # Enable CloudWatch logging for API Gateway account
+  ApiGatewayAccount:
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn: !Ref ApiGatewayCloudWatchRoleArn
+
+Outputs:
+  ProfileResourceId:
+    Description: 'Profile Resource ID'
+    Value: !Ref ProfileResource
+    Export:
+      Name: !Sub '${AWS::StackName}-ProfileResourceId'
+
+  ProfileIdResourceId:
+    Description: 'Profile ID Resource ID'
+    Value: !Ref ProfileIdResource
+    Export:
+      Name: !Sub '${AWS::StackName}-ProfileIdResourceId'
+
+  MediaResourceId:
+    Description: 'Media Resource ID'
+    Value: !Ref MediaResource
+    Export:
+      Name: !Sub '${AWS::StackName}-MediaResourceId'
+
+  MediaIdResourceId:
+    Description: 'Media ID Resource ID'
+    Value: !Ref MediaIdResource
+    Export:
+      Name: !Sub '${AWS::StackName}-MediaIdResourceId'
+
+  ApiGatewayAccessLogGroupName:
+    Description: 'API Gateway Access Log Group Name'
+    Value: !Ref ApiGatewayAccessLogGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayAccessLogGroupName'
+
+  ApiGatewayExecutionLogGroupName:
+    Description: 'API Gateway Execution Log Group Name'
+    Value: !Ref ApiGatewayExecutionLogGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayExecutionLogGroupName'
