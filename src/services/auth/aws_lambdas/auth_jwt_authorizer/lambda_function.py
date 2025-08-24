@@ -110,7 +110,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         if len(arn_parts) >= 3:
             # Extract the base API ARN and allow access to all methods/resources under this API
-            base_arn = f"{arn_parts[0]}/{arn_parts[1]}/{arn_parts[2]}/*"
+            # For paths like /profile/{profileId}/media, we want to allow access to all sub-resources
+            base_arn = f"{'/'.join(arn_parts[:-1])}/*"
             print(f"Generated base ARN: {base_arn}")
         else:
             # Fallback to the original methodArn if parsing fails

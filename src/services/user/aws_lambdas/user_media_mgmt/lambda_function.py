@@ -284,33 +284,41 @@ class UserMediaMgmtHandler:
                 403, {"error": "Access denied: Profile not owned by user"}
             )
 
-        image_order = order_data.get("imageOrder", [])
-        if not image_order:
-            raise ResponseError(400, {"error": "imageOrder array is required"})
+        sorted_media_ids = order_data.get("sortedMediaIds", [])
+        if not sorted_media_ids:
+            raise ResponseError(400, {"error": "sortedMediaIds array is required"})
 
         try:
-            # Get all media for this profile
-            response = self.table.query(
-                KeyConditionExpression="PK = :pk AND begins_with(SK, :sk_prefix)",
-                ExpressionAttributeValues={
-                    ":pk": f"PROFILE#{self.profile_id}",
-                    ":sk_prefix": "MEDIA#",
+            # Get the profile record to access activeMediaIds
+            profile_record = profile_mgmt.profiles_data.get(self.profile_id)
+            if not profile_record:
+                raise ResponseError(404, {"error": "Profile not found"})
+
+            current_active_media_ids = profile_record.get("activeMediaIds", [])
+
+            # Validate that sorted_media_ids and current_active_media_ids contain the same items
+            if set(sorted_media_ids) != set(current_active_media_ids):
+                raise ResponseError(
+                    400,
+                    {"error": "sortedMediaIds must contain the same items as current activeMediaIds, just in different order"}
+                )
+
+            # Update the profile item with the new activeMediaIds order
+            self.table.update_item(
+                Key={
+                    "PK": f"PROFILE#{self.profile_id}",
+                    "SK": "METADATA"
                 },
+                UpdateExpression="SET activeMediaIds = :active_media_ids, updatedAt = :updated_at",
+                ExpressionAttributeValues={
+                    ":active_media_ids": sorted_media_ids,
+                    ":updated_at": datetime.utcnow().isoformat()
+                }
             )
-
-            existing_media = response.get("Items", [])
-            existing_media_ids = {item.get("mediaId") for item in existing_media}
-
-            # Validate that all ordered IDs exist
-            for media_id in image_order:
-                if media_id not in existing_media_ids:
-                    raise ResponseError(
-                        400, {"error": f"Media ID not found: {media_id}"}
-                    )
 
             return {
                 "profileId": self.profile_id,
-                "imageOrder": image_order,
+                "activeMediaIds": sorted_media_ids,
                 "updatedAt": datetime.utcnow().isoformat(),
             }
 
