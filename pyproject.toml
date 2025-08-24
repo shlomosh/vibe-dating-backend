@@ -53,6 +53,7 @@ service-update = "scripts.service:update" # usage: 'poetry run service-update <s
 service-build = "scripts.service:build"   # usage: 'poetry run service-build <service>'
 service-test = "scripts.service:test"    # usage: 'poetry run service-test <service>'
 build-media = "src.services.media.build:main"  # usage: 'poetry run build-media'
+create-mock-user = "scripts.create_mock_user:main" # usage: 'poetry run create-mock-user --env dev'
 
 [tool.black]
 line-length = 88

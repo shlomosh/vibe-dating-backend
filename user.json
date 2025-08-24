@@ -1,0 +1,66 @@
+{
+  "telegram_user": {
+    "id": 854900423,
+    "first_name": "Morgan",
+    "last_name": "Thompson",
+    "username": "NiceGuy259",
+    "language_code": "en",
+    "allows_write_to_pm": true,
+    "photo_url": "https://i.pravatar.cc/150?u=854900423"
+  },
+  "auth_data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJZQ1FNNUktciIsImlhdCI6MTc1NjA1NjA4NywiZXhwIjoxNzU2NjYwODg3LCJpc3MiOiJ2aWJlLWFwcCJ9.EfpXMjC3bOPoXNVsc8zs83pdz1FygL-p5dskyoTf-lM",
+    "userId": "YCQM5I-r",
+    "profileIds": [
+      "4PSYTrD3",
+      "4W3-O_QU",
+      "sMEKmbj0",
+      "cWk1mVXM",
+      "24-vBWEs"
+    ]
+  },
+  "profile_data": {
+    "nickName": "Max",
+    "aboutMe": "Dog lover and outdoor enthusiast. Life is better with sunshine! \ud83d\udc15\u2600\ufe0f",
+    "age": "39",
+    "sexualPosition": "blowie",
+    "bodyType": "stocky",
+    "sexualityType": "bisexual",
+    "eggplantSize": "large",
+    "peachShape": "solid",
+    "healthPractices": "condoms",
+    "hivStatus": "positiveUndetectable",
+    "preventionPractices": "prep",
+    "hosting": "travelOnly",
+    "travelDistance": "none"
+  },
+  "profile_response": {
+    "message": "Profile created",
+    "profile": {
+      "nickName": "Max",
+      "aboutMe": "Dog lover and outdoor enthusiast. Life is better with sunshine! \ud83d\udc15\u2600\ufe0f",
+      "age": "39",
+      "sexualPosition": "blowie",
+      "bodyType": "stocky",
+      "eggplantSize": "large",
+      "peachShape": "solid",
+      "healthPractices": "condoms",
+      "hivStatus": "positiveUndetectable",
+      "preventionPractices": "prep",
+      "hosting": "travelOnly",
+      "travelDistance": "none",
+      "allocatedMediaIds": [
+        "d15IBXvZ",
+        "MHGCC7YY",
+        "EqDEjY88",
+        "hBGTkpX2",
+        "2q-Qk36H"
+      ],
+      "activeMediaIds": []
+    },
+    "created": true
+  },
+  "uploaded_images": [],
+  "user_id": "YCQM5I-r",
+  "profile_id": "4PSYTrD3"
+}
