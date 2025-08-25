@@ -1,7 +1,7 @@
 # Vibe Dating App - System Architecture
 
 ## Application Overview
-Vibe is a location-based dating application designed as a Telegram Mini-App for the gay community. The app focuses on profile-based interactions, location-aware features, real-time communication, and themed discussion rooms.
+Vibe is a location-based dating application designed as a Telegram Mini-App for the gay community. The app focuses on profile-based interactions, location-aware features, and real-time communication.
 
 ## Core Architecture
 
@@ -65,7 +65,6 @@ Vibe is a location-based dating application designed as a Telegram Mini-App for 
 - **Chat**: Agora.io integration with user-level chat IDs
 - **Profile Context**: Frontend passes profile IDs in chat messages
 - **Local Storage**: Chat history stored on device
-- **Subject Rooms**: Themed discussion rooms for community interaction
 - **User Blocking**: Users can block other users from contacting them
 - **User Banning**: Community moderation with temporary/permanent bans
 
@@ -82,7 +81,6 @@ Vibe is a location-based dating application designed as a Telegram Mini-App for 
 - Profile data isolation
 - Location precision control
 - Media access validation
-- Room message privacy controls
 - GDPR compliance with TTL
 - User blocking and banning data protection
 
@@ -91,7 +89,6 @@ Vibe is a location-based dating application designed as a Telegram Mini-App for 
 - Rate limiting
 - CORS configuration
 - SQL injection prevention (NoSQL)
-- Content moderation for room messages
 - User authentication and authorization
 
 ### Platform Compliance

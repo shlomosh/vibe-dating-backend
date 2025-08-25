@@ -5,19 +5,15 @@
 - User ID: Generated from hash of Telegram user ID (1:1 mapping)
 - Profile ID: Unique per profile (max 3 per user)
 - Media ID: Unique per media item (max 5 per profile, supporting images and short videos)
-- Room ID: Unique per subject-based room
-- Message ID: Unique per room message
 - Block ID: Unique per user block relationship
 
 ## Entity Relationships
 ```
 User (1) -> Profiles (1-3) -> Media (0-5) [images/short-videos]
+User (1) -> Profiles (1-3) -> Location History (many)
 User (1) -> Agora Chat ID (1)
 User (1) -> Blocked Users (many)
 User (1) -> Banned Users (many)
-Profile (1) -> Location History (many)
-Profile (1) -> Room Messages (many)
-Room (1) -> Messages (many) -> Media Attachments (0-many)
 ```
 
 ## DynamoDB Schema
@@ -114,57 +110,7 @@ SK: MetadataType#{Timestamp/ID}
 }
 ```
 
-**5. Room Entity**
-```json
-{
-  "PK": "ROOM#{roomId}",
-  "SK": "METADATA",
-  "name": "Dating Tips",
-  "description": "Share dating advice and experiences",
-  "category": "dating",
-  "subject": "dating_tips",
-  "participantCount": 150,
-  "activeUserCount": 25,
-  "lastActivityAt": "2024-01-01T12:00:00Z",
-  "createdAt": "2024-01-01T00:00:00Z",
-  "isActive": true,
-  "moderationLevel": "community",
-  "TTL": 0
-}
-```
-
-**6. Room Message**
-```json
-{
-  "PK": "ROOM#{roomId}",
-  "SK": "MESSAGE#{messageId}",
-  "messageId": "messageId",
-  "userId": "userId",
-  "profileId": "profileId",
-  "content": "Message text content",
-  "mediaAttachments": [
-    {
-      "mediaId": "mediaId",
-      "type": "image",
-      "url": "https://cdn.example.com/room/mediaId.jpg",
-      "thumbnailUrl": "https://cdn.example.com/room/thumb/mediaId.jpg"
-    }
-  ],
-  "replyTo": "parentMessageId",  // Optional reply chain
-  "timestamp": "2024-01-01T12:00:00Z",
-  "isEdited": false,
-  "isDeleted": false,
-  "deletedAt": null,
-  "deletedBy": null,
-  "reactions": {
-    "like": ["userId1", "userId2"],
-    "heart": ["userId3"]
-  },
-  "TTL": 2592000  // 30 days
-}
-```
-
-**7. User Block Relationship**
+**5. User Block Relationship**
 ```json
 {
   "PK": "USER#{blockerId}",
@@ -178,7 +124,7 @@ SK: MetadataType#{Timestamp/ID}
 }
 ```
 
-**8. User Ban Relationship**
+**6. User Ban Relationship**
 ```json
 {
   "PK": "USER#{bannerId}",
@@ -192,7 +138,7 @@ SK: MetadataType#{Timestamp/ID}
 }
 ```
 
-**9. Profile Media Record (for media processing pipeline)**
+**7. Profile Media Record (for media processing pipeline)**
 ```json
 {
   "PK": "PROFILE#{profileId}",
@@ -223,29 +169,25 @@ SK: MetadataType#{Timestamp/ID}
 
 ## Global Secondary Indexes (GSIs)
 
-**1. User-Profile Lookup (GSI1)**
+**GSI1 - Profile Lookup**
 - PK: `USER#{userId}`
 - SK: `PROFILE#{profileId}`
+- Use Case: Query all profiles for a specific user
 
-**2. Location Queries (GSI2)**
+**GSI2 - Profile Lookup (Alternative)**
+- PK: `PROFILE#{profileId}`
+- SK: `USER#{userId}`
+- Use Case: Reverse lookup from profile to user
+
+**GSI3 - Time Lookup**
+- PK: `TIME#{datePrefix}`
+- SK: `{timestamp}#{entityType}#{entityId}`
+- Use Case: Time-based queries for activity, creation times, updates
+
+**GSI4 - Location Lookup**
 - PK: `LOCATION#{geohashPrefix}`
 - SK: `PROFILE#{profileId}`
-
-**3. Room Activity (GSI3)**
-- PK: `ROOM#{roomId}`
-- SK: `ACTIVITY#{timestamp}`
-
-**4. User Activity (GSI4)**
-- PK: `USER#{userId}`
-- SK: `ACTIVITY#{timestamp}`
-
-**5. Media Management (GSI5)**
-- PK: `MEDIA#{mediaId}`
-- SK: `OWNER#{userId}`
-
-**6. Block/Ban Lookup (GSI6)**
-- PK: `BLOCKED#{blockedId}`
-- SK: `BLOCKER#{blockerId}`
+- Use Case: Geographic proximity queries for profile matching
 
 ## Frontend Data Models
 

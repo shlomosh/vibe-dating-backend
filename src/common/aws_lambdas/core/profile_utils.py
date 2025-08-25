@@ -158,20 +158,17 @@ class ProfileManager(CommonManager):
             raise ValueError(f"Invalid profile data: {str(e)}")
 
         try:
-            pk = f"PROFILE#{profile_id}"
-            sk = "METADATA"
-
             # Use put_item for both create and update to ensure it works
             self.table.put_item(
                 Item={
-                    "PK": pk,
-                    "SK": sk,
-                    "GSI1PK": f"USER#{self.user_id}",  # GSI1 for user-based queries
-                    "GSI1SK": f"PROFILE#{profile_id}",   # GSI1 sort key for profile ordering
-                    "GSI2PK": f"TIME#{now[:10]}",       # GSI2 for time-based queries (date only)
-                    "GSI2SK": now,                       # GSI2 sort key for exact timestamp
-                    "GSI3PK": "LOCATION#DEFAULT",        # GSI3 for location-based queries (placeholder)
-                    "GSI3SK": "DEFAULT",                 # GSI3 sort key for location (placeholder)
+                    "PK": f"PROFILE#{profile_id}",
+                    "SK": "METADATA",
+                    "GSI1PK": f"USER#{self.user_id}",
+                    "GSI1SK": f"PROFILE#{profile_id}",
+                    "GSI2PK": f"TIME#{now[:10]}",
+                    "GSI2SK": f"{now}#PROFILE#{profile_id}",
+                    "GSI3PK": "PROFILE#ALL",
+                    "GSI3SK": f"PROFILE#{profile_id}",
                     **profile_data
                 }
             )

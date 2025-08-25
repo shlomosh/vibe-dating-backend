@@ -94,20 +94,17 @@ class UserManager(CommonManager):
             raise ValueError(f"Invalid user data: {str(e)}")
 
         try:
-            pk = f"USER#{self.user_id}"
-            sk = "METADATA"
-
             # Use put_item for both create and update to ensure it works
             self.table.put_item(
                 Item={
-                    "PK": pk,
-                    "SK": sk,
-                    "GSI1PK": f"USER#{self.user_id}",  # GSI for user-based queries
-                    "GSI1SK": "METADATA",                # GSI sort key for user items
-                    "GSI2PK": f"TIME#{now[:10]}",       # GSI2 for time-based queries (date only)
-                    "GSI2SK": now,                       # GSI2 sort key for exact timestamp
-                    "GSI3PK": "LOCATION#DEFAULT",        # GSI3 for location-based queries (placeholder)
-                    "GSI3SK": "DEFAULT",                 # GSI3 sort key for location (placeholder)
+                    "PK": f"USER#{self.user_id}",
+                    "SK": "METADATA",
+                    "GSI1PK": f"USER#{self.user_id}",
+                    "GSI1SK": "METADATA",
+                    "GSI2PK": f"TIME#{now[:10]}",
+                    "GSI2SK": f"{now}#USER#{self.user_id}",
+                    "GSI3PK": "USER#ALL",
+                    "GSI3SK": f"USER#{self.user_id}",
                     **user_data
                 }
             )

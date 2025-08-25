@@ -177,9 +177,9 @@ class MediaManager(ProfileManager):
                     "GSI1PK": f"MEDIA#{media_id}",
                     "GSI1SK": f"PROFILE#{self.profile_id}",
                     "GSI2PK": f"TIME#{now[:10]}",
-                    "GSI2SK": now,
-                    "GSI3PK": "MEDIA#DEFAULT",
-                    "GSI3SK": "DEFAULT",
+                    "GSI2SK": f"{now}#MEDIA#{media_id}",
+                    "GSI3PK": "MEDIA#ALL",
+                    "GSI3SK": f"PROFILE#{self.profile_id}",
                     **media_data
                 }
             )

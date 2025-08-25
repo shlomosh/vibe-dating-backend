@@ -25,32 +25,41 @@ The Vibe Dating application uses a single-table DynamoDB design with multiple Gl
 
 ## Global Secondary Indexes (GSI)
 
-The table includes 3 Global Secondary Indexes to support various query patterns:
+The table includes 4 Global Secondary Indexes to support various query patterns:
 
-### GSI1 - User-Based Queries
+### GSI1 - Profile Lookup
 - **Partition Key**: `GSI1PK`
 - **Sort Key**: `GSI1SK`
-- **Use Case**: Query all items related to a specific user
+- **Use Case**: Query all profiles for a specific user
 - **Example Queries**:
   - All profiles for a user
-  - All media for a user
-  - User activity history
+  - Profile-user relationships
+  - User profile management
 
-### GSI2 - Time-Based Queries
+### GSI2 - Profile Lookup (Alternative)
 - **Partition Key**: `GSI2PK`
 - **Sort Key**: `GSI2SK`
+- **Use Case**: Reverse lookup from profile to user
+- **Example Queries**:
+  - Find user from profile ID
+  - Profile ownership verification
+  - Cross-reference profile data
+
+### GSI3 - Time Lookup
+- **Partition Key**: `GSI3PK`
+- **Sort Key**: `GSI3SK`
 - **Use Case**: Query items by time ranges
 - **Example Queries**:
   - Recently updated profiles
   - Last active users
   - Time-based analytics
 
-### GSI3 - Location/Geographic Queries
-- **Partition Key**: `GSI3PK`
-- **Sort Key**: `GSI3SK`
+### GSI4 - Location Lookup
+- **Partition Key**: `GSI4PK`
+- **Sort Key**: `GSI4SK`
 - **Use Case**: Query items by location or geographic criteria
 - **Example Queries**:
-  - Users in specific cities
+  - Users in specific geographic areas
   - Location-based matching
   - Geographic analytics
 

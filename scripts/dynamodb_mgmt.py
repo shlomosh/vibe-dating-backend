@@ -40,12 +40,8 @@ class DynamoDBDumper:
         # Entity types for filtering
         self.entity_types = {
             "user": "USER",
-            "profile": "PROFILE",
-            "room": "ROOM",
-            "message": "MESSAGE",
+            "profile": "PROFILE", 
             "media": "MEDIA",
-            "block": "BLOCK",
-            "ban": "BAN",
             "location": "LOCATION"
         }
 
@@ -495,20 +491,21 @@ class DynamoDBDumper:
 
         print("• Scanning media...")
         media_count = 0
-        for item in self.scan_table(entity_type="media"):
-            profile_id = item.get('profile_id', '')
-            media_id = item.get('PK', '').replace('MEDIA#', '')
-            if profile_id and media_id:
-                if profile_id not in media_items:
-                    media_items[profile_id] = []
-                media_items[profile_id].append({
-                    'id': media_id,
-                    'type': item.get('type', 'N/A'),
-                    'url': item.get('url', 'N/A'),
-                    'status': item.get('status', 'N/A'),
-                    'uploaded_at': item.get('uploaded_at', 'N/A')
-                })
-                media_count += 1
+        for item in self.scan_table():
+            if item.get('SK', '').startswith('MEDIA#'):
+                profile_id = item.get('PK', '').replace('PROFILE#', '')
+                media_id = item.get('SK', '').replace('MEDIA#', '')
+                if profile_id and media_id:
+                    if profile_id not in media_items:
+                        media_items[profile_id] = []
+                    media_items[profile_id].append({
+                        'id': media_id,
+                        'type': item.get('mediaType', 'N/A'),
+                        'status': item.get('status', 'N/A'),
+                        's3_key': item.get('s3Key', 'N/A'),
+                        'created_at': item.get('createdAt', 'N/A')
+                    })
+                    media_count += 1
 
         print(f"✅ Collected {user_count} users, {profile_count} profiles, {media_count} media items")
 
@@ -641,7 +638,7 @@ Examples:
 
     # Dump command
     dump_parser = subparsers.add_parser('dump', help='Dump table data')
-    dump_parser.add_argument('--entity-type', choices=['user', 'profile', 'room', 'message', 'media', 'block', 'ban', 'location'], help='Filter by entity type')
+    dump_parser.add_argument('--entity-type', choices=['user', 'profile', 'media', 'location'], help='Filter by entity type')
     dump_parser.add_argument('--entity-id', help='Specific entity ID to dump')
     dump_parser.add_argument('--output', help='Output file path')
     dump_parser.add_argument('--format', choices=['json', 'csv'], default='json', help='Output format')
@@ -667,7 +664,7 @@ Examples:
 
     # Truncate command
     truncate_parser = subparsers.add_parser('truncate', help='Delete all items from table (use with caution!)')
-    truncate_parser.add_argument('--entity-type', choices=['user', 'profile', 'room', 'message', 'media', 'block', 'ban', 'location'], help='Delete only specific entity type')
+    truncate_parser.add_argument('--entity-type', choices=['user', 'profile', 'media', 'location'], help='Delete only specific entity type')
     truncate_parser.add_argument('--force', action='store_true', help='Skip confirmation prompt (use with extreme caution!)')
 
     args = parser.parse_args()

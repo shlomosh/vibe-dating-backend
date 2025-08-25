@@ -5,7 +5,8 @@
       "Bash(ls:*)",
       "Bash(rm:*)",
       "Bash(mv:*)",
-      "Bash(poetry run:*)"
+      "Bash(poetry run:*)",
+      "Bash(rg:*)"
     ],
     "deny": []
   }
