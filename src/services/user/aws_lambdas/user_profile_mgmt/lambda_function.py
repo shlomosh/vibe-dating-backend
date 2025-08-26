@@ -38,10 +38,16 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Validate profile ID
         profile_id = path_parameters.get("profileId")
-        if not profile_mgmt.validate_profile_id(
-            profile_id, is_existing=http_method in ["GET", "DELETE"]
-        ):
-            raise ResponseError(400, {"error": "Invalid profile ID"})
+        if http_method == "PUT":
+            # For PUT (upsert), allow both new and existing profiles
+            if not profile_mgmt.validate_profile_id(profile_id, is_existing=None):
+                raise ResponseError(400, {"error": "Invalid profile ID"})
+        else:
+            # For GET/DELETE, require existing profiles
+            if not profile_mgmt.validate_profile_id(
+                profile_id, is_existing=True
+            ):
+                raise ResponseError(400, {"error": "Invalid profile ID"})
 
         # Route based on HTTP method
         if http_method == "PUT":

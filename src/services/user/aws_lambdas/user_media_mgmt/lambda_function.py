@@ -126,14 +126,10 @@ class UserMediaMgmtHandler:
 
         # Generate presigned upload URL
         upload_data = self.generate_presigned_upload_url(media_id, media_type)
+        upload_s3_key = upload_data["s3Key"]
 
         # Create media record and store pending upload
-        self.media_mgmt.upsert_media_record(
-            media_id,
-            upload_data["s3Key"],
-            media_blob,
-            status=MediaStatus.PENDING,
-        )
+        self.media_mgmt.upsert_media_record(media_id, upload_s3_key, media_blob, media_type, status=MediaStatus.PENDING)
 
         # Return response with expiration
         expires_at = datetime.utcnow() + timedelta(

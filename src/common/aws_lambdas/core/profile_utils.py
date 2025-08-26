@@ -126,26 +126,28 @@ class ProfileManager(CommonManager):
 
     def upsert(self, profile_id: str, profile_record: Dict[str, Any]) -> bool:
         """Create or update profile in DynamoDB"""
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-
         if not self.validate_profile_id(profile_id, is_existing=None):
             raise ValueError(f"Invalid profile_id: {profile_id}")
         
+        now = datetime.datetime.now(datetime.timezone.utc)
+        now_iso = now.isoformat()
+        now_tag = now.strftime("%Y%m%d%H%M%S")
+
         if profile_id not in self.profiles_data:
             # Create new profile
             profile_data = {
                 "userId": self.user_id,
                 "allocatedMediaIds": self.allocate_ids(count=CoreSettings().max_profiles_count),
                 "activeMediaIds": [],
-                "createdAt": now,
-                "updatedAt": now,
+                "createdAt": now_iso,
+                "updatedAt": now_iso,
                 **profile_record
             }
         else:
             # Update existing profile
             profile_data = deepcopy(self.profiles_data[profile_id])
             profile_data.update({
-                "updatedAt": now,
+                "updatedAt": now_iso,
                 **profile_record
             })
 
@@ -158,15 +160,14 @@ class ProfileManager(CommonManager):
             raise ValueError(f"Invalid profile data: {str(e)}")
 
         try:
-            # Use put_item for both create and update to ensure it works
             self.table.put_item(
                 Item={
                     "PK": f"PROFILE#{profile_id}",
                     "SK": "METADATA",
                     "GSI1PK": f"USER#{self.user_id}",
                     "GSI1SK": f"PROFILE#{profile_id}",
-                    "GSI2PK": f"TIME#{now[:10]}",
-                    "GSI2SK": f"{now}#PROFILE#{profile_id}",
+                    "GSI2PK": f"TIME#{now_tag[:8]}",
+                    "GSI2SK": f"{now_tag}#PROFILE#{profile_id}",
                     "GSI3PK": "PROFILE#ALL",
                     "GSI3SK": f"PROFILE#{profile_id}",
                     **profile_data
@@ -176,19 +177,8 @@ class ProfileManager(CommonManager):
             # Update in-memory cache
             self.profiles_data[profile_id] = profile_data
             
-            # If this is a new profile, add to active list and create lookup item
+            # If this is a new profile, add to active list
             if profile_id not in self.active_profile_ids:
-                # Create lookup item
-                lookup_item = {
-                    "PK": f"USER#{self.user_id}",
-                    "SK": f"PROFILE#{profile_id}",
-                    "profileId": profile_id,
-                    "createdAt": now,
-                }
-                
-                self.table.put_item(Item=lookup_item)
-                
-                # Add to user's activeProfileIds
                 self._update_user_active_profile_ids(profile_id, action="add")
 
             logger.info(f"Profile {profile_id} upserted successfully for user {self.user_id}")
@@ -218,7 +208,7 @@ class ProfileManager(CommonManager):
             raise ValueError("Profile-Id is invalid or not created.")
 
         try:
-            # Use BatchWriteItem instead of TransactWriteItems for better performance
+            # Delete only the profile metadata (no more lookup entries)
             request_items = {
                 self.table.name: [
                     {
@@ -228,15 +218,7 @@ class ProfileManager(CommonManager):
                                 "SK": "METADATA",
                             },
                         }
-                    },
-                    {
-                        "DeleteRequest": {
-                            "Key": {
-                                "PK": f"USER#{self.user_id}",
-                                "SK": f"PROFILE#{profile_id}",
-                            },
-                        }
-                    },
+                    }
                 ]
             }
 

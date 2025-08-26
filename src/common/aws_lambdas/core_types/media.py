@@ -17,12 +17,6 @@ class MediaStatus(str, Enum):
     ERROR = "error"
 
 
-class MediaType(str, Enum):
-    IMAGE = "image"
-    VIDEO = "video"
-    AUDIO = "audio"
-
-
 class MediaRecord(msgspec.Struct):
     """Media record validation using msgspec"""
     mediaId: str
@@ -31,9 +25,8 @@ class MediaRecord(msgspec.Struct):
     s3Key: str
     status: MediaStatus = MediaStatus.PENDING
     mediaBlob: Dict[str, Any] = msgspec.field(default_factory=dict)
-    mediaType: Optional[MediaType] = None
+    mediaType: Optional[str] = None
     fileSize: Optional[int] = None
-    mimeType: Optional[str] = None
     dimensions: Optional[Dict[str, int]] = None
     duration: Optional[float] = None
     error_msg: Optional[str] = None

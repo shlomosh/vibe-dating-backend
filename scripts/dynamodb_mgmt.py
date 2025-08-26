@@ -40,7 +40,7 @@ class DynamoDBDumper:
         # Entity types for filtering
         self.entity_types = {
             "user": "USER",
-            "profile": "PROFILE", 
+            "profile": "PROFILE",
             "media": "MEDIA",
             "location": "LOCATION"
         }
@@ -463,29 +463,22 @@ class DynamoDBDumper:
         print("• Scanning profiles...")
         profile_count = 0
 
-        # First, collect all profile data
-        all_profiles = {}
+        # Collect profiles and establish user-profile relationships using GSI1PK
         for item in self.scan_table(entity_type="profile"):
-            profile_id = item.get('PK', '').replace('PROFILE#', '')
-            if profile_id:
-                all_profiles[profile_id] = item
+            if item.get('SK') == 'METADATA':
+                profile_id = item.get('PK', '').replace('PROFILE#', '')
+                user_gsi_pk = item.get('GSI1PK', '')  # This contains USER#user_id
+                user_id = user_gsi_pk.replace('USER#', '') if user_gsi_pk.startswith('USER#') else ''
 
-        # Then, scan for user-profile lookup items to establish relationships
-        for item in self.scan_table():
-            if item.get('SK', '').startswith('PROFILE#'):
-                user_id = item.get('PK', '').replace('USER#', '')
-                profile_id = item.get('profileId', '')
-
-                if user_id and profile_id and profile_id in all_profiles:
-                    profile_data = all_profiles[profile_id]
+                if profile_id and user_id:
                     if user_id not in profiles:
                         profiles[user_id] = []
                     profiles[user_id].append({
                         'id': profile_id,
-                        'name': profile_data.get('nickName', 'N/A'),
-                        'age': profile_data.get('age', 'N/A'),
-                        'location': profile_data.get('location', 'N/A'),
-                        'position': profile_data.get('sexualPosition', 'N/A')
+                        'name': item.get('nickName', 'N/A'),
+                        'age': item.get('age', 'N/A'),
+                        'location': item.get('location', 'N/A'),
+                        'position': item.get('sexualPosition', 'N/A')
                     })
                     profile_count += 1
 

@@ -58,7 +58,9 @@ class UserManager(CommonManager):
         self, platform: str, platform_user_id: str, platform_user_data: Dict[str, Any]
     ) -> bool:
         """Create or update user in DynamoDB"""
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now = datetime.datetime.now(datetime.timezone.utc)
+        now_iso = now.isoformat()
+        now_tag = now.strftime("%Y%m%d%H%M%S")
         
         if not self.user_data:
             # Create new user with all required fields
@@ -72,17 +74,17 @@ class UserManager(CommonManager):
                 "statusData": UserStatusData(),
                 "preferences": {},
                 "loginCount": int(1),
-                "lastActiveAt": now,
-                "updatedAt": now,
-                "createdAt": now,
+                "lastActiveAt": now_iso,
+                "updatedAt": now_iso,
+                "createdAt": now_iso,
             }
         else:
             # Update existing user
             user_data = deepcopy(self.user_data)
             user_data.update({
                 "loginCount": int(user_data.get("loginCount", 0) + 1),
-                "lastActiveAt": now,
-                "updatedAt": now
+                "lastActiveAt": now_iso,
+                "updatedAt": now_iso
             })
 
         # Validate and convert to UserRecord
@@ -94,15 +96,14 @@ class UserManager(CommonManager):
             raise ValueError(f"Invalid user data: {str(e)}")
 
         try:
-            # Use put_item for both create and update to ensure it works
             self.table.put_item(
                 Item={
                     "PK": f"USER#{self.user_id}",
                     "SK": "METADATA",
                     "GSI1PK": f"USER#{self.user_id}",
                     "GSI1SK": "METADATA",
-                    "GSI2PK": f"TIME#{now[:10]}",
-                    "GSI2SK": f"{now}#USER#{self.user_id}",
+                    "GSI2PK": f"TIME#{now_tag[:8]}",
+                    "GSI2SK": f"{now_tag}#USER#{self.user_id}",
                     "GSI3PK": "USER#ALL",
                     "GSI3SK": f"USER#{self.user_id}",
                     **user_data

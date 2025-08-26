@@ -103,7 +103,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         payload = api_verify_jwt_token(token)
         user_id = payload["uid"]
 
-        # Generate allow policy with broader resource access
+        # Generate allow policy with proper resource pattern
         # The methodArn format is: arn:aws:execute-api:region:account:api-id/stage/HTTP-VERB/resource-path
         method_arn = event["methodArn"]
         arn_parts = method_arn.split('/')
@@ -111,16 +111,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if len(arn_parts) >= 3:
             # Extract the base API ARN and allow access to all methods/resources under this API
             # For paths like /profile/{profileId}/media, we want to allow access to all sub-resources
-            base_arn = f"{'/'.join(arn_parts[:-1])}/*"
-            print(f"Generated base ARN: {base_arn}")
-        else:
-            # Fallback to the original methodArn if parsing fails
-            base_arn = method_arn
-            print(f"Using fallback ARN: {base_arn}")
-        
-        # Also include the specific method ARN to ensure immediate access
-        resources = [base_arn, method_arn]
-        print(f"Final resources: {resources}")
+            method_arn = f"{'/'.join(arn_parts[:-1])}/*"
+
+        print(f"Resource ARN: {method_arn}")
         
         policy = {
             "principalId": user_id,
@@ -130,7 +123,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     {
                         "Action": "execute-api:Invoke",
                         "Effect": "Allow",
-                        "Resource": resources
+                        "Resource": method_arn
                     }
                 ],
             },

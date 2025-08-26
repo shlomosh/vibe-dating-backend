@@ -136,8 +136,9 @@ class MediaManager(ProfileManager):
     def upsert_media_record(
         self,
         media_id: str,
-        s3_key: str,
-        mediaBlob: Dict[str, Any],
+        upload_s3_key: str,
+        media_blob: Dict[str, Any],
+        media_type: str,
         status: MediaStatus = MediaStatus.PENDING,
         **kwargs
     ) -> bool:
@@ -145,18 +146,21 @@ class MediaManager(ProfileManager):
         if media_id not in self.allocated_media_ids:
             raise ValueError(f"Media ID {media_id} is not allocated for this profile")
         
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now = datetime.datetime.now(datetime.timezone.utc)
+        now_iso = now.isoformat()
+        now_tag = now.strftime("%Y%m%d%H%M%S")
         
         # Prepare media data
         media_data = {
             "mediaId": media_id,
             "profileId": self.profile_id,
             "userId": self.user_id,
-            "s3Key": s3_key,
+            "s3Key": upload_s3_key,
             "status": status,
-            "mediaBlob": mediaBlob,
-            "createdAt": now,
-            "updatedAt": now,
+            "mediaBlob": media_blob,
+            "mediaType": media_type,
+            "createdAt": now_iso,
+            "updatedAt": now_iso,
             **kwargs
         }
         
@@ -169,17 +173,16 @@ class MediaManager(ProfileManager):
             raise ValueError(f"Invalid media data: {str(e)}")
         
         try:
-            # Use put_item for both create and update to ensure it works
             self.table.put_item(
                 Item={
                     "PK": f"PROFILE#{self.profile_id}",
                     "SK": f"MEDIA#{media_id}",
                     "GSI1PK": f"MEDIA#{media_id}",
                     "GSI1SK": f"PROFILE#{self.profile_id}",
-                    "GSI2PK": f"TIME#{now[:10]}",
-                    "GSI2SK": f"{now}#MEDIA#{media_id}",
+                    "GSI2PK": f"TIME#{now_tag[:8]}",
+                    "GSI2SK": f"{now_tag}#MEDIA#{media_id}",
                     "GSI3PK": "MEDIA#ALL",
-                    "GSI3SK": f"PROFILE#{self.profile_id}",
+                    "GSI3SK": f"MEDIA#{media_id}",
                     **media_data
                 }
             )
