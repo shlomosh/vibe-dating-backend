@@ -44,9 +44,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 raise ResponseError(400, {"error": "Invalid profile ID"})
         else:
             # For GET/DELETE, require existing profiles
-            if not profile_mgmt.validate_profile_id(
-                profile_id, is_existing=True
-            ):
+            if not profile_mgmt.validate_profile_id(profile_id, is_existing=True):
                 raise ResponseError(400, {"error": "Invalid profile ID"})
 
         # Route based on HTTP method

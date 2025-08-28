@@ -26,7 +26,7 @@ class MediaRecord(msgspec.Struct):
     status: MediaStatus = MediaStatus.PENDING
     mediaBlob: Dict[str, Any] = msgspec.field(default_factory=dict)
     mediaType: Optional[str] = None
-    fileSize: Optional[int] = None
+    size: Optional[int] = None
     dimensions: Optional[Dict[str, int]] = None
     duration: Optional[float] = None
     error_msg: Optional[str] = None
@@ -55,7 +55,7 @@ class MediaRecord(msgspec.Struct):
             raise ValueError("S3 key must be a non-empty string")
 
         # Validate file size if provided
-        if self.fileSize is not None and (not isinstance(self.fileSize, int) or self.fileSize <= 0):
+        if self.size is not None and (not isinstance(self.size, int) or self.size <= 0):
             raise ValueError("File size must be a positive integer")
         
         # Validate dimensions if provided

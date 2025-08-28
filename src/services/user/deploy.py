@@ -185,9 +185,15 @@ class UserServiceDeployer(ServiceDeployer):
                     "Environment": self.environment,
                     "Region": self.parameters["ApiRegion"],
                     "ApiGatewayId": self.auth_cfg["apigateway"]["ApiGatewayId"],
-                    "ApiGatewayRootResourceId": self.auth_cfg["apigateway"]["ApiGatewayRootResourceId"],
-                    "ApiGatewayAuthorizerId": self.auth_cfg["apigateway"]["ApiGatewayAuthorizerId"],
-                    "ApiGatewayCloudWatchRoleArn": self.core_cfg["iam"]["ApiGatewayCloudWatchRoleArn"],
+                    "ApiGatewayRootResourceId": self.auth_cfg["apigateway"][
+                        "ApiGatewayRootResourceId"
+                    ],
+                    "ApiGatewayAuthorizerId": self.auth_cfg["apigateway"][
+                        "ApiGatewayAuthorizerId"
+                    ],
+                    "ApiGatewayCloudWatchRoleArn": self.core_cfg["iam"][
+                        "ApiGatewayCloudWatchRoleArn"
+                    ],
                     "UserProfileMgmtFunctionArn": f"${{vibe-dating-user-lambda-{self.environment}.UserProfileMgmtFunctionArn}}",
                     "UserMediaMgmtFunctionArn": f"${{vibe-dating-user-lambda-{self.environment}.UserMediaMgmtFunctionArn}}",
                 },
@@ -198,7 +204,9 @@ class UserServiceDeployer(ServiceDeployer):
         # Check if auth service API Gateway outputs are available
         if "apigateway" not in self.auth_cfg:
             print("❌ Auth service API Gateway stack not found")
-            print("   Make sure to deploy auth service first: poetry run service-deploy auth")
+            print(
+                "   Make sure to deploy auth service first: poetry run service-deploy auth"
+            )
             sys.exit(1)
 
         if not all(
@@ -250,7 +258,12 @@ def main(action=None):
 
     if args.validate:
         deployer.validate_templates(
-            templates=["01-s3.yaml", "02-iam.yaml", "03-lambda.yaml", "04-apigateway.yaml"]
+            templates=[
+                "01-s3.yaml",
+                "02-iam.yaml",
+                "03-lambda.yaml",
+                "04-apigateway.yaml",
+            ]
         )
     elif action == "deploy" or (action is None and not deployer.is_deployed()):
         deployer.deploy()

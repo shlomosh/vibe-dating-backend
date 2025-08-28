@@ -23,8 +23,11 @@ class UserMediaMgmtHandler:
         self.user_id = user_id
         self.profile_id = profile_id
         s3_region = os.environ.get("MEDIA_S3_REGION")
-        self.s3_client = boto3.client("s3", region_name=s3_region, endpoint_url=f"https://s3.{s3_region}.amazonaws.com")
-        self.table = DynamoDBService.get_table()
+        self.s3_client = boto3.client(
+            "s3",
+            region_name=s3_region,
+            endpoint_url=f"https://s3.{s3_region}.amazonaws.com",
+        )
         self.media_bucket = os.environ.get("MEDIA_S3_BUCKET")
         self.media_mgmt = MediaManager(user_id, profile_id)
         self.core_settings = CoreSettings()
@@ -64,6 +67,7 @@ class UserMediaMgmtHandler:
 
         media_type = request_data["mediaType"]
         media_class, media_format = media_type.split("/")
+        media_size = request_data["mediaSize"]
 
         # Validate media type
         if media_class != "image":
@@ -73,10 +77,10 @@ class UserMediaMgmtHandler:
         media_blob = self._decode_media_blob(request_data["mediaBlob"])
 
         # Validate file size and format
-        self._validate_file_size(request_data["mediaSize"])
+        self._validate_file_size(media_size)
         self._validate_file_format(media_format)
 
-        return media_type, media_blob
+        return media_type, media_blob, media_size
 
     def generate_presigned_upload_url(
         self, media_id: str, content_type: str
@@ -115,7 +119,7 @@ class UserMediaMgmtHandler:
     def request_upload(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
         """Handle upload URL request"""
         # Validate request and decode mediaBlob
-        media_type, media_blob = self.validate_upload_request(request_data)
+        media_type, media_blob, media_size = self.validate_upload_request(request_data)
 
         # Get available pre-allocated media ID
         media_id = self.media_mgmt.get_available_media_id()
@@ -128,8 +132,18 @@ class UserMediaMgmtHandler:
         upload_data = self.generate_presigned_upload_url(media_id, media_type)
         upload_s3_key = upload_data["s3Key"]
 
-        # Create media record and store pending upload
-        self.media_mgmt.upsert_media_record(media_id, upload_s3_key, media_blob, media_type, status=MediaStatus.PENDING)
+        # Create media record and store pending upload with mediaSize
+        self.media_mgmt.upsert_media_record(
+            media_id,
+            upload_s3_key,
+            media_blob,
+            media_type,
+            size=media_size,
+            dimensions=media_blob.get("dimensions", None),
+            duration=media_blob.get("duration", None),
+            error_msg=media_blob.get("error_msg", None),
+            status=MediaStatus.PENDING,
+        )
 
         # Return response with expiration
         expires_at = datetime.utcnow() + timedelta(
@@ -173,10 +187,6 @@ class UserMediaMgmtHandler:
         if not request_data.get("uploadSuccess"):
             raise ResponseError(400, {"error": "Upload was not successful"})
 
-        # Extract completion data
-        s3_etag = request_data.get("s3ETag", "")
-        actual_size = request_data.get("actualSize", 0)
-
         # Validate media ID is allocated for this profile
         if not self.media_mgmt.validate_media_id(media_id, is_existing=True):
             raise ResponseError(
@@ -192,8 +202,6 @@ class UserMediaMgmtHandler:
                 media_id,
                 MediaStatus.PROCESSING,
                 uploadedAt=datetime.utcnow().isoformat(),
-                s3ETag=s3_etag,
-                actualSize=actual_size,
             )
 
             # Activate the media ID
@@ -220,12 +228,8 @@ class UserMediaMgmtHandler:
             )
 
         try:
-            # Get media record first
-            response = self.table.get_item(
-                Key={"PK": f"PROFILE#{self.profile_id}", "SK": f"MEDIA#{media_id}"}
-            )
-
-            media_record = response.get("Item")
+            # Get media record first using MediaManager
+            media_record = self.media_mgmt.get_media_record(media_id)
             if not media_record:
                 raise ResponseError(404, {"error": "Media record not found"})
 
@@ -257,10 +261,8 @@ class UserMediaMgmtHandler:
                 except ClientError as e:
                     print(f"Warning: Failed to delete some S3 objects: {e}")
 
-            # Delete from DynamoDB
-            self.table.delete_item(
-                Key={"PK": f"PROFILE#{self.profile_id}", "SK": f"MEDIA#{media_id}"}
-            )
+            # Delete from DynamoDB using MediaManager
+            self.media_mgmt.delete_media_record(media_id)
 
             return {
                 "mediaId": media_id,
@@ -268,7 +270,7 @@ class UserMediaMgmtHandler:
                 "deletedAt": datetime.utcnow().isoformat(),
             }
 
-        except ClientError as e:
+        except (ClientError, ValueError) as e:
             raise ResponseError(500, {"error": f"Failed to delete media: {str(e)}"})
 
     def reorder_media(self, order_data: dict) -> dict:
@@ -296,20 +298,20 @@ class UserMediaMgmtHandler:
             if set(sorted_media_ids) != set(current_active_media_ids):
                 raise ResponseError(
                     400,
-                    {"error": "sortedMediaIds must contain the same items as current activeMediaIds, just in different order"}
+                    {
+                        "error": "sortedMediaIds must contain the same items as current activeMediaIds, just in different order"
+                    },
                 )
 
-            # Update the profile item with the new activeMediaIds order
-            self.table.update_item(
-                Key={
-                    "PK": f"PROFILE#{self.profile_id}",
-                    "SK": "METADATA"
-                },
+            # Update the profile item with the new activeMediaIds order using MediaManager's table access
+            table = self.media_mgmt.table
+            table.update_item(
+                Key={"PK": f"PROFILE#{self.profile_id}", "SK": "METADATA"},
                 UpdateExpression="SET activeMediaIds = :active_media_ids, updatedAt = :updated_at",
                 ExpressionAttributeValues={
                     ":active_media_ids": sorted_media_ids,
-                    ":updated_at": datetime.utcnow().isoformat()
-                }
+                    ":updated_at": datetime.utcnow().isoformat(),
+                },
             )
 
             return {

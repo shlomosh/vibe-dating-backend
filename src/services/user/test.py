@@ -20,7 +20,7 @@ class UserServiceTester(ServiceTester):
         """Test CloudFormation templates"""
         print("• Testing CloudFormation templates...")
 
-        templates = ["01-s3.yaml", "02-lambda.yaml", "03-apigateway.yaml"]
+        templates = ["01-s3.yaml", "03-lambda.yaml", "04-apigateway.yaml"]
         for template in templates:
             template_path = self.service_dir / "cloudformation" / template
             if not template_path.exists():

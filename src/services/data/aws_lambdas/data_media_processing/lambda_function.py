@@ -14,22 +14,39 @@ from typing import Any, Dict
 import boto3
 from botocore.exceptions import ClientError
 from PIL import Image
+from core_types.media import MediaStatus
 
 from core.aws import DynamoDBService
+from core.media_utils import MediaManager
+from core.settings import CoreSettings
 
 
 class DataMediaProcessingHandler:
     """Handles media processing operations"""
 
-    def __init__(self):
-        self.s3_client = boto3.client("s3", region_name=os.environ.get("MEDIA_S3_REGION"))
+    def __init__(self, user_id: str = None, profile_id: str = None):
+        self.user_id = user_id
+        self.profile_id = profile_id
+        s3_region = os.environ.get("MEDIA_S3_REGION")
+        self.s3_client = boto3.client(
+            "s3",
+            region_name=s3_region,
+            endpoint_url=f"https://s3.{s3_region}.amazonaws.com",
+        )
         self.cloudfront_client = boto3.client("cloudfront", region_name="us-east-1")
-        self.table = DynamoDBService.get_table()
         self.media_bucket = os.environ.get("MEDIA_S3_BUCKET")
         self.cloudfront_domain = os.environ.get("CLOUDFRONT_DOMAIN")
         self.cloudfront_distribution_id = os.environ.get("CLOUDFRONT_DISTRIBUTION_ID")
 
-        # Configuration
+        # Initialize MediaManager only if we have both user_id and profile_id
+        if user_id and profile_id:
+            self.media_mgmt = MediaManager(user_id, profile_id)
+        else:
+            self.media_mgmt = None
+
+        self.core_settings = CoreSettings()
+
+        # Configuration from CoreSettings
         self.thumbnail_width = 300
         self.thumbnail_height = 400
         self.thumbnail_quality = 85
@@ -45,12 +62,20 @@ class DataMediaProcessingHandler:
         raise ValueError(f"Invalid S3 key format: {s3_key}")
 
     def get_media_record(self, media_id: str) -> Dict[str, Any]:
-        """Get media record from DynamoDB"""
+        """Get media record from DynamoDB using MediaManager or GSI fallback"""
         try:
-            # Query for media record
-            response = self.table.query(
-                IndexName="GSI5",  # Media Management GSI
-                KeyConditionExpression="GSI5PK = :pk",
+            # If we have MediaManager, use it
+            if self.media_mgmt:
+                media_record = self.media_mgmt.get_media_record(media_id)
+                if not media_record:
+                    raise ValueError(f"Media record not found for ID: {media_id}")
+                return media_record
+
+            # Fallback: Use GSI to find media record when MediaManager isn't available
+            table = DynamoDBService.get_table()
+            response = table.query(
+                IndexName="GSI1",  # Media GSI
+                KeyConditionExpression="GSI1PK = :pk",
                 ExpressionAttributeValues={":pk": f"MEDIA#{media_id}"},
             )
 
@@ -59,7 +84,7 @@ class DataMediaProcessingHandler:
                 raise ValueError(f"Media record not found for ID: {media_id}")
 
             return items[0]
-        except ClientError as e:
+        except (ValueError, ClientError) as e:
             raise RuntimeError(f"Failed to get media record: {str(e)}")
 
     def download_image_from_s3(self, s3_key: str) -> Image.Image:
@@ -72,8 +97,10 @@ class DataMediaProcessingHandler:
             raise RuntimeError(f"Failed to download image from S3: {str(e)}")
 
     def validate_image(self, image: Image.Image) -> None:
-        """Validate image format and dimensions"""
-        if image.format not in ["JPEG", "PNG", "WEBP"]:
+        """Validate image format and dimensions using CoreSettings"""
+        # Validate format using CoreSettings allowed formats
+        allowed_formats = [fmt.upper() for fmt in self.core_settings.media_allowed_formats]
+        if image.format not in allowed_formats:
             raise ValueError(f"Unsupported image format: {image.format}")
 
         if image.size[0] < 100 or image.size[1] < 100:
@@ -177,28 +204,55 @@ class DataMediaProcessingHandler:
             print(f"Warning: Failed to invalidate CloudFront cache: {e}")
 
     def update_media_record(
-        self, media_id: str, profile_id: str, update_data: dict
+        self, media_id: str, update_data: dict
     ) -> None:
-        """Update media record in DynamoDB"""
+        """Update media record in DynamoDB using MediaManager or direct table access"""
         try:
-            update_expression = "SET "
-            expression_attrs = {}
-            expression_attr_names = {}
+            # If we have MediaManager, use it
+            if self.media_mgmt:
+                # Convert status string to MediaStatus enum if present
+                if "status" in update_data:
+                    if update_data["status"] == "completed":
+                        status = MediaStatus.READY
+                    elif update_data["status"] == "failed":
+                        status = MediaStatus.ERROR
+                    else:
+                        status = MediaStatus.PROCESSING
 
-            for key, value in update_data.items():
-                update_expression += f"#{key} = :{key}, "
-                expression_attrs[f":{key}"] = value
-                expression_attr_names[f"#{key}"] = key
+                    # Remove status from update_data and use MediaManager method
+                    update_data_copy = update_data.copy()
+                    del update_data_copy["status"]
 
-            update_expression = update_expression.rstrip(", ")
+                    self.media_mgmt.update_media_status(media_id, status, **update_data_copy)
+                else:
+                    # Use the generic update method
+                    self.media_mgmt.update_media_status(media_id, MediaStatus.PROCESSING, **update_data)
+            else:
+                # Fallback: Direct table access when MediaManager isn't available
+                # We need profile_id for this, which should be set by now
+                if not self.profile_id:
+                    raise ValueError("Profile ID must be set to update media record")
 
-            self.table.update_item(
-                Key={"PK": f"PROFILE#{profile_id}", "SK": f"MEDIA#{media_id}"},
-                UpdateExpression=update_expression,
-                ExpressionAttributeValues=expression_attrs,
-                ExpressionAttributeNames=expression_attr_names,
-            )
-        except ClientError as e:
+                table = DynamoDBService.get_table()
+                update_expression = "SET "
+                expression_attrs = {}
+                expression_attr_names = {}
+
+                for key, value in update_data.items():
+                    update_expression += f"#{key} = :{key}, "
+                    expression_attrs[f":{key}"] = value
+                    expression_attr_names[f"#{key}"] = key
+
+                update_expression = update_expression.rstrip(", ")
+
+                table.update_item(
+                    Key={"PK": f"PROFILE#{self.profile_id}", "SK": f"MEDIA#{media_id}"},
+                    UpdateExpression=update_expression,
+                    ExpressionAttributeValues=expression_attrs,
+                    ExpressionAttributeNames=expression_attr_names,
+                )
+
+        except (ValueError, RuntimeError, ClientError) as e:
             raise RuntimeError(f"Failed to update media record: {str(e)}")
 
     def process_profile_image(self, s3_key: str) -> None:
@@ -211,9 +265,16 @@ class DataMediaProcessingHandler:
             # Get media record
             media_record = self.get_media_record(media_id)
             profile_id = media_record.get("profileId")
+            user_id = media_record.get("userId")
 
-            if not profile_id:
-                raise ValueError("Profile ID not found in media record")
+            if not profile_id or not user_id:
+                raise ValueError("Profile ID or User ID not found in media record")
+
+            # Update handler with extracted user_id and profile_id if not set
+            if not self.user_id or not self.profile_id:
+                self.user_id = user_id
+                self.profile_id = profile_id
+                self.media_mgmt = MediaManager(user_id, profile_id)
 
             # Download original image
             print(f"Downloading image from S3: {s3_key}")
@@ -255,7 +316,7 @@ class DataMediaProcessingHandler:
                 "s3Bucket": self.media_bucket,
             }
 
-            self.update_media_record(media_id, profile_id, update_data)
+            self.update_media_record(media_id, update_data)
 
             # Invalidate CloudFront cache
             cache_paths = [f"/{original_s3_key}", f"/{thumbnail_s3_key}"]
@@ -267,10 +328,9 @@ class DataMediaProcessingHandler:
             print(f"Error processing media: {str(e)}")
             # Update status to failed
             try:
-                if "media_id" in locals() and "profile_id" in locals():
+                if "media_id" in locals():
                     self.update_media_record(
                         media_id,
-                        profile_id,
                         {
                             "status": "failed",
                             "updatedAt": datetime.utcnow().isoformat(),
@@ -329,20 +389,3 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             "body": json.dumps({"error": f"Media processing failed: {str(e)}"}),
         }
 
-
-if __name__ == "__main__":
-    # Test handler
-    test_event = {
-        "Records": [
-            {
-                "eventSource": "aws:s3",
-                "s3": {
-                    "bucket": {"name": "test-bucket"},
-                    "object": {"key": "uploads/profile-images/test123.jpg"},
-                },
-            }
-        ]
-    }
-
-    result = lambda_handler(test_event, None)
-    print(json.dumps(result, indent=2))

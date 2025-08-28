@@ -26,10 +26,11 @@ def _api_generate_jwt_token(signed_data: Dict[str, Any], expires_in: int = 7) ->
     Returns:
         str: JWT token string
     """
+    now = datetime.datetime.utcnow()
     payload = {
         **signed_data,
-        "iat": datetime.datetime.utcnow(),
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(days=expires_in),
+        "iat": int(now.timestamp()),
+        "exp": int((now + datetime.timedelta(days=expires_in)).timestamp()),
         "iss": "vibe-app",
     }
 

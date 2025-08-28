@@ -139,6 +139,10 @@ class MediaManager(ProfileManager):
         upload_s3_key: str,
         media_blob: Dict[str, Any],
         media_type: str,
+        size: Optional[int] = None,
+        dimensions: Optional[Dict[str, int]] = None,
+        duration: Optional[float] = None,
+        error_msg: Optional[str] = None,
         status: MediaStatus = MediaStatus.PENDING,
         **kwargs
     ) -> bool:
@@ -159,6 +163,10 @@ class MediaManager(ProfileManager):
             "status": status,
             "mediaBlob": media_blob,
             "mediaType": media_type,
+            "size": size if size is not None else 0,
+            "dimensions": dimensions,
+            "duration": duration,
+            "error_msg": error_msg if error_msg is not None else "",
             "createdAt": now_iso,
             "updatedAt": now_iso,
             **kwargs

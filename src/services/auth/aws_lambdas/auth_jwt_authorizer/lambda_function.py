@@ -109,9 +109,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         arn_parts = method_arn.split('/')
         
         if len(arn_parts) >= 3:
-            # Extract the base API ARN and allow access to all methods/resources under this API
-            # For paths like /profile/{profileId}/media, we want to allow access to all sub-resources
-            method_arn = f"{'/'.join(arn_parts[:-1])}/*"
+            # Allow access to all methods and resources under this API
+            # Format: arn:aws:execute-api:region:account:api-id/stage/*/*
+            api_base = '/'.join(arn_parts[:2])  # arn:aws:execute-api:region:account:api-id/stage
+            method_arn = f"{api_base}/*/*"
 
         print(f"Resource ARN: {method_arn}")
         

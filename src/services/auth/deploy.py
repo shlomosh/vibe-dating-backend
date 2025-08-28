@@ -189,7 +189,9 @@ class AuthServiceDeployer(ServiceDeployer):
                     "ApiDomainName": self.parameters["ApiDomainName"],
                     "ApiHostedZoneId": self.parameters["ApiHostedZoneId"],
                     "ApiCertificateArn": self.parameters["ApiCertificateArn"],
-                    "ApiGatewayAuthorizerRoleArn": self.core_cfg["iam"]["ApiGatewayAuthorizerRoleArn"],                
+                    "ApiGatewayAuthorizerRoleArn": self.core_cfg["iam"][
+                        "ApiGatewayAuthorizerRoleArn"
+                    ],
                     "AuthJWTAuthorizerFunctionArn": f"${{vibe-dating-auth-lambda-{self.environment}.AuthJWTAuthorizerFunctionArn}}",
                     "AuthPlatformFunctionArn": f"${{vibe-dating-auth-lambda-{self.environment}.AuthPlatformFunctionArn}}",
                 },
