@@ -109,7 +109,7 @@ class UserServiceDeployer(ServiceDeployer):
                 else:
                     print(f"  Skipping function update for: {aws_lambda_name}")
 
-            # Update profile management function
+            # Update media management function
             if "UserMediaMgmtFunctionArn" in stack_outputs:
                 aws_lambda_arn = stack_outputs["UserMediaMgmtFunctionArn"]
                 aws_lambda_name = aws_lambda_arn.split(":")[-1]
@@ -123,6 +123,29 @@ class UserServiceDeployer(ServiceDeployer):
                     print(f"  Updating function: {aws_lambda_name}")
                     self._update_aws_lambda(
                         aws_lambda_name, s3_bucket, "lambda/user_media_mgmt.zip"
+                    )
+                    updated_functions.append(aws_lambda_name)
+                else:
+                    print(f"  Skipping function update for: {aws_lambda_name}")
+
+            print(f"✅ Successfully updated {len(updated_functions)} Lambda resources:")
+            for func in updated_functions:
+                print(f"   • {func}")
+
+            # Update media processing function
+            if "UserMediaProcessingFunctionArn" in stack_outputs:
+                aws_lambda_arn = stack_outputs["UserMediaProcessingFunctionArn"]
+                aws_lambda_name = aws_lambda_arn.split(":")[-1]
+
+                # Ask user if they want to update the function
+                update_question = input(
+                    f"  Do you want to update function {aws_lambda_name}? (y/n): "
+                ).lower()
+
+                if update_question == "y":
+                    print(f"  Updating function: {aws_lambda_name}")
+                    self._update_aws_lambda(
+                        aws_lambda_name, s3_bucket, "lambda/user_media_processing.zip"
                     )
                     updated_functions.append(aws_lambda_name)
                 else:

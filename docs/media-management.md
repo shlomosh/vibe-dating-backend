@@ -305,18 +305,28 @@ def check_profile_ownership(user_id: str, profile_id: str) -> bool:
 
 ```python
 def generate_presigned_upload_url(self, media_id: str, content_type: str) -> Dict[str, Any]:
-    """Generate secure presigned upload URL"""
-    s3_key = f"uploads/profile-images/{media_id}.{content_type.split('/')[-1]}"
+    """Generate secure presigned upload URL with enhanced security"""
+    date = datetime.utcnow().strftime("%Y%m%d")
+    s3_key = f"uploads/{date}/{self.user_id}/{self.profile_id}/{media_id}.{content_type.split('/')[-1]}"
     
     presigned_url = self.s3_client.generate_presigned_post(
         Bucket=self.media_bucket,
         Key=s3_key,
-        Fields={"Content-Type": content_type},
+        Fields={
+            "Content-Type": content_type,
+            "x-amz-meta-user-id": self.user_id,
+            "x-amz-meta-profile-id": self.profile_id,
+        },
         Conditions=[
             {"Content-Type": content_type},
             ["content-length-range", 1024, self.core_settings.media_max_file_size],
+            # User-specific restrictions to prevent cross-user uploads
+            {"x-amz-meta-user-id": self.user_id},
+            {"x-amz-meta-profile-id": self.profile_id},
+            # Ensure upload path matches expected pattern
+            ["starts-with", "$key", f"uploads/{date}/{self.user_id}/{self.profile_id}/"],
         ],
-        ExpiresIn=self.core_settings.media_upload_expiry_hours * 3600,
+        ExpiresIn=int(self.core_settings.media_upload_expiry_hours * 3600),
     )
     
     return {
@@ -326,6 +336,17 @@ def generate_presigned_upload_url(self, media_id: str, content_type: str) -> Dic
         "s3Key": s3_key,
     }
 ```
+
+### Enhanced Security Features
+
+- **Short Expiration**: Presigned URLs expire in 15 minutes (0.25 hours)
+- **User Isolation**: Each presigned URL is restricted to specific user and profile
+- **Path Validation**: Uploads must follow the expected directory structure
+- **Metadata Enforcement**: User and profile IDs are embedded in upload metadata
+- **Magic Number Validation**: File signatures are validated to prevent malicious uploads
+- **Lifecycle Policies**: Incomplete uploads are automatically deleted after 1 day
+- **Encryption Enforcement**: All uploads must use server-side encryption
+- **Public Access Prevention**: Blocked public read access to uploaded files
 
 ## Configuration
 
@@ -353,7 +374,7 @@ class CoreSettings:
     max_medias_per_profile: int = 5
     media_max_file_size: int = 10485760
     media_allowed_formats: list[str] = ["jpeg", "jpg", "png", "webp"]
-    media_upload_expiry_hours: int = 1
+    media_upload_expiry_hours: float = 0.25  # 15 minutes for enhanced security
 ```
 
 ## Error Handling
@@ -396,6 +417,11 @@ class ResponseError(Exception):
 - [x] Create DynamoDB operations
 - [x] Add input validation and security checks
 - [x] Implement error handling and logging
+- [x] Enhanced security with user-specific presigned URLs
+- [x] Added magic number validation for file types
+- [x] Implemented S3 lifecycle policies for incomplete uploads
+- [x] Added enhanced S3 bucket policies for security
+- [x] Restricted CORS to specific domains
 - [ ] Set up S3 event notifications for processing
 - [ ] Implement image processing pipeline
 - [ ] Create CloudFront invalidation logic

@@ -34,31 +34,50 @@ Resources:
         CorsRules:
           - AllowedHeaders: ['*']
             AllowedMethods: [GET, PUT, POST, DELETE]
-            AllowedOrigins: ['*']
+            AllowedOrigins: 
+              - 'https://web.telegram.org'
+              - 'https://t.me'
+              - 'https://tma.vibe-dating.io'
             MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteIncompleteUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 7
       Tags:
         - Key: Environment
           Value: !Ref Environment
         - Key: Service
           Value: user
 
-  # S3 Bucket Policy for CloudFront Access (commented out for future use)
-  # MediaBucketPolicy:
-  #   Type: AWS::S3::BucketPolicy
-  #   Properties:
-  #     Bucket: !Ref MediaBucket
-  #     PolicyDocument:
-  #       Version: '2012-10-17'
-  #       Statement:
-  #         - Sid: CloudFrontAccess
-  #           Effect: Allow
-  #           Principal:
-  #             Service: cloudfront.amazonaws.com
-  #           Action: s3:GetObject
-  #           Resource: !Sub '${MediaBucket}/*'
-  #           Condition:
-  #             StringEquals:
-  #               AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/*'
+  # S3 Bucket Policy for Enhanced Security
+  MediaBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MediaBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: RequireServerSideEncryption
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:PutObject"
+            Resource: !Sub '${MediaBucket.Arn}/*'
+            Condition:
+              StringNotEquals:
+                s3:x-amz-server-side-encryption: "AES256"
+          - Sid: DenyPublicAccess
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:PutObjectAcl"
+            Resource: !Sub '${MediaBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: "public-read"
 
   # CloudFront Distribution for Media Delivery (commented out for future use)
   # CloudFrontDistribution:
@@ -106,6 +125,18 @@ Resources:
   #     CloudFrontOriginAccessIdentityConfig:
   #       Comment: !Sub 'Vibe Dating Media OAI - ${Environment}'
 
+  # CloudWatch Log Group for Media Upload Monitoring
+  MediaUploadLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/s3/${MediaBucket}/uploads'
+      RetentionInDays: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: user
+
 Outputs:
   MediaBucketName:
     Description: 'S3 Bucket for Media Storage'
@@ -118,6 +149,12 @@ Outputs:
     Value: !GetAtt MediaBucket.Arn
     Export:
       Name: !Sub '${AWS::StackName}-MediaBucketArn'
+
+  MediaUploadLogGroupName:
+    Description: 'CloudWatch Log Group for Media Upload Monitoring'
+    Value: !Ref MediaUploadLogGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-MediaUploadLogGroupName'
 
   # CloudFrontDistributionId:
   #   Description: 'CloudFront Distribution ID for Media Delivery'

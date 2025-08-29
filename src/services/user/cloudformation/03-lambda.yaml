@@ -87,7 +87,33 @@ Resources:
         - Key: Service
           Value: user
 
-  # CloudWatch Log Group for Lambda function
+  # Lambda function for Media Processing
+  UserMediaProcessingFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'vibe-user-media-processing-${Environment}'
+      Runtime: python3.11
+      Handler: lambda_function.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Code:
+        S3Bucket: !Ref LambdaCodeBucketName
+        S3Key: lambda/user_media_processing.zip
+      Layers:
+        - !Ref CoreLayerArn
+      Environment:
+        Variables:
+          MEDIA_S3_BUCKET: !Ref MediaBucketName
+          MEDIA_S3_REGION: !Ref Region
+          DYNAMODB_TABLE: !Ref DynamoDBTableName
+      Timeout: 300
+      MemorySize: 1024
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: user
+
+  # CloudWatch Log Group for Lambda functions
   UserProfileMgmtLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -99,6 +125,21 @@ Resources:
     Properties:
       LogGroupName: !Sub '/aws/lambda/vibe-user-media-mgmt-${Environment}'
       RetentionInDays: 14
+
+  UserMediaProcessingLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/vibe-user-media-processing-${Environment}'
+      RetentionInDays: 14
+
+  # Lambda Permission for S3 Event
+  UserMediaProcessingLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref UserMediaProcessingFunction
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub 'arn:aws:s3:::${MediaBucketName}'
 
 Outputs:
   UserProfileMgmtFunctionArn:
@@ -124,3 +165,15 @@ Outputs:
     Value: !Ref UserMediaMgmtFunction
     Export:
       Name: !Sub '${AWS::StackName}-UserMediaMgmtFunctionName'
+
+  UserMediaProcessingFunctionArn:
+    Description: 'User Media Processing Lambda Function ARN'
+    Value: !GetAtt UserMediaProcessingFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-UserMediaProcessingFunctionArn'
+
+  UserMediaProcessingFunctionName:
+    Description: 'User Media Processing Lambda Function Name'
+    Value: !Ref UserMediaProcessingFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-UserMediaProcessingFunctionName'

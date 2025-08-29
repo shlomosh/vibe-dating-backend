@@ -14,5 +14,5 @@ class CoreSettings:
     max_medias_per_profile: int = 5
     media_max_file_size: int = 10485760
     media_allowed_formats: list[str] = field(default_factory=lambda: ["jpeg", "jpg", "png", "webp"])
-    media_upload_expiry_hours: int = 1
+    media_upload_expiry_hours: float = 0.25  # 15 minutes
 

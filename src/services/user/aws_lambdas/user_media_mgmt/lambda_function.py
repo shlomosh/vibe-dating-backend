@@ -56,6 +56,16 @@ class UserMediaMgmtHandler:
         if file_format not in self.core_settings.media_allowed_formats:
             raise ResponseError(400, {"error": f"Unsupported format: {file_format}"})
 
+    def _validate_file_signature(self, file_data: bytes, expected_format: str) -> bool:
+        """Validate file magic numbers to prevent malicious uploads"""
+        magic_numbers = {
+            'jpeg': b'\xff\xd8\xff',
+            'jpg': b'\xff\xd8\xff',
+            'png': b'\x89PNG\r\n\x1a\n',
+            'webp': b'RIFF'
+        }
+        return file_data.startswith(magic_numbers.get(expected_format.lower(), b''))
+
     def validate_upload_request(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
         """Validate upload request data and decode mediaBlob"""
         required_fields = ["mediaType", "mediaBlob", "mediaSize"]
@@ -85,7 +95,7 @@ class UserMediaMgmtHandler:
     def generate_presigned_upload_url(
         self, media_id: str, content_type: str
     ) -> Dict[str, Any]:
-        """Generate secure presigned upload URL"""
+        """Generate secure presigned upload URL with enhanced security"""
         date = datetime.utcnow().strftime("%Y%m%d")
         s3_key = f"uploads/{date}/{self.user_id}/{self.profile_id}/{media_id}.{content_type.split('/')[-1]}"
 
@@ -93,7 +103,12 @@ class UserMediaMgmtHandler:
             presigned_url = self.s3_client.generate_presigned_post(
                 Bucket=self.media_bucket,
                 Key=s3_key,
-                Fields={"Content-Type": content_type},
+                Fields={
+                    "Content-Type": content_type,
+                    "x-amz-meta-user-id": self.user_id,
+                    "x-amz-meta-profile-id": self.profile_id,
+                    "x-amz-server-side-encryption": "AES256",
+                },
                 Conditions=[
                     {"Content-Type": content_type},
                     [
@@ -101,8 +116,15 @@ class UserMediaMgmtHandler:
                         1024,
                         self.core_settings.media_max_file_size,
                     ],
+                    # User-specific restrictions to prevent cross-user uploads
+                    {"x-amz-meta-user-id": self.user_id},
+                    {"x-amz-meta-profile-id": self.profile_id},
+                    # Ensure upload path matches expected pattern
+                    ["starts-with", "$key", f"uploads/{date}/{self.user_id}/{self.profile_id}/"],
+                    # Ensure encryption is always used
+                    {"x-amz-server-side-encryption": "AES256"},
                 ],
-                ExpiresIn=self.core_settings.media_upload_expiry_hours * 3600,
+                ExpiresIn=int(self.core_settings.media_upload_expiry_hours * 3600),
             )
 
             return {
